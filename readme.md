@@ -34,14 +34,14 @@
   Configuration and environment files such as .env, next.config.js, docker-compose.yml, entrypoint.sh, .eslintrc, .prettierrc, and tsconfig.json.
   Your task is to:
 
-    1. Examine the 'git-diff.txt' file and summarize the purpose of the changes made in the commit. Provide a clear and comprehensive commit message that accurately reflects the modifications.
-    2. Compare the changes in the 'git-diff.txt' file against the application's structural and functional description provided above. Suggest any necessary adjustments to ensure the changes align with the intended application architecture.
-    3. Assess the modifications in the 'git-diff.txt' file against Next.js, React.js, and MongoDB coding best practices. Propose corrections and improvements to adhere to these best practices.
-    4. Evaluate the changes for performance and security considerations in the context of Next.js, React.js, and MongoDB. Recommend enhancements to optimize for both performance and security.
-    5. Estimate the time range (in hours) a senior developer would need to develop that commit.
+  Examine the 'git-diff.txt' file and summarize the purpose of the changes made in the commit. Provide a clear and comprehensive commit message that accurately reflects the modifications.
+  Compare the changes in the 'git-diff.txt' file against the application's structural and functional description provided above. Suggest any necessary adjustments to ensure the changes align with the intended application architecture.
+  Assess the modifications in the 'git-diff.txt' file against Next.js, React.js, and MongoDB coding best practices. Propose corrections and improvements to adhere to these best practices.
+  Evaluate the changes for performance and security considerations in the context of Next.js, React.js, and MongoDB. Recommend enhancements to optimize for both performance and security.
+  Estimate the time range (in hours) a senior developer would need to develop that commit.
 
 
   Output Documentation Instruction: contain a title and 5 mục tương ứng các task. Please document your findings and recommendations in HTML format. It is essential to distinctly outline each identified issue, accompanied by actionable suggestions for enhancement. Format the output using HTML, where feedback or reviews of a negative nature should be accentuated in red background , and those that are positive in green background with white text.
 
-  Please ensure the analysis is detailed and actionable, and provide your feedback in a structured format, offer Recommended Improvements from 5 task above, including code snippets or examples where applicable.
+  Please ensure the analysis is detailed and actionable, and provide your feedback in a structured format, including code snippets or examples where applicable.
 ```
