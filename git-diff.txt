@@ -1,0 +1,28 @@
+commit 48983db7e60368ed10a3d168b5e0671968dd520d
+Author: Trung Ngo <trungngoquang@coffeemugvn.com>
+Date:   Sun Apr 7 14:38:33 2024 +0700
+
+    fix build
+
+diff --git a/src/components/contractorProjects/Detail/invoices/index.tsx b/src/components/contractorProjects/Detail/invoices/index.tsx
+index 2527019..7a51242 100644
+--- a/src/components/contractorProjects/Detail/invoices/index.tsx
++++ b/src/components/contractorProjects/Detail/invoices/index.tsx
+@@ -9,7 +9,7 @@ import { useAsync } from '@/hooks/useAsync';
+ import { formatPrice } from '@/utils/currency';
+ import { Button } from '@/components/ui-component/buttons';
+ import Table from '@/components/ui-component/table';
+-import { Project } from '@/utils/dtos/project.dto';
++import { IProject } from '@/types/model';
+ import { getProjectInvoices } from '@/utils/services/contractorProject';
+ import { GST_RATE, HOLDBACK_RATE, PST_RATE } from '@/utils/constant';
+ import { formatDate } from '@/utils/datetime/date.custom';
+@@ -17,7 +17,7 @@ import { formatDate } from '@/utils/datetime/date.custom';
+ import styles from './style.module.scss';
+ 
+ interface IProjectInvoicesProps {
+-  project: Project & { id: string };
++  project: IProject;
+ }
+ const ProjectInvoices = ({ project }: IProjectInvoicesProps) => {
+   const { formatMessage } = useIntl();
