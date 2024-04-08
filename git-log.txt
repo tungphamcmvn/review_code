@@ -1,3 +1,55 @@
+commit bf7ba0dad6b125cf9f2646c4dbec5d2dd07d3e37
+Author: Huy Pham <huyphamnguyen@gmail.com>
+Date:   Mon Apr 8 17:29:47 2024 +0700
+
+    Fix missing file import
+
+commit f6710dccb936513de2cda4201365f8fe3ffd6579
+Merge: b99f70b 60cc39a
+Author: MinhT191195 <165769771+MinhT191195@users.noreply.github.com>
+Date:   Mon Apr 8 17:26:06 2024 +0700
+
+    Merge pull request #12 from invik-33/feature/J2C-134
+    
+    [User]Apply api user for FE
+
+commit 60cc39ad3ac322be6aee77d3eb97c9e04f48d953
+Author: Huy Pham <huyphamnguyen@gmail.com>
+Date:   Mon Apr 8 16:31:46 2024 +0700
+
+    Apply firstname, lastname
+
+commit cef77bf59f110086ef70eeb6e9cca0ea3ab37ac9
+Merge: 535b90d b99f70b
+Author: Huy Pham <huyphamnguyen@gmail.com>
+Date:   Mon Apr 8 16:20:17 2024 +0700
+
+    Merge branch 'dev' into feature/J2C-134
+    
+    # Conflicts:
+    #       src/backend/services/builder.service.ts
+
+commit 535b90dacb5bfb26b9e844a948879bfb27a66799
+Author: Huy Pham <huyphamnguyen@gmail.com>
+Date:   Mon Apr 8 16:19:24 2024 +0700
+
+    Apply api bulk control for change status, delete
+
+commit b99f70b08dbd251debb4a883f5f060d02e21faef
+Merge: 617cb01 cb68d5d
+Author: MinhT191195 <165769771+MinhT191195@users.noreply.github.com>
+Date:   Mon Apr 8 15:00:18 2024 +0700
+
+    Merge pull request #11 from invik-33/feature/J2C-116
+    
+    J2C-116 Change name to first name and last name for user & refactor response struct
+
+commit cb68d5d3efb880995bf11fd500ac8651001309e7
+Author: Tri Huynh <mt.huynh@shopmacher.de>
+Date:   Mon Apr 8 14:54:52 2024 +0700
+
+    J2C-116 Change name to first name and last name for user & refactor response struct
+
 commit b10f88028b2a9a6b76ed71c0a16eb297a4737628
 Author: Huy Pham <huyphamnguyen@gmail.com>
 Date:   Mon Apr 8 14:45:35 2024 +0700
