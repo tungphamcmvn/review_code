@@ -1,34 +1,59 @@
-commit bf7ba0dad6b125cf9f2646c4dbec5d2dd07d3e37
+commit 60cc39ad3ac322be6aee77d3eb97c9e04f48d953
 Author: Huy Pham <huyphamnguyen@gmail.com>
-Date:   Mon Apr 8 17:29:47 2024 +0700
+Date:   Mon Apr 8 16:31:46 2024 +0700
 
-    Fix missing file import
+    Apply firstname, lastname
 
-diff --git a/src/components/dialogs/contractor/ContractorDialog.tsx b/src/components/dialogs/contractor/ContractorDialog.tsx
-index 8570625..2fa2ca6 100644
---- a/src/components/dialogs/contractor/ContractorDialog.tsx
-+++ b/src/components/dialogs/contractor/ContractorDialog.tsx
-@@ -24,7 +24,7 @@ import { object as yupObject } from 'yup';
- import { useAsync } from '@/hooks/useAsync';
- import { success as notifySuccess } from '@/utils/notify';
- import { CONTRACTOR_SERVICES, CONTRACTOR_STATUS, CONTRACTOR_STATUS_ACTIVE } from '@/constant/contractor';
--import stylesDialog from '../builder/style.module.scss';
-+import stylesDialog from './style.module.scss';
- import useCommonValidates from '@/hooks/useCommonValidates';
- import { IContractor, createContractor, updateContractor } from '@/utils/services/contractor';
- import { useSession } from 'next-auth/react';
-diff --git a/src/components/dialogs/contractor/style.module.scss b/src/components/dialogs/contractor/style.module.scss
-new file mode 100644
-index 0000000..798a492
---- /dev/null
-+++ b/src/components/dialogs/contractor/style.module.scss
-@@ -0,0 +1,8 @@
-+.imageLocal{
-+  position: absolute;
-+  inset: 0;
-+  z-index: 0;
-+  width: 100%;
-+  height: 100%;
-+  object-fit: contain;
-+}
-\ No newline at end of file
+diff --git a/src/components/user/detail/components/BasicInformation/index.tsx b/src/components/user/detail/components/BasicInformation/index.tsx
+index dbf25f1..aa8bbab 100644
+--- a/src/components/user/detail/components/BasicInformation/index.tsx
++++ b/src/components/user/detail/components/BasicInformation/index.tsx
+@@ -42,7 +42,17 @@ export default function BasicInformation({ user }: Props) {
+           <TextField label={formatMessage({ id: 'userDetailRole' })} name="role" value={user.role} {...defaultProps} />
+         </Grid>
+         <Grid item xs={6}>
+-          <TextField label={formatMessage({ id: 'userDetailStatus' })} name="status" value={user.status} {...defaultProps} />
++          <TextField
++            label={formatMessage({ id: 'userDetailStatus' })}
++            name="status"
++            value={user.status}
++            {...defaultProps}
++            sx={{
++              '& input': {
++                textTransform: 'capitalize'
++              }
++            }}
++          />
+         </Grid>
+         <Grid item xs={6}>
+           <TextField label={formatMessage({ id: 'userDetailCompany' })} name="company" value={user.company} {...defaultProps} />
+diff --git a/src/components/user/index.tsx b/src/components/user/index.tsx
+index e81716c..b4247a7 100644
+--- a/src/components/user/index.tsx
++++ b/src/components/user/index.tsx
+@@ -70,8 +70,8 @@ const User = () => {
+       align: 'center',
+       renderCell: ({ row }) => (
+         <Box display="flex" gap="12px" alignItems="center">
+-          {row?.avatarUrl ? <Avatar alt={row.name} src={row.avatarUrl} size="xs" /> : null}
+-          <Typography variant="h4">{row.name}</Typography>
++          {row?.imageUrl ? <Avatar alt={`${row.firstName} ${row.lastName}`} src={row.imageUrl} size="xs" /> : null}
++          <Typography variant="h4">{`${row.firstName} ${row.lastName}`}</Typography>
+         </Box>
+       ),
+       flex: 2
+diff --git a/src/types/resource/user.ts b/src/types/resource/user.ts
+index 797cd31..5038f3c 100644
+--- a/src/types/resource/user.ts
++++ b/src/types/resource/user.ts
+@@ -1,9 +1,7 @@
+ import { User as UserDto } from '@/utils/dtos/user.dto';
+ 
+-export interface  IUser extends UserDto {
++export interface IUser extends UserDto {
+   id: string;
+-  firstName?: string;
+-  lastName?: string;
+   contactName?: string;
+   contactEmail?: string;
+   contactPhoneNumber?: string;
