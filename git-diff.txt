@@ -1,59 +1,288 @@
-commit 60cc39ad3ac322be6aee77d3eb97c9e04f48d953
+commit 535b90dacb5bfb26b9e844a948879bfb27a66799
 Author: Huy Pham <huyphamnguyen@gmail.com>
-Date:   Mon Apr 8 16:31:46 2024 +0700
+Date:   Mon Apr 8 16:19:24 2024 +0700
 
-    Apply firstname, lastname
+    Apply api bulk control for change status, delete
 
-diff --git a/src/components/user/detail/components/BasicInformation/index.tsx b/src/components/user/detail/components/BasicInformation/index.tsx
-index dbf25f1..aa8bbab 100644
---- a/src/components/user/detail/components/BasicInformation/index.tsx
-+++ b/src/components/user/detail/components/BasicInformation/index.tsx
-@@ -42,7 +42,17 @@ export default function BasicInformation({ user }: Props) {
-           <TextField label={formatMessage({ id: 'userDetailRole' })} name="role" value={user.role} {...defaultProps} />
-         </Grid>
-         <Grid item xs={6}>
--          <TextField label={formatMessage({ id: 'userDetailStatus' })} name="status" value={user.status} {...defaultProps} />
-+          <TextField
-+            label={formatMessage({ id: 'userDetailStatus' })}
-+            name="status"
-+            value={user.status}
-+            {...defaultProps}
-+            sx={{
-+              '& input': {
-+                textTransform: 'capitalize'
-+              }
-+            }}
-+          />
-         </Grid>
-         <Grid item xs={6}>
-           <TextField label={formatMessage({ id: 'userDetailCompany' })} name="company" value={user.company} {...defaultProps} />
+diff --git a/src/app/api/user/[id]/status/route.ts b/src/app/api/user/[id]/status/route.ts
+index 322385b..98308ff 100644
+--- a/src/app/api/user/[id]/status/route.ts
++++ b/src/app/api/user/[id]/status/route.ts
+@@ -6,7 +6,7 @@ import UserDto from '@/utils/dtos/user.dto';
+ import NotFoundException from '@/backend/exceptions/notfound.exception';
+ import { headers } from 'next/headers';
+ import { decode, JWT } from 'next-auth/jwt';
+-import { Actions } from '@/utils/enums';
++import { Actions, UserStatus } from '@/utils/enums';
+ import DateCustom from '@/utils/datetime/date.custom';
+ 
+ export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+@@ -50,7 +50,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
+     }
+ 
+     await userRepository.update(params.id, {
+-      status: data.status,
++      status: data.status === Actions.ACTIVATE ? UserStatus.ACTIVE : UserStatus.INACTIVE,
+       dateModify: new DateCustom(),
+       failedLoginAttempts: data.status === Actions.ACTIVATE ? 0 : user.failedLoginAttempts
+     });
+diff --git a/src/components/user/component/ButtonSelectStatus.tsx b/src/components/user/component/ButtonSelectStatus.tsx
+index 2aabc46..16aac92 100644
+--- a/src/components/user/component/ButtonSelectStatus.tsx
++++ b/src/components/user/component/ButtonSelectStatus.tsx
+@@ -1,9 +1,9 @@
+-import { USER_STATUS_ACTIVE, USER_STATUS_DEACTIVATED } from '@/constant/user';
+ import { Box, Button, ButtonProps, Divider, Popover, PopoverProps, Typography } from '@mui/material';
+ import { useState } from 'react';
+ import { useIntl } from 'react-intl';
+ import { CaretUp, CaretDown } from '@phosphor-icons/react';
+ import styles from './styles.module.scss';
++import { UserStatus } from '@/utils/enums';
+ 
+ interface Props {
+   buttonProps?: Partial<ButtonProps>;
+@@ -49,12 +49,12 @@ export const ButtonSelectStatus = ({ onSelect, buttonProps, popoverProps }: Prop
+         {...popoverProps}
+       >
+         <Box>
+-          <Typography className={styles.status} onClick={() => handleSelect(USER_STATUS_ACTIVE)}>
+-            {USER_STATUS_ACTIVE}
++          <Typography className={styles.status} onClick={() => handleSelect(UserStatus.ACTIVE)}>
++            {UserStatus.ACTIVE}
+           </Typography>
+           <Divider className={styles.divider} />
+-          <Typography className={styles.status} onClick={() => handleSelect(USER_STATUS_DEACTIVATED)}>
+-            {USER_STATUS_DEACTIVATED}
++          <Typography className={styles.status} onClick={() => handleSelect(UserStatus.INACTIVE)}>
++            {UserStatus.INACTIVE}
+           </Typography>
+         </Box>
+       </Popover>
+diff --git a/src/components/user/component/styles.module.scss b/src/components/user/component/styles.module.scss
+index 8a35459..c64d8f8 100644
+--- a/src/components/user/component/styles.module.scss
++++ b/src/components/user/component/styles.module.scss
+@@ -27,6 +27,7 @@
+   font-weight: 500;
+   padding: 10px 16px;
+   cursor: pointer;
++  text-transform: capitalize;
+ }
+ 
+ .buttonDelete{
+diff --git a/src/components/user/dialog/UserChangeStatus.tsx b/src/components/user/dialog/UserChangeStatus.tsx
+index f62c5bc..663b16f 100644
+--- a/src/components/user/dialog/UserChangeStatus.tsx
++++ b/src/components/user/dialog/UserChangeStatus.tsx
+@@ -5,16 +5,17 @@ import { useIntl } from 'react-intl';
+ import { useAsync } from '@/hooks/useAsync';
+ import { success as notifySuccess } from '@/utils/notify';
+ import LoadingButton from '@mui/lab/LoadingButton';
+-import { updateUser } from '@/utils/services/user';
+-import { USER_STATUS_ACTIVE } from '@/constant/user';
++import { bulkControlUser } from '@/utils/services/user';
+ import { IUser } from '@/types/resource/user';
++import { Actions, UserStatus } from '@/utils/enums';
+ interface UserDialogProps extends Omit<DialogProps, 'onClose'> {
+   users: Partial<IUser>[];
+   status: string;
+   onClose?: () => void;
++  onSuccess?: () => void;
+ }
+ 
+-export default function UserChangeStatusDialog({ users, status, onClose, ...props }: UserDialogProps): JSX.Element {
++export default function UserChangeStatusDialog({ users, status, onClose, onSuccess, ...props }: UserDialogProps): JSX.Element {
+   const { formatMessage } = useIntl();
+   const { isLoading, execute } = useAsync();
+   const handleClose = () => {
+@@ -22,20 +23,19 @@ export default function UserChangeStatusDialog({ users, status, onClose, ...prop
+   };
+ 
+   const handleSubmit = async () => {
+-    for (let index = 0; index < users.length; index++) {
+-      const item = users[index];
+-      await execute(updateUser(item.id + '', { status }));
+-    }
++    const ids = users.map((u) => u?.id).filter((i) => Boolean(i)) as string[];
++    const actionStatus = status === UserStatus.ACTIVE ? Actions.ACTIVATE : Actions.DEACTIVATE;
++    await execute(bulkControlUser(ids, actionStatus));
+     handleClose();
++    onSuccess?.();
+     notifySuccess(formatMessage({ id: 'userApiUpdated' }));
+   };
+ 
+   const renderContent = () => {
+-    const msgStatus = status === USER_STATUS_ACTIVE ? 'active' : 'deactivate';
+-    let msg = formatMessage({ id: 'userDialogChangeStatusContent' }).replace('{status}', msgStatus);
++    let msg = formatMessage({ id: 'userDialogChangeStatusContent' }).replace('{status}', status);
+     let noMsg = '';
+     if (users.length === 1) {
+-      noMsg = `<strong>${users[0].firstName} ${users[0].lastName}</strong>`;
++      noMsg = `<strong>${users[0]?.firstName} ${users[0]?.lastName}</strong>`;
+     } else {
+       noMsg = `<strong>${users.length}</strong> users`;
+     }
+@@ -45,7 +45,7 @@ export default function UserChangeStatusDialog({ users, status, onClose, ...prop
+   return (
+     <Dialog onClose={handleClose} {...props}>
+       <DialogTitle sx={{ pt: '8px' }}>
+-        {formatMessage({ id: status === USER_STATUS_ACTIVE ? 'userDialogActiveTitle' : 'userDialogDeactivatedTitle' })}
++        {formatMessage({ id: status === UserStatus.ACTIVE ? 'userDialogActiveTitle' : 'userDialogDeactivatedTitle' })}
+       </DialogTitle>
+       <IconButton
+         aria-label="close"
+diff --git a/src/components/user/dialog/UserDeleteDialog.tsx b/src/components/user/dialog/UserDeleteDialog.tsx
+index 121fc41..1d80651 100644
+--- a/src/components/user/dialog/UserDeleteDialog.tsx
++++ b/src/components/user/dialog/UserDeleteDialog.tsx
+@@ -5,8 +5,9 @@ import { useIntl } from 'react-intl';
+ import { useAsync } from '@/hooks/useAsync';
+ import { success as notifySuccess } from '@/utils/notify';
+ import LoadingButton from '@mui/lab/LoadingButton';
+-import { deleteUser } from '@/utils/services/user';
++import { bulkControlUser } from '@/utils/services/user';
+ import { IUser } from '@/types/resource/user';
++import { Actions } from '@/utils/enums';
+ interface UserDialogProps extends Omit<DialogProps, 'onClose'> {
+   users: Partial<IUser>[];
+   onClose?: () => void;
+@@ -21,10 +22,9 @@ export default function UserDeleteDialog({ users, onClose, onSuccess, ...props }
+   };
+ 
+   const handleDelete = async () => {
+-    for (let index = 0; index < users.length; index++) {
+-      const item = users[index];
+-      await execute(deleteUser(item.id + ''));
+-    }
++    const ids = users.map((u) => u?.id).filter((i) => Boolean(i)) as string[];
++    await execute(bulkControlUser(ids, Actions.DELETE));
++
+     handleClose();
+     notifySuccess(formatMessage({ id: 'userApiDeleted' }));
+     onSuccess?.();
 diff --git a/src/components/user/index.tsx b/src/components/user/index.tsx
-index e81716c..b4247a7 100644
+index dca1283..e81716c 100644
 --- a/src/components/user/index.tsx
 +++ b/src/components/user/index.tsx
-@@ -70,8 +70,8 @@ const User = () => {
-       align: 'center',
-       renderCell: ({ row }) => (
-         <Box display="flex" gap="12px" alignItems="center">
--          {row?.avatarUrl ? <Avatar alt={row.name} src={row.avatarUrl} size="xs" /> : null}
--          <Typography variant="h4">{row.name}</Typography>
-+          {row?.imageUrl ? <Avatar alt={`${row.firstName} ${row.lastName}`} src={row.imageUrl} size="xs" /> : null}
-+          <Typography variant="h4">{`${row.firstName} ${row.lastName}`}</Typography>
-         </Box>
-       ),
-       flex: 2
-diff --git a/src/types/resource/user.ts b/src/types/resource/user.ts
-index 797cd31..5038f3c 100644
---- a/src/types/resource/user.ts
-+++ b/src/types/resource/user.ts
-@@ -1,9 +1,7 @@
- import { User as UserDto } from '@/utils/dtos/user.dto';
+@@ -5,7 +5,6 @@ import { useIntl } from 'react-intl';
+ import { getUsers } from '@/utils/services/user';
+ import { useAsync } from '@/hooks/useAsync';
+ import { useEffect, useState } from 'react';
+-import { USER_STATUS_ACTIVE, USER_STATUS_DEACTIVATED } from '@/constant/user';
+ import Chip from '@/components/ui-component/extended/Chip';
+ import { GridColDef, GridPaginationModel, GridRowParams, GridRowSelectionModel, GridSortModel } from '@mui/x-data-grid';
+ import Avatar from '@/components/ui-component/extended/Avatar';
+@@ -25,6 +24,7 @@ import { IUser } from '@/types/resource/user';
+ import { IRequestFilter } from '@/types/request';
+ import { ResponseMeta } from '@/types/pagination';
+ import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT, SORT_FIELD_DEFAULT } from '@/utils/constant';
++import { UserStatus } from '@/utils/enums';
  
--export interface  IUser extends UserDto {
-+export interface IUser extends UserDto {
-   id: string;
--  firstName?: string;
--  lastName?: string;
-   contactName?: string;
-   contactEmail?: string;
-   contactPhoneNumber?: string;
+ const User = () => {
+   const { formatMessage } = useIntl();
+@@ -38,10 +38,10 @@ const User = () => {
+   const [userMeta, setUserMeta] = useState<ResponseMeta | null>(null);
+   const renderStatus = (value: string) => {
+     let formatValue = value.toLowerCase();
+-    if (formatValue === USER_STATUS_DEACTIVATED.toLowerCase()) {
+-      return <Chip chipcolor="error" variant="outlined" label={value} sx={{ ':hover': null }} />;
++    if (formatValue === UserStatus.ACTIVE.toLocaleLowerCase()) {
++      return <Chip chipcolor="success" label={formatValue} sx={{ ':hover': null, textTransform: 'capitalize' }} />;
+     }
+-    return <Chip chipcolor="success" label={value} sx={{ ':hover': null }} />;
++    return <Chip chipcolor="error" variant="outlined" label={formatValue} sx={{ ':hover': null, textTransform: 'capitalize' }} />;
+   };
+ 
+   const fetchUsers = async (filters?: IRequestFilter) => {
+@@ -87,7 +87,7 @@ const User = () => {
+       field: 'status',
+       headerName: formatMessage({ id: 'tableStatus' }),
+       headerAlign: 'center',
+-      renderCell: ({ row }) => <Box fontWeight={500}>{renderStatus(row.status || USER_STATUS_ACTIVE)}</Box>,
++      renderCell: ({ row }) => <Box fontWeight={500}>{renderStatus(row.status || UserStatus.ACTIVE)}</Box>,
+       flex: 1,
+       align: 'center'
+     },
+@@ -226,6 +226,7 @@ const User = () => {
+         users={changeStatusUsers}
+         status={statusSelected}
+         onClose={handleDeselectStatus}
++        onSuccess={handleActionSuccess}
+       />
+     </Stack>
+   );
+diff --git a/src/constant/user.ts b/src/constant/user.ts
+deleted file mode 100644
+index 035b4a7..0000000
+--- a/src/constant/user.ts
++++ /dev/null
+@@ -1,4 +0,0 @@
+-export const USER_STATUS_ACTIVE = 'Active';
+-export const USER_STATUS_DEACTIVATED = 'Deactivated';
+-
+-export const USER_STATUS = [USER_STATUS_ACTIVE, USER_STATUS_DEACTIVATED];
+diff --git a/src/types/response.ts b/src/types/response.ts
+index 89d9971..aa0c69b 100644
+--- a/src/types/response.ts
++++ b/src/types/response.ts
+@@ -57,10 +57,12 @@ export interface IResponseCreateUser {
+ 
+ export interface IResponseDeleteUser {
+   status: number;
++  success: true;
+ }
+ 
+ export interface IResponseUpdateUser {
+   status: number;
++  success: true;
+ }
+ 
+ export interface IResponseDeleteContractor {
+diff --git a/src/utils/api.ts b/src/utils/api.ts
+index 5890095..d24a4bc 100644
+--- a/src/utils/api.ts
++++ b/src/utils/api.ts
+@@ -10,8 +10,9 @@ const APIS = {
+   GET_USERS: '/user/list',
+   GET_USER_DETAIL: '/user/:id',
+   CREATE_USER: '/user/create',
+-  UPDATE_USER: '/user/update',
+-  DELETE_USER: '/user/delete',
++  BULK_CONTROL_USER: '/user/bulk-control',
++  UPDATE_USER: '/user/:id/update',
++  DELETE_USER: '/user/:id/delete',
+   UPDATE_PROJECT_ROLES: '/projects/update-project-roles',
+   IMPORT_PROJECT_BUDGET: '/projects/import-project-budget',
+   UPDATE_CONTRACTOR_ROLE: '/contractors/update-contractor-role',
+diff --git a/src/utils/services/user.ts b/src/utils/services/user.ts
+index 7f13865..fd96220 100644
+--- a/src/utils/services/user.ts
++++ b/src/utils/services/user.ts
+@@ -1,9 +1,10 @@
+ import axiosServices from '../axios';
+ import endPoints from '../api';
+ import { IResponseCreateUser, IResponseDeleteUser, IResponseListUsers, IResponseUpdateUser } from '@/types/response';
+-import { IRequestCreateUser, IRequestFilter, IRequestUpdateUser } from '@/types/request';
++import { IRequestCreateUser, IRequestFilter } from '@/types/request';
+ import { IUser } from '@/types/resource/user';
+ import { generateQueryFromFilter } from '../helper';
++import { Actions } from '../enums';
+ 
+ export const getUsers = async (params?: IRequestFilter) => {
+   const query = params ? generateQueryFromFilter(endPoints.GET_USERS, params) : endPoints.GET_USERS;
+@@ -14,12 +15,12 @@ export const createUser = async (payload: IRequestCreateUser) => {
+   return await axiosServices.post<IResponseCreateUser>(endPoints.CREATE_USER, payload);
+ };
+ 
+-export const updateUser = async (id: string, payload: IRequestUpdateUser) => {
+-  return await axiosServices.put<IResponseUpdateUser>(`${endPoints.UPDATE_USER}/${id}`, payload);
++export const bulkControlUser = async (ids: string[], action: Actions) => {
++  return await axiosServices.patch<IResponseUpdateUser>(endPoints.BULK_CONTROL_USER, { ids, action });
+ };
+ 
+ export const deleteUser = async (id: string) => {
+-  return await axiosServices.delete<IResponseDeleteUser>(`${endPoints.DELETE_USER}/${id}`);
++  return await axiosServices.delete<IResponseDeleteUser>(endPoints.DELETE_USER.replace(':id', id));
+ };
+ 
+ export const getUserDetail = async (id: string) => {
