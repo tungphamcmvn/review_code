@@ -34,11 +34,11 @@ types: Custom fields for next-auth.
 Configuration and environment files such as .env, next.config.js, docker-compose.yml, entrypoint.sh, .eslintrc, .prettierrc, and tsconfig.json.
 Your task is to:
 
-Examine the 'git-diff.txt' file and summarize the purpose of the changes made in the commit. Provide a clear and comprehensive commit message that accurately reflects the modifications.
-Compare the changes in the 'git-diff.txt' file against the application's structural and functional description provided above. Suggest any necessary adjustments to ensure the changes align with the intended application architecture.
-Assess the modifications in the 'git-diff.txt' file against Next.js, React.js, and MongoDB coding best practices. Propose corrections and improvements to adhere to these best practices.
-Evaluate the changes for performance and security considerations in the context of Next.js, React.js, and MongoDB. Recommend enhancements to optimize for both performance and security.
-Estimate the time range (in hours) a senior developer would need to develop that commit.
+1. Examine the 'git-diff.txt' file and summarize the purpose of the changes made in the commit. Provide a clear and comprehensive commit message that accurately reflects the modifications.
+2. Compare the changes in the 'git-diff.txt' file against the application's structural and functional description provided above. Suggest any necessary adjustments to ensure the changes align with the intended application architecture.
+3. Assess the modifications in the 'git-diff.txt' file against Next.js, React.js, and MongoDB coding best practices. Propose corrections and improvements to adhere to these best practices.
+4. Evaluate the changes for performance and security considerations in the context of Next.js, React.js, and MongoDB. Recommend enhancements to optimize for both performance and security.
+5. Estimate the time range (in hours) a senior developer would need to develop that commit.
 
 
 Please create an HTML document that includes a title "Git Commit Analysis" and five distinct sections corresponding to the tasks outlined. Each section should clearly identify an issue encountered, followed by a recommendation for improvement. The document should be structured with HTML tags, ensuring that negative feedback is highlighted with a red background and positive feedback with a green background and white text.
