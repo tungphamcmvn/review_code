@@ -1,92 +1,96 @@
-commit e9028e97aeb17eccfac9d52068838e6070a20803
-Author: Trung Ngo <trungngoquang@coffeemugvn.com>
-Date:   Sun Apr 7 17:53:22 2024 +0700
+commit d0169d2d72464aeb4e2ef18f797054120caa26f1
+Author: Huy Pham <huyphamnguyen@gmail.com>
+Date:   Sun Apr 7 17:19:19 2024 +0700
 
-    fix eslint
+    Fix comment on PR
 
-diff --git a/src/components/contractorProjects/Add/style.module.scss b/src/components/contractorProjects/Add/style.module.scss
-index 798a492..772ba63 100644
---- a/src/components/contractorProjects/Add/style.module.scss
-+++ b/src/components/contractorProjects/Add/style.module.scss
-@@ -1,8 +1,8 @@
--.imageLocal{
-+.imageLocal {
-   position: absolute;
-   inset: 0;
-   z-index: 0;
-   width: 100%;
-   height: 100%;
-   object-fit: contain;
--}
-\ No newline at end of file
-+}
-diff --git a/src/components/contractorProjects/Detail/invoices/style.module.scss b/src/components/contractorProjects/Detail/invoices/style.module.scss
-index 582de19..cec5ce7 100644
---- a/src/components/contractorProjects/Detail/invoices/style.module.scss
-+++ b/src/components/contractorProjects/Detail/invoices/style.module.scss
-@@ -1,24 +1,25 @@
--
- @import 'styles/variables.module';
+diff --git a/src/backend/models/project.model.ts b/src/backend/models/project.model.ts
+index 1bd1855..ad4cf36 100644
+--- a/src/backend/models/project.model.ts
++++ b/src/backend/models/project.model.ts
+@@ -62,6 +62,11 @@ const ProjectSchema: mongoose.Schema<ProjectType> = new mongoose.Schema(
+       required: false,
+       default: null
+     },
++    startDate: {
++      type: Date,
++      required: false,
++      default: new DateUTC()
++    },
+     items: {
+       type: String,
+       required: false,
+diff --git a/src/backend/services/project.service.ts b/src/backend/services/project.service.ts
+index 681349a..36e101b 100644
+--- a/src/backend/services/project.service.ts
++++ b/src/backend/services/project.service.ts
+@@ -1,4 +1,3 @@
+-import { ObjectId } from 'bson';
+ import ProjectRepositoryInterface from '@/backend/repositories/interfaces/project.repository.interface';
+ import RoleRepositoryInterface from '@/backend/repositories/interfaces/role.repository.interface';
+ import { ROLE_LEVEL_ENUM_BUILDER, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
+@@ -12,6 +11,7 @@ import { parsePayloadProjectToCreateData } from '@/utils/helper';
+ import { FolderName } from '@/utils/enums';
+ import UserDto, { User } from '@/utils/dtos/user.dto';
+ import PaginationStruct from '../structs/pagination.struct';
++import NotFoundException from '../exceptions/notfound.exception';
  
--.headerTitle{
-+.headerTitle {
-   text-overflow: unset;
-   white-space: pre-wrap;
-   line-height: 1.3;
- }
+ export default class ProjectService {
+   protected projectRepository: ProjectRepositoryInterface;
+@@ -215,7 +215,6 @@ export default class ProjectService {
+     }
+     projectDto.setData({
+       ...defaultData,
+-      _id: new ObjectId(),
+       startDate: data.startDate,
+       projectName: data.projectName,
+       address: data.address,
+@@ -237,7 +236,7 @@ export default class ProjectService {
+   async updateProject(projectId: string, formData: FormData): Promise<mongoose.Document | null> {
+     const project = await this.getProject(projectId);
+     if (!project) {
+-      throw 'Project not found';
++      throw new NotFoundException('Project not found');
+     }
+     const data = parsePayloadProjectToCreateData(formData);
  
--.statusSubmitted{
--  background-color: #E6F4FB;
--  color: #0084C2;
-+.statusSubmitted {
-+  background-color: #e6f4fb;
-+  color: #0084c2;
-   font-weight: 500;
- }
--.statusApprove{
--  background-color: #FFFCE8;
--  color: #E8CC18;
-+
-+.statusApprove {
-+  background-color: #fffce8;
-+  color: #e8cc18;
-   font-weight: 500;
- }
--.statusInvoiceApproved{
--  background-color:#E6FAEE;
--  color: #00C853;
-+
-+.statusInvoiceApproved {
-+  background-color: #e6faee;
-+  color: #00c853;
-   font-weight: 500;
- }
-diff --git a/src/components/contractorProjects/Detail/style.module.scss b/src/components/contractorProjects/Detail/style.module.scss
-index b9038bf..5aab215 100644
---- a/src/components/contractorProjects/Detail/style.module.scss
-+++ b/src/components/contractorProjects/Detail/style.module.scss
-@@ -1,14 +1,15 @@
--
- @import 'styles/variables.module';
+@@ -245,7 +244,7 @@ export default class ProjectService {
+     let imageUrl = project.imageUrl;
  
--.tab{
-+.tab {
-   min-height: 52px;
- }
--.overviewLabel{
-+
-+.overviewLabel {
-   color: $grey700;
-   font-weight: 700;
-   margin-bottom: 2px;
- }
--.overviewValue{
-+
-+.overviewValue {
-   color: #202020;
--}
-\ No newline at end of file
-+}
-diff --git a/src/components/contractorProjects/List/styles.module.scss b/src/components/contractorProjects/List/styles.module.scss
-deleted file mode 100644
-index e69de29..0000000
+     if (data.image) {
+-      imageUrl = imageUrl = await this.storageFactory.getStorage().uploadFile(data.image, FolderName.PROJECTS);
++      imageUrl = await this.storageFactory.getStorage().uploadFile(data.image, FolderName.PROJECTS);
+     }
+ 
+     try {
+diff --git a/src/backend/validator/project.validator.ts b/src/backend/validator/project.validator.ts
+index e4346ab..46757ad 100644
+--- a/src/backend/validator/project.validator.ts
++++ b/src/backend/validator/project.validator.ts
+@@ -1,5 +1,5 @@
+ import BaseValidator from '@/backend/validator/base.validator';
+-import { string } from 'yup';
++import { date, number, string } from 'yup';
+ import UploadValidator from './upload.validator';
+ import { FolderName } from '@/utils/enums';
+ import { ProjectRequestType } from '@/utils/dtos/project.dto';
+@@ -12,9 +12,9 @@ export default class ProjectValidator extends BaseValidator {
+ 
+   validateRules() {
+     const projectNameRule = { projectName: string().required() };
+-    const currentClaimNumberRule = { currentClaimNumber: string().required() };
++    const currentClaimNumberRule = { currentClaimNumber: number().required() };
+     const addressRule = { address: string().required() };
+-    const startDateRule = { startDate: string().required() };
++    const startDateRule = { startDate: date().required() };
+     this.rules = [projectNameRule, currentClaimNumberRule, addressRule, startDateRule];
+ 
+     return this;
+@@ -24,6 +24,7 @@ export default class ProjectValidator extends BaseValidator {
+     const data: ProjectRequestType = this.data;
+     if (!!data?.image) {
+       const uploadValidator = new UploadValidator({ file: data.image, folderName: FolderName.PROJECTS });
++      uploadValidator.validate();
+       return uploadValidator.getErrors().length === 0;
+     }
+     return true;
