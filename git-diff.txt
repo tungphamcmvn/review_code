@@ -1,523 +1,92 @@
-commit 5fe3dea49dd76fedfc32011f45a5a6b23acd0fa6
-Author: Huy Pham <huyphamnguyen@gmail.com>
-Date:   Sun Apr 7 21:17:31 2024 +0700
+commit e9028e97aeb17eccfac9d52068838e6070a20803
+Author: Trung Ngo <trungngoquang@coffeemugvn.com>
+Date:   Sun Apr 7 17:53:22 2024 +0700
 
-    Fix ts of builder
+    fix eslint
 
-diff --git a/lib/swagger/doc/builder/get.ts b/lib/swagger/doc/builder/get.ts
-index e72b9a4..5015d88 100644
---- a/lib/swagger/doc/builder/get.ts
-+++ b/lib/swagger/doc/builder/get.ts
-@@ -22,29 +22,29 @@
- *         required: false
- *         description: Page size
- *       - in: query
--*         name: sortBy
-+*         name: sort
- *         schema:
- *           type: string
- *         required: false
--*         description: Sort by builder's column
-+*         description: Sort direction
- *       - in: query
--*         name: sortDir
-+*         name: field
- *         schema:
- *           type: string
- *         required: false
--*         description: Sort direction
-+*         description: Sort by this field
- *       - in: query
--*         name: search
-+*         name: fields
- *         schema:
- *           type: string
- *         required: false
--*         description: Search by builder name
-+*         description: Sort by these fields
- *       - in: query
--*         name: filterBy
-+*         name: search
- *         schema:
- *           type: string
- *         required: false
--*         description: Filter by builder's column
-+*         description: Search builder name
- *     responses:
- *       '200':
- *         description: List Builder
-@@ -59,7 +59,7 @@
- *       items:
- *         type: object
- *         properties:
--*           _id:
-+*           id:
- *             type: string      
- *           builderName:
- *             type: string
-diff --git a/lib/swagger/doc/builder/put.ts b/lib/swagger/doc/builder/put.ts
-index f0cafde..d62f52d 100644
---- a/lib/swagger/doc/builder/put.ts
-+++ b/lib/swagger/doc/builder/put.ts
-@@ -84,39 +84,6 @@
- *         success:
- *           type: boolean
- *           description: Builder updated
--*         builder:
--*           type: object
--*           properties:
--*             _id:
--*               type: string      
--*             builderName:
--*               type: string
--*             category:
--*               type: string
--*             address:
--*               type: string
--*             completionStatus:
--*               type: string
--*             imageUrl:
--*               type: string
--*             date:
--*               type: string
--*             dateCreate:
--*               type: string
--*             dateModify:
--*               type: string
--*             generalContractor:
--*               type: string
--*             budgetSeperatorComma:
--*               type: string
--*             budgetSeperatorSemiColon:
--*               type: string
--*             budgetSeperatorTab:
--*               type: string
--*             creatorId:
--*               type: string
--*             creatorEmail:
--*               type: string
- * @param request
- * @constructor
- */
-diff --git a/src/app/api/builder/[id]/route.ts b/src/app/api/builder/[id]/route.ts
-index b1fda55..9302486 100644
---- a/src/app/api/builder/[id]/route.ts
-+++ b/src/app/api/builder/[id]/route.ts
-@@ -47,8 +47,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
-       return NextResponse.json({ errors: builderValidator.getErrors() }, { status: 400 });
-     }
- 
--    const result = await builderService.updateBuilder(id, formData);
--    return NextResponse.json({ success: true, builder: result }, { status: 200 });
-+    await builderService.updateBuilder(id, formData);
-+    return NextResponse.json({ success: true }, { status: 200 });
-   } catch (error) {
-     return NextResponse.json({ errors: [error] }, { status: 400 });
-   }
-diff --git a/src/app/api/builder/route.ts b/src/app/api/builder/route.ts
-index aa12b75..6606f8a 100644
---- a/src/app/api/builder/route.ts
-+++ b/src/app/api/builder/route.ts
-@@ -1,15 +1,11 @@
--import BuilderRepository from '@/backend/repositories/mongodb/builder.repository';
- import MongoConnect from '@/backend/connection/mongo.connection';
- import BuilderValidator from '@/backend/validator/builder.validator';
--import { Builder } from '@/utils/dtos/builder.dto';
- import { NextRequest, NextResponse } from 'next/server';
- import BuilderService from '@/backend/services/builder.service';
- import AuthService from '@/backend/services/auth.service';
--import { PAGINATE_OFFSET, PAGINATE_PAGE_SIZE } from '@/utils/constant';
--import { SortOrder } from 'mongoose';
- import { parsePayloadBuilderToCreateData } from '@/utils/helper';
- import ResponseStruct from '@/backend/structs/response.struct';
--import PaginationStruct from '@/backend/structs/pagination.struct';
-+import { getListingQuery } from '../listing';
- 
- export async function POST(request: NextRequest) {
-   const formData = await request.formData();
-@@ -36,36 +32,26 @@ export async function POST(request: NextRequest) {
-     return NextResponse.json({ errors: [error.message] }, { status: 400 });
-   }
- }
-+
- export async function GET(request: NextRequest) {
-   const conn = await MongoConnect();
--  const builderRepository = new BuilderRepository(conn);
--  const builderService = new BuilderService(conn);
--  const responseStructure = new ResponseStruct(true);
--  const params = request.nextUrl.searchParams;
--  const sortBy = (params.get?.('sortBy') || 'dateCreate') as keyof Builder;
--  const sortDir = (params.get('sortDir') || 'desc') as SortOrder;
--  const search = (params.get('search') || '') as string;
--  const page = +(params.get('page') || PAGINATE_OFFSET);
--  const limit = +(params.get('limit') || PAGINATE_PAGE_SIZE);
--  const filter = {
--    page,
--    sortBy,
--    limit,
--    sortDir,
--    search
--  };
-+  const responseStruct = new ResponseStruct(true);
-+
-   try {
--    const total = await builderRepository.count(filter.search ? { builderName: { $regex: filter.search } } : {});
--    const builders = (await builderService.findBuilders(filter)) as unknown as Builder[];
--    const pagination = new PaginationStruct(page, limit, total);
--    responseStructure.setData({
--      meta: pagination,
--      data: builders
-+    const { limit: limitValue, page: pageValue, order: orderValue, search } = getListingQuery(request);
-+    const builderService = new BuilderService(conn);
-+
-+    const data = await builderService.listBuilders(limitValue, pageValue, orderValue, search);
-+    responseStruct.setData({
-+      meta: data.pagination,
-+      data: data.collection
-     });
--    return NextResponse.json(responseStructure.getResponse(), { status: 200 });
-+    responseStruct.setStatus(200);
-   } catch (error: any) {
--    responseStructure.pushError(error.message);
--    responseStructure.setStatus(400);
--    return NextResponse.json(responseStructure.getResponse(), { status: 400 });
-+    responseStruct.pushError(error.message);
-+    responseStruct.setStatus(500);
-+
-+    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
-   }
-+  return NextResponse.json(responseStruct.getResponse(), { status: 200 });
- }
-diff --git a/src/backend/services/builder.service.ts b/src/backend/services/builder.service.ts
-index 05e2182..2a66c6d 100644
---- a/src/backend/services/builder.service.ts
-+++ b/src/backend/services/builder.service.ts
-@@ -5,14 +5,15 @@ import { BuilderRepositoryInterface } from '@/backend/repositories/interfaces/bu
- import { getCsvCompanyFieldValue, parsePayloadBuilderToCreateData } from '@/utils/helper';
- import { CSV_SEP } from '@/utils/constant';
- import { CSV_COMPANY_ENUM, ROLE_LEVEL_ENUM_BUILDER, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
--import mongoose, { Mongoose } from 'mongoose';
-+import mongoose, { Mongoose, SortOrder } from 'mongoose';
- import BuilderDto, { Builder, Builder as BuilderType } from '@/utils/dtos/builder.dto';
- import { Role as RoleType } from '@/utils/dtos/role.dto';
- import RoleRepositoryInterface from '@/backend/repositories/interfaces/role.repository.interface';
--import { PaginateQuery } from '@/types/pagination';
- import RoleRepository from '../repositories/mongodb/role.repository';
--import UserDto from '@/utils/dtos/user.dto';
-+import UserDto, { User } from '@/utils/dtos/user.dto';
- import { FolderName } from '@/utils/enums';
-+import PaginationStruct from '../structs/pagination.struct';
-+import NotFoundException from '../exceptions/notfound.exception';
- 
- export default class BuilderService {
-   protected builderRepository: BuilderRepositoryInterface;
-@@ -183,7 +184,7 @@ export default class BuilderService {
-     const currentBuilder = await this.getBuilder(builderId);
- 
-     if (!currentBuilder) {
--      throw 'Builder not found';
-+      throw new NotFoundException('Builder not found');
-     }
-     const data = parsePayloadBuilderToCreateData(formData);
- 
-@@ -235,24 +236,50 @@ export default class BuilderService {
-     return await this.builderRepository.delete(builderId);
-   }
- 
--  mapBuilder = (data: Builder[]): Builder[] => {
--    return data.map((item) => {
--      const newObject = (item as unknown as mongoose.Document<Builder>).toObject();
--      return {
--        ...newObject,
--        creatorId: newObject.creatorId._id,
--        creator: newObject.creatorId
--      };
-+  async listBuilders(
-+    limit: number,
-+    offset: number,
-+    order: { [key: string]: SortOrder },
-+    search: string
-+  ): Promise<{
-+    pagination: PaginationStruct;
-+    collection: Builder[];
-+  }> {
-+    const projectDto = new BuilderDto();
-+
-+    const validOrderFields = Object.keys(projectDto);
-+
-+    for (const key in order) {
-+      if (!validOrderFields.includes(key)) {
-+        delete order[key];
-+      }
-+    }
-+
-+    if (Object.keys(order).length === 0) {
-+      order = { builderName: 'asc' };
-+    }
-+
-+    const filterSearch = search !== '' ? { builderName: { $regex: search } } : {};
-+    const total = await this.builderRepository.count(filterSearch);
-+    const projects = await this.builderRepository.findWithSort(filterSearch, order, limit, offset);
-+
-+    const collection: Builder[] = [];
-+
-+    projects.forEach((project: mongoose.Document<Builder>) => {
-+      projectDto.setData(project.toJSON());
-+      const currentObject = projectDto.toObject() as Builder;
-+      const creator = currentObject.creatorId as Partial<User & { id: string }>;
-+      collection.push({
-+        ...currentObject,
-+        creatorId: creator.id || '',
-+        creator
-+      });
-     });
--  };
--  async findBuilders(query: PaginateQuery<Builder>) {
--    const result = (await this.builderRepository.findWithSort(
--      !!query.search ? { builderName: { $regex: query.search } } : {},
--      { [query.sortBy || 'builderName']: query.sortDir || 'desc' },
--      query.limit,
--      query.page
--    )) as unknown as Builder[];
--
--    return this.mapBuilder(result);
-+
-+    const pagination = new PaginationStruct(offset, limit, total);
-+    return {
-+      pagination,
-+      collection
-+    };
-   }
- }
-diff --git a/src/components/dialogs/builder/BuilderDeleteDialog.tsx b/src/components/builder/dialog/BuilderDeleteDialog.tsx
-similarity index 93%
-rename from src/components/dialogs/builder/BuilderDeleteDialog.tsx
-rename to src/components/builder/dialog/BuilderDeleteDialog.tsx
-index b298922..a2c0135 100644
---- a/src/components/dialogs/builder/BuilderDeleteDialog.tsx
-+++ b/src/components/builder/dialog/BuilderDeleteDialog.tsx
-@@ -1,4 +1,3 @@
--import { Builder } from '@/utils/dtos/builder.dto';
- import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
- import { GridCloseIcon } from '@mui/x-data-grid';
- import { Button } from '@/components/ui-component/buttons';
-@@ -7,8 +6,9 @@ import { useAsync } from '@/hooks/useAsync';
- import { deleteBuilder } from '@/utils/services/builder';
- import * as notify from '@/utils/notify';
- import LoadingButton from '@mui/lab/LoadingButton';
-+import { IBuilder } from '@/types/resource/builder';
- interface BuilderDialogProps extends Omit<DialogProps, 'onClose'> {
--  builder: Partial<Builder> | null;
-+  builder: Partial<IBuilder> | null;
-   onClose?: () => void;
-   onSuccess?: () => void;
- }
-@@ -21,8 +21,8 @@ export default function BuilderDeleteDialog({ builder, onClose, onSuccess, ...pr
-   };
- 
-   const handleDelete = async () => {
--    if (builder?._id) {
--      const result = await execute(deleteBuilder(builder._id + ''));
-+    if (builder?.id) {
-+      const result = await execute(deleteBuilder(builder.id + ''));
-       if (result.data.success) {
-         handleClose();
-         notify.success(formatMessage({ id: 'builderApiDeleted' }));
-diff --git a/src/components/dialogs/builder/BuilderDialog.tsx b/src/components/builder/dialog/BuilderDialog.tsx
-similarity index 98%
-rename from src/components/dialogs/builder/BuilderDialog.tsx
-rename to src/components/builder/dialog/BuilderDialog.tsx
-index c13461a..bcb6e71 100644
---- a/src/components/dialogs/builder/BuilderDialog.tsx
-+++ b/src/components/builder/dialog/BuilderDialog.tsx
-@@ -16,7 +16,6 @@ import {
- import LoadingButton from '@mui/lab/LoadingButton';
- import TextField from 'components/ui-component/TextField';
- import styles from '@/styles/dataDialog.module.scss';
--import { Builder as BuilderType } from '@/utils/dtos/builder.dto';
- import { GridCloseIcon } from '@mui/x-data-grid';
- import { useIntl } from 'react-intl';
- import AddIcon from '@mui/icons-material/Add';
-@@ -28,6 +27,7 @@ import { success as notifySuccess } from '@/utils/notify';
- import { BUILDER_CATEGORIES, BUILDER_STATUS, BUILDER_STATUS_ACTIVE } from '@/constant/builder';
- import stylesDialog from './style.module.scss';
- import useCommonValidates from '@/hooks/useCommonValidates';
-+import { IBuilder } from '@/types/resource/builder';
- 
- export interface IFormValues {
-   builderName: string;
-@@ -39,7 +39,7 @@ export interface IFormValues {
- }
- 
- interface BuilderDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
--  builder: Partial<BuilderType> | null;
-+  builder: Partial<IBuilder> | null;
-   onClose: () => void;
-   onSuccess?: () => void;
- }
-@@ -72,7 +72,7 @@ export default function BuilderDialog({ onClose, builder, onSuccess, ...props }:
-   const handleSubmitForm = async (values: IFormValues) => {
-     let result;
-     if (builder) {
--      result = await execute(updateBuilder(builder._id + '', values));
-+      result = await execute(updateBuilder(builder.id + '', values));
-       if (result.data.success) {
-         notifySuccess(formatMessage({ id: 'builderApiUpdated' }));
-         handleCloseDialog();
-diff --git a/src/components/dialogs/builder/style.module.scss b/src/components/builder/dialog/style.module.scss
-similarity index 100%
-rename from src/components/dialogs/builder/style.module.scss
-rename to src/components/builder/dialog/style.module.scss
-diff --git a/src/components/builder/index.tsx b/src/components/builder/index.tsx
-index fbca0fd..b0cd9c7 100644
---- a/src/components/builder/index.tsx
-+++ b/src/components/builder/index.tsx
-@@ -7,12 +7,12 @@ import Table from '@/components/ui-component/table';
- import { GridColDef, GridPaginationModel, GridSortModel } from '@mui/x-data-grid';
- import Chip from '../ui-component/extended/Chip';
- import { useIntl } from 'react-intl';
--import BuilderDeleteDialog from '../dialogs/builder/BuilderDeleteDialog';
-+import BuilderDeleteDialog from './dialog/BuilderDeleteDialog';
- import { useEffect, useState } from 'react';
- import { Builder } from '@/utils/dtos/builder.dto';
- import { getBuilders } from '@/utils/services/builder';
- import { useAsync } from '@/hooks/useAsync';
--import BuilderDialog from '../dialogs/builder/BuilderDialog';
-+import BuilderDialog from './dialog/BuilderDialog';
- import { BUILDER_STATUS_ARCHIVED, BUILDER_STATUS_INACTIVE } from '@/constant/builder';
- import Avatar from '../ui-component/extended/Avatar';
- import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT, SORT_FIELD_DEFAULT } from '@/utils/constant';
-@@ -41,7 +41,7 @@ const Builder = () => {
-     return <Chip chipcolor="success" label={value} sx={{ ':hover': null }} />;
-   };
-   const columns: GridColDef[] = [
--    { field: '_id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
-+    { field: 'id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
-     {
-       field: 'builderName',
-       headerName: formatMessage({ id: 'builderTableBuilderName' }),
-@@ -120,8 +120,8 @@ const Builder = () => {
-     const field = model?.[0]?.field || SORT_FIELD_DEFAULT;
-     const dir = model?.[0]?.sort || SORT_DIRECTION_DEFAULT;
-     await fetchBuilder({
--      sortBy: field,
--      sortDir: dir
-+      field: field,
-+      sort: dir
-     });
-   };
- 
-diff --git a/src/components/ui-component/table/index.tsx b/src/components/ui-component/table/index.tsx
-index 7646de6..b8f173d 100644
---- a/src/components/ui-component/table/index.tsx
-+++ b/src/components/ui-component/table/index.tsx
-@@ -5,7 +5,6 @@ import { ArrowDropDown, ArrowDropUp } from '@mui/icons-material';
- import styles from './table.module.scss';
- import './default.scss';
- import clsx from 'clsx';
--import { useMemo } from 'react';
- import { useIntl } from 'react-intl';
- import { PAGINATE_PAGE_SIZE } from '@/utils/constant';
- 
-@@ -22,9 +21,6 @@ const IconSort = ({ dir = 'desc' }: { dir: GridSortDirection }) => (
- 
- export default function Table({ initialState, sx, slots, rows, columns, wrapperBox, rowCount, ...props }: CustomTableProps) {
-   const { formatMessage } = useIntl();
--  const formatRows = useMemo(() => {
--    return rows.map((item) => ({ ...item, id: item?._id || item?.id }));
--  }, [rows]);
- 
-   const renderNoItem = () => (
-     <Box width="100%" height="100%" display="flex" justifyContent="center" alignItems="center">
-@@ -36,7 +32,7 @@ export default function Table({ initialState, sx, slots, rows, columns, wrapperB
-   return (
-     <Box width="100%" sx={{ height: isNoItems ? '150px' : 'unset' }} {...wrapperBox}>
-       <DataGrid
--        rows={formatRows}
-+        rows={rows}
-         columns={columns}
-         initialState={{
-           pagination: {
-diff --git a/src/types/pagination.ts b/src/types/pagination.ts
-index 96477ce..dc2e95c 100644
---- a/src/types/pagination.ts
-+++ b/src/types/pagination.ts
-@@ -1,14 +1,3 @@
--import { SortOrder } from 'mongoose';
--
--export type PaginateQuery<T> = {
--  page: number;
--  limit?: number;
--  sortBy?: keyof T;
--  sortDir?: SortOrder;
--  search?: string;
--  filterBy?: string;
--};
--
- export type ResponseMeta = {
-   total: number;
-   page: number;
-diff --git a/src/types/request.ts b/src/types/request.ts
-index 25b5600..fe21453 100644
---- a/src/types/request.ts
-+++ b/src/types/request.ts
-@@ -1,16 +1,13 @@
--import { SortOrder } from 'mongoose';
- import { UserProfile } from './user-profile';
- import { FolderName } from 'utils/enums';
- 
- export interface IRequestFilter {
-   search?: string;
--  sortBy?: string;
--  sortDir?: SortOrder;
-   limit?: number;
-   page?: number;
-   filterBy?: string;
--  sort?: string; // TODO: for contractor - need update
--  field?: string; // TODO: for contractor - need update
-+  sort?: string;
-+  field?: string;
- }
- export interface IRequestRegister {
-   email: string;
-diff --git a/src/types/resource/builder.ts b/src/types/resource/builder.ts
-new file mode 100644
-index 0000000..81412c6
---- /dev/null
-+++ b/src/types/resource/builder.ts
-@@ -0,0 +1,5 @@
-+import { Builder as BuilderDto } from '@/utils/dtos/builder.dto';
-+
-+export interface IBuilder extends BuilderDto {
-+  id: string;
+diff --git a/src/components/contractorProjects/Add/style.module.scss b/src/components/contractorProjects/Add/style.module.scss
+index 798a492..772ba63 100644
+--- a/src/components/contractorProjects/Add/style.module.scss
++++ b/src/components/contractorProjects/Add/style.module.scss
+@@ -1,8 +1,8 @@
+-.imageLocal{
++.imageLocal {
+   position: absolute;
+   inset: 0;
+   z-index: 0;
+   width: 100%;
+   height: 100%;
+   object-fit: contain;
+-}
+\ No newline at end of file
 +}
-diff --git a/src/types/resource/project.ts b/src/types/resource/project.ts
-index cce0593..6a9c5f2 100644
---- a/src/types/resource/project.ts
-+++ b/src/types/resource/project.ts
-@@ -1,5 +1,5 @@
- import { Project as ProjectDto } from '@/utils/dtos/project.dto';
+diff --git a/src/components/contractorProjects/Detail/invoices/style.module.scss b/src/components/contractorProjects/Detail/invoices/style.module.scss
+index 582de19..cec5ce7 100644
+--- a/src/components/contractorProjects/Detail/invoices/style.module.scss
++++ b/src/components/contractorProjects/Detail/invoices/style.module.scss
+@@ -1,24 +1,25 @@
+-
+ @import 'styles/variables.module';
  
--export interface IProject extends Omit<ProjectDto, '_id'> {
-+export interface IProject extends ProjectDto {
-   id: string;
+-.headerTitle{
++.headerTitle {
+   text-overflow: unset;
+   white-space: pre-wrap;
+   line-height: 1.3;
  }
-diff --git a/src/utils/constant.ts b/src/utils/constant.ts
-index c3322cb..18a60f5 100644
---- a/src/utils/constant.ts
-+++ b/src/utils/constant.ts
-@@ -21,11 +21,11 @@ export const ROLE_REGEX_SEPARATOR = /[,;\n\s\t]+/;
- export const PAGINATE_PAGE_SIZE = 10;
- export const PAGINATE_OFFSET = 1;
- export const SORT_DIRECTION_DEFAULT = 'asc';
--export const SORT_FIELD_DEFAULT = '_id';
-+export const SORT_FIELD_DEFAULT = 'id';
  
- export const API_FILTER_DEFAULT: IRequestFilter = {
--  sortBy: SORT_FIELD_DEFAULT,
--  sortDir: SORT_DIRECTION_DEFAULT,
-+  sort: SORT_DIRECTION_DEFAULT,
-+  field: SORT_FIELD_DEFAULT,
-   filterBy: '',
-   limit: PAGINATE_PAGE_SIZE,
-   page: PAGINATE_OFFSET
+-.statusSubmitted{
+-  background-color: #E6F4FB;
+-  color: #0084C2;
++.statusSubmitted {
++  background-color: #e6f4fb;
++  color: #0084c2;
+   font-weight: 500;
+ }
+-.statusApprove{
+-  background-color: #FFFCE8;
+-  color: #E8CC18;
++
++.statusApprove {
++  background-color: #fffce8;
++  color: #e8cc18;
+   font-weight: 500;
+ }
+-.statusInvoiceApproved{
+-  background-color:#E6FAEE;
+-  color: #00C853;
++
++.statusInvoiceApproved {
++  background-color: #e6faee;
++  color: #00c853;
+   font-weight: 500;
+ }
+diff --git a/src/components/contractorProjects/Detail/style.module.scss b/src/components/contractorProjects/Detail/style.module.scss
+index b9038bf..5aab215 100644
+--- a/src/components/contractorProjects/Detail/style.module.scss
++++ b/src/components/contractorProjects/Detail/style.module.scss
+@@ -1,14 +1,15 @@
+-
+ @import 'styles/variables.module';
+ 
+-.tab{
++.tab {
+   min-height: 52px;
+ }
+-.overviewLabel{
++
++.overviewLabel {
+   color: $grey700;
+   font-weight: 700;
+   margin-bottom: 2px;
+ }
+-.overviewValue{
++
++.overviewValue {
+   color: #202020;
+-}
+\ No newline at end of file
++}
+diff --git a/src/components/contractorProjects/List/styles.module.scss b/src/components/contractorProjects/List/styles.module.scss
+deleted file mode 100644
+index e69de29..0000000

@@ -79,7 +79,7 @@ input_directory = input("Enter additional directory path: ").strip()
 # Change the output file name here
 output_file = input_directory+'_output.txt'
 # Configure allowed extensions
-allowed_extensions = ['.tsx', '.ts', '.js']  # Add more extensions you want to include here
+allowed_extensions = ['.tsx', '.ts', '.js', '.scss', '.css']  # Add more extensions you want to include here
 # Configure ignored directories
 ignored_directories = ['node_modules', '.next', '.vscode', '.git']  # Add directory names you want to ignore here
 

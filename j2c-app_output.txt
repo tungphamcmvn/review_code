@@ -6070,6 +6070,30 @@ j2c-app/src/layout/MainLayout/index.tsx```tsx
 
 ```
 
+j2c-app/src/layout/MainLayout/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.appBar {
+	  background-color: $primaryNormal;
+	}
+
+```
+
+j2c-app/src/layout/MainLayout/Footer/style.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.container{
+	  display: flex;
+	  justify-content: space-between;
+	  padding: 12px 24px;
+	  margin-top: 32px;
+	  background-color: #fff;
+	  border-radius: 2px;
+	  font-size: 12px;
+	  color: $grey600;
+	}
+```
+
 j2c-app/src/layout/MainLayout/Footer/index.tsx```tsx
 	import { Box, Typography } from '@mui/material';
 	import style from './style.module.scss';
@@ -11451,6 +11475,32 @@ j2c-app/src/layout/MainLayout/Header/ProfileSection/components/UserInfo/index.ts
 
 ```
 
+j2c-app/src/layout/MainLayout/Header/ProfileSection/components/UserInfo/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.wrapper {
+	  display: flex;
+	  align-items: center;
+	  cursor: pointer;
+	}
+	
+	.username {
+	  color: #fff;
+	  white-space: nowrap;
+	  text-overflow: ellipsis;
+	  overflow: hidden;
+	  max-width: 150px;
+	  margin-left: 10px;
+	  font-size: 12px;
+	}
+	
+	.icon {
+	  display: flex;
+	  color: #fff;
+	}
+
+```
+
 j2c-app/src/layout/MainLayout/Header/SearchSection/index.tsx```tsx
 	import { useState } from 'react';
 	
@@ -12997,6 +13047,19 @@ j2c-app/src/views/builder/index.tsx```tsx
 
 ```
 
+j2c-app/src/styles/navbar.module.scss```scss
+	@import "variables.module";
+	
+	.container {
+	    display: flex;
+	}
+	
+	.toolbar {
+	    align-self: center;
+	    width: 1200px;
+	}
+```
+
 j2c-app/src/styles/theme.ts```ts
 	// @ts-nocheck
 	/**
@@ -13123,6 +13186,274 @@ j2c-app/src/styles/theme.ts```ts
 	    }
 	  }
 	});
+
+```
+
+j2c-app/src/styles/landing.module.scss```scss
+	@import "variables.module";
+	
+	.container {
+	  font-size: 84px;
+	  margin-top: 2em;
+	}
+	
+	.buttons {
+	  display: flex;
+	  margin-top: 0.5em;
+	}
+	
+	.login-button {
+	  background-color: $primary;
+	}
+```
+
+j2c-app/src/styles/firebaseui-styling.global.scss```scss
+	.firebaseui-container {
+	  min-width: 20em;
+	}
+
+```
+
+j2c-app/src/styles/_variables.module.scss```scss
+	@import '../scss/cm.module';
+	/* Colors */
+	$primary: #fafafa;
+	$secondary: #1a73e8;
+	$darkSecondary: #1b3a57;
+	$success: #00bfa5;
+	$error: #ff5252;
+	$dropShadow: $darkSecondary;
+	$dropShadowOpacity: 20%;
+	
+	/* Fonts */
+	$font-type: 'Google Sans', 'Roboto', sans-serif;
+	$font-title: 'Google Sans Mono', 'Courier New', serif;
+	$font-color: $darkSecondary;
+	
+	:export {
+	  primaryColor: $primary;
+	  secondaryColor: $secondary;
+	  tertiaryColor: $darkSecondary;
+	  successColor: $success;
+	  errorColor: $error;
+	  fontColor: $font-color;
+	  fontTitle: $font-title;
+	  fontDefault: $font-type;
+	}
+
+```
+
+j2c-app/src/styles/dataPage.module.scss```scss
+	@import "variables.module";
+	
+	.addButton {
+	  stroke: $secondary;
+	  stroke-width: 2;
+	}
+	
+	.title {
+	  padding: 1em 1em 0;
+	}
+```
+
+j2c-app/src/styles/dataRow.module.scss```scss
+	.contentRow {
+	    align-items: center;
+	    gap: 2em;
+	}
+	
+	.actions {
+	    align-items: center;
+	}
+```
+
+j2c-app/src/styles/global.scss```scss
+	@import "variables.module";
+	
+	body {
+	  font-family: $font-type;
+	  background-color: $primary;
+	  color: $font-color;
+	  margin: 0 auto;
+	}
+
+```
+
+j2c-app/src/styles/globals.css```css
+	html,
+	body {
+	  padding: 0;
+	  margin: 0;
+	  font-family:
+	    -apple-system,
+	    BlinkMacSystemFont,
+	    Segoe UI,
+	    Roboto,
+	    Oxygen,
+	    Ubuntu,
+	    Cantarell,
+	    Fira Sans,
+	    Droid Sans,
+	    Helvetica Neue,
+	    sans-serif;
+	}
+	
+	a {
+	  color: inherit;
+	  text-decoration: none;
+	}
+	
+	* {
+	  box-sizing: border-box;
+	}
+
+```
+
+j2c-app/src/styles/dataDialog.module.scss```scss
+	.title {
+	    padding-left: 0.6em;
+	}
+	
+	.content{
+	    width: 600px;
+	}
+	
+	.dialog {
+	    min-width: 24em;
+	    padding: 2em;
+	}
+	
+	.dataImage {
+	    align-items: center;
+	}
+```
+
+j2c-app/src/styles/Home.module.css```css
+	.container {
+	  padding: 0 2rem;
+	}
+	
+	.main {
+	  min-height: 100vh;
+	  padding: 4rem 0;
+	  flex: 1;
+	  display: flex;
+	  flex-direction: column;
+	  justify-content: center;
+	  align-items: center;
+	}
+	
+	.footer {
+	  display: flex;
+	  flex: 1;
+	  padding: 2rem 0;
+	  border-top: 1px solid #eaeaea;
+	  justify-content: center;
+	  align-items: center;
+	}
+	
+	.footer a {
+	  display: flex;
+	  justify-content: center;
+	  align-items: center;
+	  flex-grow: 1;
+	}
+	
+	.title a {
+	  color: #0070f3;
+	  text-decoration: none;
+	}
+	
+	.title a:hover,
+	.title a:focus,
+	.title a:active {
+	  text-decoration: underline;
+	}
+	
+	.title {
+	  margin: 0;
+	  line-height: 1.15;
+	  font-size: 4rem;
+	}
+	
+	.title,
+	.description {
+	  text-align: center;
+	}
+	
+	.description {
+	  margin: 4rem 0;
+	  line-height: 1.5;
+	  font-size: 1.5rem;
+	}
+	
+	.code {
+	  background: #fafafa;
+	  border-radius: 5px;
+	  padding: 0.75rem;
+	  font-size: 1.1rem;
+	  font-family:
+	    Menlo,
+	    Monaco,
+	    Lucida Console,
+	    Liberation Mono,
+	    DejaVu Sans Mono,
+	    Bitstream Vera Sans Mono,
+	    Courier New,
+	    monospace;
+	}
+	
+	.grid {
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+	  flex-wrap: wrap;
+	  max-width: 800px;
+	}
+	
+	.card {
+	  margin: 16px;
+	  padding: 24px;
+	  text-align: left;
+	  color: inherit;
+	  text-decoration: none;
+	  border: 1px solid #eaeaea;
+	  border-radius: 10px;
+	  transition:
+	    color 0.15s ease,
+	    border-color 0.15s ease;
+	  max-width: 300px;
+	}
+	
+	.card:hover,
+	.card:focus,
+	.card:active {
+	  color: #0070f3;
+	  border-color: #0070f3;
+	}
+	
+	.card h2 {
+	  margin: 0 0 16px 0;
+	  font-size: 1.5rem;
+	}
+	
+	.card p {
+	  margin: 0;
+	  font-size: 1.25rem;
+	  line-height: 1.5;
+	}
+	
+	.logo {
+	  height: 1em;
+	  margin-left: 0.5rem;
+	}
+	
+	@media (max-width: 600px) {
+	  .grid {
+	    width: 100%;
+	    flex-direction: column;
+	  }
+	}
 
 ```
 
@@ -13254,6 +13585,1366 @@ j2c-app/src/constant/index.ts```ts
 	export { CURRENCY, CURRENCY_SYMBOL } from './currency';
 	
 	export default LAYOUT;
+
+```
+
+j2c-app/src/scss/_theme3.module.scss```scss
+	// paper & background
+	$paper: #ffffff;
+	
+	// primary
+	$primaryLight: #e3ebeb;
+	$primaryMain: #16595a;
+	$primaryDark: #135152;
+	$primary200: #8bacad;
+	$primary800: #0c3e3f;
+	
+	// secondary
+	$secondaryLight: #f8f0e5;
+	$secondaryMain: #c77e23;
+	$secondaryDark: #c1761f;
+	$secondary200: #e3bf91;
+	$secondary800: #b36115;
+	
+	// success Colors
+	$successLight: #b9f6ca;
+	$success200: #69f0ae;
+	$successMain: #00e676;
+	$successDark: #00c853;
+	
+	// error
+	$errorLight: #ef9a9a;
+	$errorMain: #f44336;
+	$errorDark: #c62828;
+	
+	// orange
+	$orangeLight: #fbe9e7;
+	$orangeMain: #ffab91;
+	$orangeDark: #d84315;
+	
+	// warning
+	$warningLight: #fff8e1;
+	$warningMain: #ffe57f;
+	$warningDark: #ffc107;
+	
+	// grey
+	$grey50: #f8fafc;
+	$grey100: #eef2f6;
+	$grey200: #e3e8ef;
+	$grey300: #cdd5df;
+	$grey500: #697586;
+	$grey600: #4b5565;
+	$grey700: #364152;
+	$grey900: #121926;
+	
+	// ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	// paper & background
+	$darkBackground: #010606; // level 3
+	$darkPaper: #010f17; // level 4
+	
+	// dark 800 & 900
+	$darkLevel1: #02131d; // level 1
+	$darkLevel2: #010f17; // level 2
+	
+	// primary dark
+	$darkPrimaryLight: #eceff1;
+	$darkPrimaryMain: #1f7778;
+	$darkPrimaryDark: #1b6f70;
+	$darkPrimary200: #8fbbbc;
+	$darkPrimary800: #125a5b;
+	
+	// secondary dark
+	$darkSecondaryLight: #f8f0e5;
+	$darkSecondaryMain: #c77e23;
+	$darkSecondaryDark: #c1761f;
+	$darkSecondary200: #e3bf91;
+	$darkSecondary800: #b36115;
+	
+	// text variants
+	$darkTextTitle: #ffffff;
+	$darkTextPrimary: #ffffff;
+	$darkTextSecondary: #8492c4;
+	
+	// ==============================|| JAVASCRIPT ||============================== //
+	
+	:export {
+	  // paper & background
+	  paper: $paper;
+	
+	  // primary
+	  primaryLight: $primaryLight;
+	  primary200: $primary200;
+	  primaryMain: $primaryMain;
+	  primaryDark: $primaryDark;
+	  primary800: $primary800;
+	
+	  // secondary
+	  secondaryLight: $secondaryLight;
+	  secondary200: $secondary200;
+	  secondaryMain: $secondaryMain;
+	  secondaryDark: $secondaryDark;
+	  secondary800: $secondary800;
+	
+	  // success
+	  successLight: $successLight;
+	  success200: $success200;
+	  successMain: $successMain;
+	  successDark: $successDark;
+	
+	  // error
+	  errorLight: $errorLight;
+	  errorMain: $errorMain;
+	  errorDark: $errorDark;
+	
+	  // orange
+	  orangeLight: $orangeLight;
+	  orangeMain: $orangeMain;
+	  orangeDark: $orangeDark;
+	
+	  // warning
+	  warningLight: $warningLight;
+	  warningMain: $warningMain;
+	  warningDark: $warningDark;
+	
+	  // grey
+	  grey50: $grey50;
+	  grey100: $grey100;
+	  grey200: $grey200;
+	  grey300: $grey300;
+	  grey500: $grey500;
+	  grey600: $grey600;
+	  grey700: $grey700;
+	  grey900: $grey900;
+	
+	  // ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	  // paper & background
+	  darkPaper: $darkPaper;
+	  darkBackground: $darkBackground;
+	
+	  // dark 800 & 900
+	  darkLevel1: $darkLevel1;
+	  darkLevel2: $darkLevel2;
+	
+	  // text variants
+	  darkTextTitle: $darkTextTitle;
+	  darkTextPrimary: $darkTextPrimary;
+	  darkTextSecondary: $darkTextSecondary;
+	
+	  // primary dark
+	  darkPrimaryLight: $darkPrimaryLight;
+	  darkPrimaryMain: $darkPrimaryMain;
+	  darkPrimaryDark: $darkPrimaryDark;
+	  darkPrimary200: $darkPrimary200;
+	  darkPrimary800: $darkPrimary800;
+	
+	  // secondary dark
+	  darkSecondaryLight: $darkSecondaryLight;
+	  darkSecondaryMain: $darkSecondaryMain;
+	  darkSecondaryDark: $darkSecondaryDark;
+	  darkSecondary200: $darkSecondary200;
+	  darkSecondary800: $darkSecondary800;
+	}
+
+```
+
+j2c-app/src/scss/style.scss```scss
+	// color variants
+	@import '_cm.module.scss';
+	
+	// ==============================|| LIGHT BOX ||============================== //
+	.slick-arrow:before {
+	  color: $grey500;
+	}
+	
+	// ==============================|| PERFECT SCROLLBAR ||============================== //
+	
+	.scrollbar-container {
+	  .ps__rail-y {
+	    &:hover > .ps__thumb-y,
+	    &:focus > .ps__thumb-y,
+	    &.ps--clicking .ps__thumb-y {
+	      background-color: $grey500;
+	      width: 5px;
+	    }
+	  }
+	  .ps__thumb-y {
+	    background-color: $grey500;
+	    border-radius: 6px;
+	    width: 5px;
+	    right: 0;
+	  }
+	}
+	
+	// ==============================|| ANIMATION KEYFRAMES ||============================== //
+	
+	.project-info {
+	  .slick-current {
+	    opacity: 1 !important;
+	    .MuiTypography-root {
+	      color: $primaryMain;
+	    }
+	  }
+	}
+
+```
+
+j2c-app/src/scss/_cm.module.scss```scss
+	// paper & background
+	$paper: #ffffff;
+	
+	// primary
+	$primaryLight: #e8edf2;
+	$primaryLightHover: #dde4ec;
+	$primaryLightActive: #b9c8d8;
+	$primaryNormal: #1c4e80;
+	$primaryNormalHover: #194673;
+	$primaryNormalActive: #163e66;
+	$primaryDark: #153b60;
+	$primaryDarkHover: #153b60;
+	$primaryDarkActive: #112f4d;
+	$primaryDarker: #0a1b2d;
+	$primaryMain: #2196f3;
+	$primary200: #90caf9;
+	$primary800: #1565c0;
+	
+	// secondary
+	$secondaryLight: #e0f2f1;
+	$secondaryLightHover: #d9eff9;
+	$secondaryLightActive: #b0ddf2;
+	$secondaryNormal: #0091d5;
+	$secondaryNormalHover: #0083c0;
+	$secondaryNormalActive: #0074aa;
+	$secondaryDark: #006da0;
+	$secondaryDarkHover: #005780;
+	$secondaryDarkActive: #004160;
+	$secondaryDarker: #00334b;
+	$secondaryMain: #673ab7;
+	$secondary200: #b39ddb;
+	$secondary800: #4527a0;
+	
+	// highlight
+	$highlightLight: #fdf0ed;
+	$highlightHover: #fce9e3;
+	$highlightActive: #f8d1c6;
+	$highlightNormal: #ea6a47;
+	$highlightNormalHover: #d35f40;
+	$highlightNormalActive: #bb5539;
+	$highlightNormalDark: #b05035;
+	$highlightNormalDarkHover: #8c402b;
+	$highlightNormalDarkActive: #693020;
+	$highlightNormalDarker: #522519;
+	
+	// border
+	$border: #eeeeee;
+	
+	// success Colors
+	$successLight: #b9f6ca;
+	$success200: #69f0ae;
+	$successMain: #00e676;
+	$successDark: #00c853;
+	
+	// error
+	$errorLight: #ef9a9a;
+	$errorMain: #f44336;
+	$errorDark: #c62828;
+	
+	// orange
+	$orangeLight: #fbe9e7;
+	$orangeMain: #ffab91;
+	$orangeDark: #d84315;
+	
+	// warning
+	$warningLight: #fff8e1;
+	$warningMain: #ffe57f;
+	$warningDark: #ffc107;
+	
+	// grey
+	$grey50: #f8fafc;
+	$grey100: #eef2f6;
+	$grey200: #e3e8ef;
+	$grey300: #cdd5df;
+	$grey500: #697586;
+	$grey600: #4b5565;
+	$grey700: #59666d;
+	$grey900: #121926;
+	
+	// ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	// paper & background
+	$darkBackground: #1a223f; // level 3
+	$darkPaper: #111936; // level 4
+	
+	// dark 800 & 900
+	$darkLevel1: #29314f; // level 1
+	$darkLevel2: #212946; // level 2
+	
+	// primary dark
+	$darkPrimaryLight: #e3f2fd;
+	$darkPrimaryMain: #2196f3;
+	$darkPrimaryDark: #1e88e5;
+	$darkPrimary200: #90caf9;
+	$darkPrimary800: #1565c0;
+	
+	// secondary dark
+	$darkSecondaryLight: #d1c4e9;
+	$darkSecondaryMain: #7c4dff;
+	$darkSecondaryDark: #651fff;
+	$darkSecondary200: #b39ddb;
+	$darkSecondary800: #6200ea;
+	
+	// text variants
+	$darkTextTitle: #d7dcec;
+	$darkTextPrimary: #bdc8f0;
+	$darkTextSecondary: #8492c4;
+	
+	// ==============================|| JAVASCRIPT ||============================== //
+	
+	:export {
+	  // paper & background
+	  paper: $paper;
+	
+	  // primary
+	  primaryLight: $primaryLight;
+	  primary200: $primary200;
+	  primaryMain: $primaryMain;
+	  primaryDark: $primaryDark;
+	  primary800: $primary800;
+	
+	  // secondary
+	  secondaryLight: $secondaryLight;
+	  secondary200: $secondary200;
+	  secondaryMain: $secondaryMain;
+	  secondaryDark: $secondaryDark;
+	  secondary800: $secondary800;
+	
+	  // success
+	  successLight: $successLight;
+	  success200: $success200;
+	  successMain: $successMain;
+	  successDark: $successDark;
+	
+	  // error
+	  errorLight: $errorLight;
+	  errorMain: $errorMain;
+	  errorDark: $errorDark;
+	
+	  // orange
+	  orangeLight: $orangeLight;
+	  orangeMain: $orangeMain;
+	  orangeDark: $orangeDark;
+	
+	  // warning
+	  warningLight: $warningLight;
+	  warningMain: $warningMain;
+	  warningDark: $warningDark;
+	
+	  // grey
+	  grey50: $grey50;
+	  grey100: $grey100;
+	  grey200: $grey200;
+	  grey300: $grey300;
+	  grey500: $grey500;
+	  grey600: $grey600;
+	  grey700: $grey700;
+	  grey900: $grey900;
+	
+	  // ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	  // paper & background
+	  darkPaper: $darkPaper;
+	  darkBackground: $darkBackground;
+	
+	  // dark 800 & 900
+	  darkLevel1: $darkLevel1;
+	  darkLevel2: $darkLevel2;
+	
+	  // text variants
+	  darkTextTitle: $darkTextTitle;
+	  darkTextPrimary: $darkTextPrimary;
+	  darkTextSecondary: $darkTextSecondary;
+	
+	  // primary dark
+	  darkPrimaryLight: $darkPrimaryLight;
+	  darkPrimaryMain: $darkPrimaryMain;
+	  darkPrimaryDark: $darkPrimaryDark;
+	  darkPrimary200: $darkPrimary200;
+	  darkPrimary800: $darkPrimary800;
+	
+	  // secondary dark
+	  darkSecondaryLight: $darkSecondaryLight;
+	  darkSecondaryMain: $darkSecondaryMain;
+	  darkSecondaryDark: $darkSecondaryDark;
+	  darkSecondary200: $darkSecondary200;
+	  darkSecondary800: $darkSecondary800;
+	}
+
+```
+
+j2c-app/src/scss/_themes-vars.module.scss```scss
+	// paper & background
+	$paper: #ffffff;
+	
+	// primary
+	$primaryLight: #e3f2fd;
+	$primaryMain: #2196f3;
+	$primaryDark: #1e88e5;
+	$primary200: #90caf9;
+	$primary800: #1565c0;
+	
+	// secondary
+	$secondaryLight: #ede7f6;
+	$secondaryMain: #673ab7;
+	$secondaryDark: #5e35b1;
+	$secondary200: #b39ddb;
+	$secondary800: #4527a0;
+	
+	// success Colors
+	$successLight: #b9f6ca;
+	$success200: #69f0ae;
+	$successMain: #00e676;
+	$successDark: #00c853;
+	
+	// error
+	$errorLight: #ef9a9a;
+	$errorMain: #f44336;
+	$errorDark: #c62828;
+	
+	// orange
+	$orangeLight: #fbe9e7;
+	$orangeMain: #ffab91;
+	$orangeDark: #d84315;
+	
+	// warning
+	$warningLight: #fff8e1;
+	$warningMain: #ffe57f;
+	$warningDark: #ffc107;
+	
+	// grey
+	$grey50: #f8fafc;
+	$grey100: #eef2f6;
+	$grey200: #e3e8ef;
+	$grey300: #cdd5df;
+	$grey500: #697586;
+	$grey600: #4b5565;
+	$grey700: #364152;
+	$grey900: #121926;
+	
+	// ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	// paper & background
+	$darkBackground: #1a223f; // level 3
+	$darkPaper: #111936; // level 4
+	
+	// dark 800 & 900
+	$darkLevel1: #29314f; // level 1
+	$darkLevel2: #212946; // level 2
+	
+	// primary dark
+	$darkPrimaryLight: #e3f2fd;
+	$darkPrimaryMain: #2196f3;
+	$darkPrimaryDark: #1e88e5;
+	$darkPrimary200: #90caf9;
+	$darkPrimary800: #1565c0;
+	
+	// secondary dark
+	$darkSecondaryLight: #d1c4e9;
+	$darkSecondaryMain: #7c4dff;
+	$darkSecondaryDark: #651fff;
+	$darkSecondary200: #b39ddb;
+	$darkSecondary800: #6200ea;
+	
+	// text variants
+	$darkTextTitle: #d7dcec;
+	$darkTextPrimary: #bdc8f0;
+	$darkTextSecondary: #8492c4;
+	
+	// ==============================|| JAVASCRIPT ||============================== //
+	
+	:export {
+	  // paper & background
+	  paper: $paper;
+	
+	  // primary
+	  primaryLight: $primaryLight;
+	  primary200: $primary200;
+	  primaryMain: $primaryMain;
+	  primaryDark: $primaryDark;
+	  primary800: $primary800;
+	
+	  // secondary
+	  secondaryLight: $secondaryLight;
+	  secondary200: $secondary200;
+	  secondaryMain: $secondaryMain;
+	  secondaryDark: $secondaryDark;
+	  secondary800: $secondary800;
+	
+	  // success
+	  successLight: $successLight;
+	  success200: $success200;
+	  successMain: $successMain;
+	  successDark: $successDark;
+	
+	  // error
+	  errorLight: $errorLight;
+	  errorMain: $errorMain;
+	  errorDark: $errorDark;
+	
+	  // orange
+	  orangeLight: $orangeLight;
+	  orangeMain: $orangeMain;
+	  orangeDark: $orangeDark;
+	
+	  // warning
+	  warningLight: $warningLight;
+	  warningMain: $warningMain;
+	  warningDark: $warningDark;
+	
+	  // grey
+	  grey50: $grey50;
+	  grey100: $grey100;
+	  grey200: $grey200;
+	  grey300: $grey300;
+	  grey500: $grey500;
+	  grey600: $grey600;
+	  grey700: $grey700;
+	  grey900: $grey900;
+	
+	  // ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	  // paper & background
+	  darkPaper: $darkPaper;
+	  darkBackground: $darkBackground;
+	
+	  // dark 800 & 900
+	  darkLevel1: $darkLevel1;
+	  darkLevel2: $darkLevel2;
+	
+	  // text variants
+	  darkTextTitle: $darkTextTitle;
+	  darkTextPrimary: $darkTextPrimary;
+	  darkTextSecondary: $darkTextSecondary;
+	
+	  // primary dark
+	  darkPrimaryLight: $darkPrimaryLight;
+	  darkPrimaryMain: $darkPrimaryMain;
+	  darkPrimaryDark: $darkPrimaryDark;
+	  darkPrimary200: $darkPrimary200;
+	  darkPrimary800: $darkPrimary800;
+	
+	  // secondary dark
+	  darkSecondaryLight: $darkSecondaryLight;
+	  darkSecondaryMain: $darkSecondaryMain;
+	  darkSecondaryDark: $darkSecondaryDark;
+	  darkSecondary200: $darkSecondary200;
+	  darkSecondary800: $darkSecondary800;
+	}
+
+```
+
+j2c-app/src/scss/_theme6.module.scss```scss
+	// paper & background
+	$paper: #ffffff;
+	
+	// primary
+	$primaryLight: #e8eaf6;
+	$primaryMain: #3f51b5;
+	$primaryDark: #3949ab;
+	$primary200: #9fa8da;
+	$primary800: #283593;
+	
+	// secondary
+	$secondaryLight: #e8eaf6;
+	$secondaryMain: #3f51b5;
+	$secondaryDark: #3949ab;
+	$secondary200: #9fa8da;
+	$secondary800: #283593;
+	
+	// success Colors
+	$successLight: #b9f6ca;
+	$success200: #69f0ae;
+	$successMain: #00e676;
+	$successDark: #00c853;
+	
+	// error
+	$errorLight: #ef9a9a;
+	$errorMain: #f44336;
+	$errorDark: #c62828;
+	
+	// orange
+	$orangeLight: #fbe9e7;
+	$orangeMain: #ffab91;
+	$orangeDark: #d84315;
+	
+	// warning
+	$warningLight: #fff8e1;
+	$warningMain: #ffe57f;
+	$warningDark: #ffc107;
+	
+	// grey
+	$grey50: #f8fafc;
+	$grey100: #eef2f6;
+	$grey200: #e3e8ef;
+	$grey300: #cdd5df;
+	$grey500: #697586;
+	$grey600: #4b5565;
+	$grey700: #364152;
+	$grey900: #121926;
+	
+	// ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	// paper & background
+	$darkBackground: #1a223f; // level 3
+	$darkPaper: #111936; // level 4
+	
+	// dark 800 & 900
+	$darkLevel1: #29314f; // level 1
+	$darkLevel2: #212946; // level 2
+	
+	// primary dark
+	$darkPrimaryLight: #eeedfd;
+	$darkPrimaryMain: #7267ef;
+	$darkPrimaryDark: #6a5fed;
+	$darkPrimary200: #b9b3f7;
+	$darkPrimary800: #554ae8;
+	
+	// secondary dark
+	$darkSecondaryLight: #eeedfd;
+	$darkSecondaryMain: #7267ef;
+	$darkSecondaryDark: #6a5fed;
+	$darkSecondary200: #b9b3f7;
+	$darkSecondary800: #554ae8;
+	
+	// text variants
+	$darkTextTitle: #d7dcec;
+	$darkTextPrimary: #bdc8f0;
+	$darkTextSecondary: #8492c4;
+	
+	// ==============================|| JAVASCRIPT ||============================== //
+	
+	:export {
+	  // paper & background
+	  paper: $paper;
+	
+	  // primary
+	  primaryLight: $primaryLight;
+	  primary200: $primary200;
+	  primaryMain: $primaryMain;
+	  primaryDark: $primaryDark;
+	  primary800: $primary800;
+	
+	  // secondary
+	  secondaryLight: $secondaryLight;
+	  secondary200: $secondary200;
+	  secondaryMain: $secondaryMain;
+	  secondaryDark: $secondaryDark;
+	  secondary800: $secondary800;
+	
+	  // success
+	  successLight: $successLight;
+	  success200: $success200;
+	  successMain: $successMain;
+	  successDark: $successDark;
+	
+	  // error
+	  errorLight: $errorLight;
+	  errorMain: $errorMain;
+	  errorDark: $errorDark;
+	
+	  // orange
+	  orangeLight: $orangeLight;
+	  orangeMain: $orangeMain;
+	  orangeDark: $orangeDark;
+	
+	  // warning
+	  warningLight: $warningLight;
+	  warningMain: $warningMain;
+	  warningDark: $warningDark;
+	
+	  // grey
+	  grey50: $grey50;
+	  grey100: $grey100;
+	  grey200: $grey200;
+	  grey300: $grey300;
+	  grey500: $grey500;
+	  grey600: $grey600;
+	  grey700: $grey700;
+	  grey900: $grey900;
+	
+	  // ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	  // paper & background
+	  darkPaper: $darkPaper;
+	  darkBackground: $darkBackground;
+	
+	  // dark 800 & 900
+	  darkLevel1: $darkLevel1;
+	  darkLevel2: $darkLevel2;
+	
+	  // text variants
+	  darkTextTitle: $darkTextTitle;
+	  darkTextPrimary: $darkTextPrimary;
+	  darkTextSecondary: $darkTextSecondary;
+	
+	  // primary dark
+	  darkPrimaryLight: $darkPrimaryLight;
+	  darkPrimaryMain: $darkPrimaryMain;
+	  darkPrimaryDark: $darkPrimaryDark;
+	  darkPrimary200: $darkPrimary200;
+	  darkPrimary800: $darkPrimary800;
+	
+	  // secondary dark
+	  darkSecondaryLight: $darkSecondaryLight;
+	  darkSecondaryMain: $darkSecondaryMain;
+	  darkSecondaryDark: $darkSecondaryDark;
+	  darkSecondary200: $darkSecondary200;
+	  darkSecondary800: $darkSecondary800;
+	}
+
+```
+
+j2c-app/src/scss/_theme1.module.scss```scss
+	// paper & background
+	$paper: #ffffff;
+	
+	// primary
+	$primaryLight: #eceff1;
+	$primaryMain: #607d8b;
+	$primaryDark: #546e7a;
+	$primary200: #b0bec5;
+	$primary800: #455a64;
+	
+	// secondary
+	$secondaryLight: #e0f2f1;
+	$secondaryMain: #009688;
+	$secondaryDark: #00897b;
+	$secondary200: #80cbc4;
+	$secondary800: #00695c;
+	
+	// success Colors
+	$successLight: #edf7ed;
+	$success200: #b6e0b3;
+	$successMain: #6cc067;
+	$successDark: #64ba5f;
+	
+	// error
+	$errorLight: #e48784;
+	$errorMain: #d9534f;
+	$errorDark: #d54c48;
+	
+	// orange
+	$orangeLight: #fbe9e7;
+	$orangeMain: #ffab91;
+	$orangeDark: #d84315;
+	
+	// warning
+	$warningLight: #fdf5ea;
+	$warningMain: #f0ad4e;
+	$warningDark: #ec9c3d;
+	
+	// grey
+	$grey50: #f8fafc;
+	$grey100: #eef2f6;
+	$grey200: #e3e8ef;
+	$grey300: #cdd5df;
+	$grey500: #697586;
+	$grey600: #4b5565;
+	$grey700: #364152;
+	$grey900: #121926;
+	
+	// ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	// paper & background
+	$darkBackground: #0e1b23; // level 3
+	$darkPaper: #060d12; // level 4
+	
+	// dark 800 & 900
+	$darkLevel1: #0b161d; // level 1
+	$darkLevel2: #14252f; // level 2
+	
+	// primary dark
+	$darkPrimaryLight: #eceff1;
+	$darkPrimaryMain: #78919c;
+	$darkPrimaryDark: #587583;
+	$darkPrimary200: #b0bec5;
+	$darkPrimary800: #44606e;
+	
+	// secondary dark
+	$darkSecondaryLight: #e0f2f1;
+	$darkSecondaryMain: #009688;
+	$darkSecondaryDark: #00897b;
+	$darkSecondary200: #80cbc4;
+	$darkSecondary800: #00695c;
+	
+	// text variants
+	$darkTextTitle: #e4e8f7;
+	$darkTextPrimary: #d5d9e9;
+	$darkTextSecondary: #d8ddf0;
+	
+	// ==============================|| JAVASCRIPT ||============================== //
+	
+	:export {
+	  // paper & background
+	  paper: $paper;
+	
+	  // primary
+	  primaryLight: $primaryLight;
+	  primary200: $primary200;
+	  primaryMain: $primaryMain;
+	  primaryDark: $primaryDark;
+	  primary800: $primary800;
+	
+	  // secondary
+	  secondaryLight: $secondaryLight;
+	  secondary200: $secondary200;
+	  secondaryMain: $secondaryMain;
+	  secondaryDark: $secondaryDark;
+	  secondary800: $secondary800;
+	
+	  // success
+	  successLight: $successLight;
+	  success200: $success200;
+	  successMain: $successMain;
+	  successDark: $successDark;
+	
+	  // error
+	  errorLight: $errorLight;
+	  errorMain: $errorMain;
+	  errorDark: $errorDark;
+	
+	  // orange
+	  orangeLight: $orangeLight;
+	  orangeMain: $orangeMain;
+	  orangeDark: $orangeDark;
+	
+	  // warning
+	  warningLight: $warningLight;
+	  warningMain: $warningMain;
+	  warningDark: $warningDark;
+	
+	  // grey
+	  grey50: $grey50;
+	  grey100: $grey100;
+	  grey200: $grey200;
+	  grey300: $grey300;
+	  grey500: $grey500;
+	  grey600: $grey600;
+	  grey700: $grey700;
+	  grey900: $grey900;
+	
+	  // ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	  // paper & background
+	  darkPaper: $darkPaper;
+	  darkBackground: $darkBackground;
+	
+	  // dark 800 & 900
+	  darkLevel1: $darkLevel1;
+	  darkLevel2: $darkLevel2;
+	
+	  // text variants
+	  darkTextTitle: $darkTextTitle;
+	  darkTextPrimary: $darkTextPrimary;
+	  darkTextSecondary: $darkTextSecondary;
+	
+	  // primary dark
+	  darkPrimaryLight: $darkPrimaryLight;
+	  darkPrimaryMain: $darkPrimaryMain;
+	  darkPrimaryDark: $darkPrimaryDark;
+	  darkPrimary200: $darkPrimary200;
+	  darkPrimary800: $darkPrimary800;
+	
+	  // secondary dark
+	  darkSecondaryLight: $darkSecondaryLight;
+	  darkSecondaryMain: $darkSecondaryMain;
+	  darkSecondaryDark: $darkSecondaryDark;
+	  darkSecondary200: $darkSecondary200;
+	  darkSecondary800: $darkSecondary800;
+	}
+
+```
+
+j2c-app/src/scss/_theme2.module.scss```scss
+	// paper & background
+	$paper: #ffffff;
+	
+	// primary
+	$primaryLight: #e4e7ec;
+	$primaryMain: #203461;
+	$primaryDark: #1c2f59;
+	$primary200: #909ab0;
+	$primary800: #132145;
+	
+	// secondary
+	$secondaryLight: #fde8ef;
+	$secondaryMain: #ec407a;
+	$secondaryDark: #ea3a72;
+	$secondary200: #f6a0bd;
+	$secondary800: #e42a5d;
+	
+	// success Colors
+	$successLight: #e3f8e8;
+	$success200: #8be09f;
+	$successMain: #17c13e;
+	$successDark: #14bb38;
+	
+	// error
+	$errorLight: #e48784;
+	$errorMain: #d9534f;
+	$errorDark: #d54c48;
+	
+	// orange
+	$orangeLight: #fbe9e7;
+	$orangeMain: #ffab91;
+	$orangeDark: #d84315;
+	
+	// warning
+	$warningLight: #fdf5ea;
+	$warningMain: #f0ad4e;
+	$warningDark: #ec9c3d;
+	
+	// grey
+	$grey50: #f8fafc;
+	$grey100: #eef2f6;
+	$grey200: #e3e8ef;
+	$grey300: #cdd5df;
+	$grey500: #697586;
+	$grey600: #4b5565;
+	$grey700: #364152;
+	$grey900: #121926;
+	
+	// ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	// paper & background
+	$darkBackground: #0a0f23; // level 3
+	$darkPaper: #030614; // level 4
+	
+	// dark 800 & 900
+	$darkLevel1: #070e13; // level 1
+	$darkLevel2: #12172f; // level 2
+	
+	// primary dark
+	$darkPrimaryLight: #ecedf1;
+	$darkPrimaryMain: #606d88;
+	$darkPrimaryDark: #586580;
+	$darkPrimary200: #b0b6c4;
+	$darkPrimary800: #44506b;
+	
+	// secondary dark
+	$darkSecondaryLight: #fde8ef;
+	$darkSecondaryMain: #ec407a;
+	$darkSecondaryDark: #ea3a72;
+	$darkSecondary200: #f6a0bd;
+	$darkSecondary800: #e42a5d;
+	
+	// text variants
+	$darkTextTitle: #e4e8f7;
+	$darkTextPrimary: #d5d9e9;
+	$darkTextSecondary: #d8ddf0;
+	
+	// ==============================|| JAVASCRIPT ||============================== //
+	
+	:export {
+	  // paper & background
+	  paper: $paper;
+	
+	  // primary
+	  primaryLight: $primaryLight;
+	  primary200: $primary200;
+	  primaryMain: $primaryMain;
+	  primaryDark: $primaryDark;
+	  primary800: $primary800;
+	
+	  // secondary
+	  secondaryLight: $secondaryLight;
+	  secondary200: $secondary200;
+	  secondaryMain: $secondaryMain;
+	  secondaryDark: $secondaryDark;
+	  secondary800: $secondary800;
+	
+	  // success
+	  successLight: $successLight;
+	  success200: $success200;
+	  successMain: $successMain;
+	  successDark: $successDark;
+	
+	  // error
+	  errorLight: $errorLight;
+	  errorMain: $errorMain;
+	  errorDark: $errorDark;
+	
+	  // orange
+	  orangeLight: $orangeLight;
+	  orangeMain: $orangeMain;
+	  orangeDark: $orangeDark;
+	
+	  // warning
+	  warningLight: $warningLight;
+	  warningMain: $warningMain;
+	  warningDark: $warningDark;
+	
+	  // grey
+	  grey50: $grey50;
+	  grey100: $grey100;
+	  grey200: $grey200;
+	  grey300: $grey300;
+	  grey500: $grey500;
+	  grey600: $grey600;
+	  grey700: $grey700;
+	  grey900: $grey900;
+	
+	  // ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	  // paper & background
+	  darkPaper: $darkPaper;
+	  darkBackground: $darkBackground;
+	
+	  // dark 800 & 900
+	  darkLevel1: $darkLevel1;
+	  darkLevel2: $darkLevel2;
+	
+	  // text variants
+	  darkTextTitle: $darkTextTitle;
+	  darkTextPrimary: $darkTextPrimary;
+	  darkTextSecondary: $darkTextSecondary;
+	
+	  // primary dark
+	  darkPrimaryLight: $darkPrimaryLight;
+	  darkPrimaryMain: $darkPrimaryMain;
+	  darkPrimaryDark: $darkPrimaryDark;
+	  darkPrimary200: $darkPrimary200;
+	  darkPrimary800: $darkPrimary800;
+	
+	  // secondary dark
+	  darkSecondaryLight: $darkSecondaryLight;
+	  darkSecondaryMain: $darkSecondaryMain;
+	  darkSecondaryDark: $darkSecondaryDark;
+	  darkSecondary200: $darkSecondary200;
+	  darkSecondary800: $darkSecondary800;
+	}
+
+```
+
+j2c-app/src/scss/_theme5.module.scss```scss
+	// paper & background
+	$paper: #ffffff;
+	
+	// primary
+	$primaryLight: #e2e5e8;
+	$primaryMain: #0a2342;
+	$primaryDark: #091f3c;
+	$primary200: #8591a1;
+	$primary800: #05152b;
+	
+	// secondary
+	$secondaryLight: #e6f4f1;
+	$secondaryMain: #2ca58d;
+	$secondaryDark: #279d85;
+	$secondary200: #96d2c6;
+	$secondary800: #1b8a70;
+	
+	// success Colors
+	$successLight: #b9f6ca;
+	$success200: #69f0ae;
+	$successMain: #00e676;
+	$successDark: #00c853;
+	
+	// error
+	$errorLight: #ef9a9a;
+	$errorMain: #f44336;
+	$errorDark: #c62828;
+	
+	// orange
+	$orangeLight: #fbe9e7;
+	$orangeMain: #ffab91;
+	$orangeDark: #d84315;
+	
+	// warning
+	$warningLight: #fff8e1;
+	$warningMain: #ffe57f;
+	$warningDark: #ffc107;
+	
+	// grey
+	$grey50: #f8fafc;
+	$grey100: #eef2f6;
+	$grey200: #e3e8ef;
+	$grey300: #cdd5df;
+	$grey500: #697586;
+	$grey600: #4b5565;
+	$grey700: #364152;
+	$grey900: #121926;
+	
+	// ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	// paper & background
+	$darkBackground: #051327; // level 3
+	$darkPaper: #030c1d; // level 4
+	
+	// dark 800 & 900
+	$darkLevel1: #071a33; // level 1
+	$darkLevel2: #091f3c; // level 2
+	
+	// primary dark
+	$darkPrimaryLight: #e2e5e8;
+	$darkPrimaryMain: #54657b;
+	$darkPrimaryDark: #2f445e;
+	$darkPrimary200: #8591a1;
+	$darkPrimary800: #05152b;
+	
+	// secondary dark
+	$darkSecondaryLight: #e6f4f1;
+	$darkSecondaryMain: #2ca58d;
+	$darkSecondaryDark: #279d85;
+	$darkSecondary200: #96d2c6;
+	$darkSecondary800: #1b8a70;
+	
+	// text variants
+	$darkTextTitle: #d7dcec;
+	$darkTextPrimary: #bdc8f0;
+	$darkTextSecondary: #8492c4;
+	
+	// ==============================|| JAVASCRIPT ||============================== //
+	
+	:export {
+	  // paper & background
+	  paper: $paper;
+	
+	  // primary
+	  primaryLight: $primaryLight;
+	  primary200: $primary200;
+	  primaryMain: $primaryMain;
+	  primaryDark: $primaryDark;
+	  primary800: $primary800;
+	
+	  // secondary
+	  secondaryLight: $secondaryLight;
+	  secondary200: $secondary200;
+	  secondaryMain: $secondaryMain;
+	  secondaryDark: $secondaryDark;
+	  secondary800: $secondary800;
+	
+	  // success
+	  successLight: $successLight;
+	  success200: $success200;
+	  successMain: $successMain;
+	  successDark: $successDark;
+	
+	  // error
+	  errorLight: $errorLight;
+	  errorMain: $errorMain;
+	  errorDark: $errorDark;
+	
+	  // orange
+	  orangeLight: $orangeLight;
+	  orangeMain: $orangeMain;
+	  orangeDark: $orangeDark;
+	
+	  // warning
+	  warningLight: $warningLight;
+	  warningMain: $warningMain;
+	  warningDark: $warningDark;
+	
+	  // grey
+	  grey50: $grey50;
+	  grey100: $grey100;
+	  grey200: $grey200;
+	  grey300: $grey300;
+	  grey500: $grey500;
+	  grey600: $grey600;
+	  grey700: $grey700;
+	  grey900: $grey900;
+	
+	  // ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	  // paper & background
+	  darkPaper: $darkPaper;
+	  darkBackground: $darkBackground;
+	
+	  // dark 800 & 900
+	  darkLevel1: $darkLevel1;
+	  darkLevel2: $darkLevel2;
+	
+	  // text variants
+	  darkTextTitle: $darkTextTitle;
+	  darkTextPrimary: $darkTextPrimary;
+	  darkTextSecondary: $darkTextSecondary;
+	
+	  // primary dark
+	  darkPrimaryLight: $darkPrimaryLight;
+	  darkPrimaryMain: $darkPrimaryMain;
+	  darkPrimaryDark: $darkPrimaryDark;
+	  darkPrimary200: $darkPrimary200;
+	  darkPrimary800: $darkPrimary800;
+	
+	  // secondary dark
+	  darkSecondaryLight: $darkSecondaryLight;
+	  darkSecondaryMain: $darkSecondaryMain;
+	  darkSecondaryDark: $darkSecondaryDark;
+	  darkSecondary200: $darkSecondary200;
+	  darkSecondary800: $darkSecondary800;
+	}
+
+```
+
+j2c-app/src/scss/_theme4.module.scss```scss
+	// paper & background
+	$paper: #ffffff;
+	
+	// primary
+	$primaryLight: #e3e8e8;
+	$primaryMain: #173e43;
+	$primaryDark: #14383d;
+	$primary200: #8b9fa1;
+	$primary800: #0d282c;
+	
+	// secondary
+	$secondaryLight: #e8f6f5;
+	$secondaryMain: #3fb0ac;
+	$secondaryDark: #39a9a5;
+	$secondary200: #9fd8d6;
+	$secondary800: #299792;
+	
+	// success Colors
+	$successLight: #b9f6ca;
+	$success200: #69f0ae;
+	$successMain: #00e676;
+	$successDark: #00c853;
+	
+	// error
+	$errorLight: #ef9a9a;
+	$errorMain: #f44336;
+	$errorDark: #c62828;
+	
+	// orange
+	$orangeLight: #fbe9e7;
+	$orangeMain: #ffab91;
+	$orangeDark: #d84315;
+	
+	// warning
+	$warningLight: #fff8e1;
+	$warningMain: #ffe57f;
+	$warningDark: #ffc107;
+	
+	// grey
+	$grey50: #f8fafc;
+	$grey100: #eef2f6;
+	$grey200: #e3e8ef;
+	$grey300: #cdd5df;
+	$grey500: #697586;
+	$grey600: #4b5565;
+	$grey700: #364152;
+	$grey900: #121926;
+	
+	// ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	// paper & background
+	$darkBackground: #030708; // level 3
+	$darkPaper: #051114; // level 4
+	
+	// dark 800 & 900
+	$darkLevel1: #02131d; // level 1
+	$darkLevel2: #051114; // level 2
+	
+	// primary dark
+	$darkPrimaryLight: #e3e8e8;
+	$darkPrimaryMain: #3a5b5f;
+	$darkPrimaryDark: #14383d;
+	$darkPrimary200: #8b9fa1;
+	$darkPrimary800: #0d282c;
+	
+	// secondary dark
+	$darkSecondaryLight: #e8f6f5;
+	$darkSecondaryMain: #3fb0ac;
+	$darkSecondaryDark: #39a9a5;
+	$darkSecondary200: #9fd8d6;
+	$darkSecondary800: #299792;
+	
+	// text variants
+	$darkTextTitle: #ffffff;
+	$darkTextPrimary: #ffffff;
+	$darkTextSecondary: #ccd2eb;
+	
+	// ==============================|| JAVASCRIPT ||============================== //
+	
+	:export {
+	  // paper & background
+	  paper: $paper;
+	
+	  // primary
+	  primaryLight: $primaryLight;
+	  primary200: $primary200;
+	  primaryMain: $primaryMain;
+	  primaryDark: $primaryDark;
+	  primary800: $primary800;
+	
+	  // secondary
+	  secondaryLight: $secondaryLight;
+	  secondary200: $secondary200;
+	  secondaryMain: $secondaryMain;
+	  secondaryDark: $secondaryDark;
+	  secondary800: $secondary800;
+	
+	  // success
+	  successLight: $successLight;
+	  success200: $success200;
+	  successMain: $successMain;
+	  successDark: $successDark;
+	
+	  // error
+	  errorLight: $errorLight;
+	  errorMain: $errorMain;
+	  errorDark: $errorDark;
+	
+	  // orange
+	  orangeLight: $orangeLight;
+	  orangeMain: $orangeMain;
+	  orangeDark: $orangeDark;
+	
+	  // warning
+	  warningLight: $warningLight;
+	  warningMain: $warningMain;
+	  warningDark: $warningDark;
+	
+	  // grey
+	  grey50: $grey50;
+	  grey100: $grey100;
+	  grey200: $grey200;
+	  grey300: $grey300;
+	  grey500: $grey500;
+	  grey600: $grey600;
+	  grey700: $grey700;
+	  grey900: $grey900;
+	
+	  // ==============================|| DARK THEME VARIANTS ||============================== //
+	
+	  // paper & background
+	  darkPaper: $darkPaper;
+	  darkBackground: $darkBackground;
+	
+	  // dark 800 & 900
+	  darkLevel1: $darkLevel1;
+	  darkLevel2: $darkLevel2;
+	
+	  // text variants
+	  darkTextTitle: $darkTextTitle;
+	  darkTextPrimary: $darkTextPrimary;
+	  darkTextSecondary: $darkTextSecondary;
+	
+	  // primary dark
+	  darkPrimaryLight: $darkPrimaryLight;
+	  darkPrimaryMain: $darkPrimaryMain;
+	  darkPrimaryDark: $darkPrimaryDark;
+	  darkPrimary200: $darkPrimary200;
+	  darkPrimary800: $darkPrimary800;
+	
+	  // secondary dark
+	  darkSecondaryLight: $darkSecondaryLight;
+	  darkSecondaryMain: $darkSecondaryMain;
+	  darkSecondaryDark: $darkSecondaryDark;
+	  darkSecondary200: $darkSecondary200;
+	  darkSecondary800: $darkSecondary800;
+	}
 
 ```
 
@@ -13635,6 +15326,166 @@ j2c-app/src/app/not-found.tsx```tsx
 	
 	export default function notfound() {
 	  return <Error404 />;
+	}
+
+```
+
+j2c-app/src/app/globals.css```css
+	/* third-party */
+	@import '~react-perfect-scrollbar/dist/css/styles.css';
+	@import '~slick-carousel/slick/slick.css';
+	@import '~slick-carousel/slick/slick-theme.css';
+	
+	@import '~react-18-image-lightbox/style.css';
+	
+	/* ==============================|| LIGHT BOX ||============================== */
+	
+	.fullscreen .react-images__blanket {
+	  z-index: 1200;
+	}
+	
+	/* ==============================|| PERFECT SCROLLBAR ||============================== */
+	
+	.scrollbar-container.ps,
+	.scrollbar-container > .ps {
+	  &.ps--active-y > .ps__rail-y {
+	    width: 5px;
+	    background-color: transparent !important;
+	    z-index: 999;
+	    &:hover,
+	    &.ps--clicking {
+	      width: 5px;
+	      background-color: transparent;
+	    }
+	  }
+	  &.ps--scrolling-y > .ps__rail-y,
+	  &.ps--scrolling-x > .ps__rail-x {
+	    opacity: 0.4;
+	    background-color: transparent;
+	  }
+	}
+	
+	/* ==============================|| ANIMATION KEYFRAMES ||============================== */
+	
+	@keyframes wings {
+	  50% {
+	    transform: translateY(-40px);
+	  }
+	  100% {
+	    transform: translateY(0px);
+	  }
+	}
+	
+	@keyframes blink {
+	  50% {
+	    opacity: 0;
+	  }
+	  100% {
+	    opacity: 1;
+	  }
+	}
+	
+	@keyframes bounce {
+	  0%,
+	  20%,
+	  53%,
+	  to {
+	    animation-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+	    transform: translateZ(0);
+	  }
+	  40%,
+	  43% {
+	    animation-timing-function: cubic-bezier(0.755, 0.05, 0.855, 0.06);
+	    transform: translate3d(0, -5px, 0);
+	  }
+	  70% {
+	    animation-timing-function: cubic-bezier(0.755, 0.05, 0.855, 0.06);
+	    transform: translate3d(0, -7px, 0);
+	  }
+	  80% {
+	    transition-timing-function: cubic-bezier(0.215, 0.61, 0.355, 1);
+	    transform: translateZ(0);
+	  }
+	  90% {
+	    transform: translate3d(0, -2px, 0);
+	  }
+	}
+	
+	@keyframes slideY {
+	  0%,
+	  50%,
+	  100% {
+	    transform: translateY(0px);
+	  }
+	  25% {
+	    transform: translateY(-10px);
+	  }
+	  75% {
+	    transform: translateY(10px);
+	  }
+	}
+	
+	@keyframes slideX {
+	  0%,
+	  50%,
+	  100% {
+	    transform: translateX(0px);
+	  }
+	  25% {
+	    transform: translateX(-10px);
+	  }
+	  75% {
+	    transform: translateX(10px);
+	  }
+	}
+	
+	/* ==============================|| ANIMATION KEYFRAMES ||============================== */
+	
+	.preBuildDashBoard-slider {
+	  overflow: hidden;
+	  .slider {
+	    .slide {
+	      opacity: 0.5;
+	      display: flex;
+	      justify-content: center;
+	      .custom-slider {
+	        gap: 40px;
+	      }
+	      &.selected {
+	        opacity: 1;
+	        .custom-slider {
+	          display: flex;
+	          flex-direction: column;
+	        }
+	      }
+	      &:not(.selected) {
+	        transform: scale(0.7);
+	        transform-origin: top;
+	      }
+	    }
+	  }
+	}
+	
+	.project-info {
+	  .project-slider {
+	    .slick-list {
+	      padding: 0 !important;
+	    }
+	  }
+	  .slick-slide {
+	    opacity: 0.05;
+	  }
+	  .slick-active {
+	    opacity: 0.2;
+	  }
+	}
+	
+	.ril__inner {
+	  direction: ltr;
+	}
+	
+	.ReactModal__Overlay {
+	  z-index: 99999 !important;
 	}
 
 ```
@@ -18758,6 +20609,28 @@ j2c-app/src/components/ui-component/Card/index.tsx```tsx
 
 ```
 
+j2c-app/src/components/ui-component/Card/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.card {
+	  border: 1px solid $darkPrimaryLight;
+	  border-radius: 12px;
+	}
+	
+	.cardHeader {
+	  border-bottom: 1px solid $darkPrimaryLight;
+	}
+	.title {
+	  font-size: 0.75rem;
+	  color: $grey900;
+	}
+	
+	.cardContent {
+	  padding: 20px 20px;
+	}
+
+```
+
 j2c-app/src/components/ui-component/TimeCountDown/index.tsx```tsx
 	import { useEffect, useRef } from 'react';
 	
@@ -19993,6 +21866,48 @@ j2c-app/src/components/ui-component/FormControl/index.tsx```tsx
 
 ```
 
+j2c-app/src/components/ui-component/FormControl/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.root {
+	  margin-top: 1px;
+	  margin-bottom: 1px;
+	  input {
+	    padding-top: 23px !important;
+	  }
+	}
+	
+	.hideLabel {
+	  input {
+	    padding-top: 0px !important;
+	  }
+	}
+	
+	.label {
+	  color: $grey700;
+	  font-size: 0.625rem;
+	  &[data-shrink='false'] {
+	    top: 50%;
+	    transform: translateY(-50%);
+	    padding: 0 16px;
+	    font-size: 0.875rem;
+	  }
+	  &[data-shrink='true'] {
+	    top: 50%;
+	    font-size: 0.625rem;
+	    transform: translateY(calc(-50% - 10px));
+	    padding: 0 16px;
+	    color: $grey700;
+	  }
+	}
+	
+	.errorMessage {
+	  position: absolute;
+	  top: 100%;
+	}
+
+```
+
 j2c-app/src/components/ui-component/Upload/index.tsx```tsx
 	import { ChangeEvent, useState } from 'react';
 	import { Button } from '@mui/material';
@@ -20046,6 +21961,18 @@ j2c-app/src/components/ui-component/Upload/index.tsx```tsx
 
 ```
 
+j2c-app/src/components/ui-component/Upload/styles.module.scss```scss
+	.imageLocal {
+	  position: absolute;
+	  inset: 0;
+	  z-index: 0;
+	  width: 100%;
+	  height: 100%;
+	  object-fit: contain;
+	}
+
+```
+
 j2c-app/src/components/ui-component/Link/index.tsx```tsx
 	import NextLink, { LinkProps } from 'next/link';
 	import { Box, BoxProps } from '@mui/material';
@@ -20061,6 +21988,22 @@ j2c-app/src/components/ui-component/Link/index.tsx```tsx
 	export default function Link(props: ILinkProps) {
 	  const { className } = props;
 	  return <Box component={NextLink} {...props} className={cs(styles.link, className)} />;
+	}
+
+```
+
+j2c-app/src/components/ui-component/Link/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.link {
+	  color: $secondaryNormal;
+	  text-decoration: none;
+	  &:hover {
+	    color: $secondaryNormalHover;
+	  }
+	  &:active {
+	    color: $secondaryNormalActive;
+	  }
 	}
 
 ```
@@ -20082,6 +22025,54 @@ j2c-app/src/components/ui-component/TextField/index.tsx```tsx
 	      }}
 	    />
 	  );
+	}
+
+```
+
+j2c-app/src/components/ui-component/TextField/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.root {
+	  :global {
+	    .MuiOutlinedInput-root {
+	      border-radius: 12px;
+	      fieldset {
+	        border-color: #00000023;
+	      }
+	    }
+	    .MuiInputBase-root {
+	      background-color: $grey50;
+	    }
+	  }
+	  label[data-shrink='false'] {
+	    margin-top: 5px;
+	  }
+	  input {
+	    height: 62px;
+	    box-sizing: border-box;
+	    color: $grey900;
+	    font-weight: 500;
+	    background-color: $grey50;
+	    border-radius: inherit;
+	  }
+	}
+	
+	.sizeSmall {
+	  label[data-shrink='false'] {
+	    margin-top: 1px;
+	  }
+	  input {
+	    height: 42px;
+	  }
+	}
+	
+	.sizeMedium {
+	  label[data-shrink='false'] {
+	    margin-top: -1px;
+	  }
+	  input {
+	    height: 52px;
+	  }
 	}
 
 ```
@@ -20285,6 +22276,45 @@ j2c-app/src/components/ui-component/inputs/OutlinedInput/index.tsx```tsx
 
 ```
 
+j2c-app/src/components/ui-component/inputs/OutlinedInput/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.notchedOutline {
+	  border-color: $border;
+	  top: 0;
+	  border-radius: 12px;
+	  legend {
+	    display: none;
+	    font-size: 0;
+	  }
+	}
+	
+	.root {
+	  border-radius: 12px;
+	  overflow: hidden;
+	  background-color: $grey50;
+	}
+	
+	.input {
+	  font-size: 0.875rem;
+	  padding: 0px 16px 0px 16px;
+	  box-sizing: border-box;
+	  height: 66px;
+	  background-color: $grey50;
+	  &::placeholder {
+	    color: $grey700;
+	    opacity: 1;
+	  }
+	}
+	
+	.sizeMedium {
+	  height: 48px;
+	  padding-top: 12px;
+	  padding-bottom: 0;
+	}
+
+```
+
 j2c-app/src/components/ui-component/inputs/Amount/index.tsx```tsx
 	import * as React from 'react';
 	import { NumericFormat, NumericFormatProps, NumberFormatValues } from 'react-number-format';
@@ -20395,6 +22425,92 @@ j2c-app/src/components/ui-component/buttons/Button/index.tsx```tsx
 	  );
 	}
 
+```
+
+j2c-app/src/components/ui-component/buttons/Button/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.root {
+	  border-radius: 4px;
+	}
+	
+	.sizeLarge {
+	  height: 44px;
+	  font-size: 0.875rem;
+	}
+	
+	.containedError {
+	  background-color: $highlightNormal;
+	}
+	
+	.loading {
+	  img,
+	  svg {
+	    opacity: 0;
+	  }
+	}
+	.loadingIndicator {
+	  img,
+	  svg {
+	    opacity: 1;
+	  }
+	}
+
+```
+
+j2c-app/src/components/ui-component/table/default.scss```scss
+	@import 'styles/variables.module';
+	
+	.tableActionIcon {
+	  font-size: 20px;
+	  cursor: pointer;
+	  padding: 0;
+	  margin: 0;
+	  min-width: 0;
+	  display: block;
+	  line-height: 1;
+	}
+	.tableActionIconEdit {
+	  color: $grey600;
+	}
+	.tableActionIconDelete,
+	.tableActionIconLock,
+	.tableActionIconDelete {
+	  color: $primaryMain;
+	}
+	.tableActionIconView {
+	  color: $grey600;
+	}
+
+```
+
+j2c-app/src/components/ui-component/table/table.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.iconSort{
+	  position: relative;
+	  width: 24px;
+	  height: 24px;
+	}
+	.arrow{
+	  position: absolute;
+	  left: 0;
+	  width: auto;
+	  height: auto;
+	  color: rgba($grey600, 0.4);
+	}
+	.arrowUp{
+	  top: -3px;
+	}
+	.arrowDown{
+	  bottom: -3px;
+	}
+	.active{
+	  color: $primaryMain;
+	}
+	.icon{
+	  color: 'red'
+	}
 ```
 
 j2c-app/src/components/ui-component/table/index.tsx```tsx
@@ -22444,6 +24560,17 @@ j2c-app/src/components/dialogs/contractor/ContractorDialog.tsx```tsx
 
 ```
 
+j2c-app/src/components/dialogs/builder/style.module.scss```scss
+	.imageLocal{
+	  position: absolute;
+	  inset: 0;
+	  z-index: 0;
+	  width: 100%;
+	  height: 100%;
+	  object-fit: contain;
+	}
+```
+
 j2c-app/src/components/dialogs/builder/BuilderDialog.tsx```tsx
 	import {
 	  Box,
@@ -22770,6 +24897,17 @@ j2c-app/src/components/dialogs/builder/BuilderDeleteDialog.tsx```tsx
 	  );
 	}
 
+```
+
+j2c-app/src/components/projects/Add/style.module.scss```scss
+	.imageLocal{
+	  position: absolute;
+	  inset: 0;
+	  z-index: 0;
+	  width: 100%;
+	  height: 100%;
+	  object-fit: contain;
+	}
 ```
 
 j2c-app/src/components/projects/Add/index.tsx```tsx
@@ -23256,6 +25394,10 @@ j2c-app/src/components/projects/List/index.tsx```tsx
 
 ```
 
+j2c-app/src/components/projects/List/styles.module.scss```scss
+
+```
+
 j2c-app/src/components/projects/List/components/TotalBudget/index.tsx```tsx
 	import * as React from 'react';
 	import { Typography } from '@mui/material';
@@ -23299,6 +25441,22 @@ j2c-app/src/components/projects/List/components/ProjectName/index.tsx```tsx
 	      </Typography>
 	    </Box>
 	  );
+	}
+
+```
+
+j2c-app/src/components/projects/List/components/ProjectName/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.wrapper {
+	  display: flex;
+	  align-items: center;
+	  padding: 30px 0;
+	}
+	
+	.text {
+	  font-weight: 500;
+	  margin-left: 10px;
 	}
 
 ```
@@ -23431,6 +25589,23 @@ j2c-app/src/components/projects/List/components/StartDate/index.tsx```tsx
 	  return <Typography variant="h6">{isValid(startDate) && startDate ? format(startDate, VISIABLE_DATE_FORMAT) : ''}</Typography>;
 	}
 
+```
+
+j2c-app/src/components/projects/Detail/style.module.scss```scss
+	
+	@import 'styles/variables.module';
+	
+	.tab{
+	  min-height: 52px;
+	}
+	.overviewLabel{
+	  color: $grey700;
+	  font-weight: 700;
+	  margin-bottom: 2px;
+	}
+	.overviewValue{
+	  color: #202020;
+	}
 ```
 
 j2c-app/src/components/projects/Detail/index.tsx```tsx
@@ -24238,6 +26413,55 @@ j2c-app/src/components/authentication/auth-forms/ThirdParty/index.tsx```tsx
 
 ```
 
+j2c-app/src/components/authentication/auth-forms/ThirdParty/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.loginForm3Party {
+	  :global {
+	    .firebaseui-container {
+	      width: 100%;
+	      max-width: 100%;
+	    }
+	    .firebaseui-card-content {
+	      padding: 0;
+	    }
+	    button {
+	      max-width: 100%;
+	      width: 100%;
+	      display: flex;
+	      align-items: center;
+	      justify-content: center;
+	      height: 48px;
+	      border-radius: 12px;
+	      border: 1px solid $grey100;
+	      background-color: $grey50 !important;
+	      cursor: pointer;
+	      box-shadow: none;
+	    }
+	  }
+	}
+	
+	.loginForm3PartyItem {
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+	  height: 48px;
+	  border-radius: 12px;
+	  border: 1px solid #eef2f6;
+	  background-color: #f8fafc;
+	  cursor: pointer;
+	  color: $grey600;
+	}
+	
+	.loginForm3PartyItemIcon {
+	  margin-right: 15px;
+	  img {
+	    display: block;
+	  }
+	}
+
+```
+
 j2c-app/src/components/authentication/auth-forms/Slides/index.tsx```tsx
 	import NextImage from 'next/image';
 	import Slider from 'react-slick';
@@ -24294,6 +26518,91 @@ j2c-app/src/components/authentication/auth-forms/Slides/index.tsx```tsx
 
 ```
 
+j2c-app/src/components/authentication/auth-forms/Slides/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.slide {
+	  width: 100%;
+	  overflow: hidden;
+	  :global {
+	    .slick-dots {
+	      position: absolute;
+	      bottom: 100px;
+	      li {
+	        width: auto;
+	        height: auto;
+	        margin: 0;
+	        padding: 0 6px;
+	        button {
+	          font-size: 0;
+	          padding: 0;
+	          width: 6px;
+	          height: 6px;
+	          background: $secondaryNormal;
+	          border-radius: 6px;
+	          &:before {
+	            display: none;
+	          }
+	        }
+	        &.slick-active {
+	          button {
+	            width: 40px;
+	          }
+	        }
+	      }
+	    }
+	  }
+	}
+	
+	.slideItems {
+	  width: 100%;
+	  overflow: hidden;
+	}
+	
+	.slideItem {
+	  width: 100%;
+	}
+	
+	.slideItemInner {
+	  position: relative;
+	  display: flex;
+	  justify-content: center;
+	  align-items: flex-end;
+	  height: 100vh;
+	}
+	
+	.slideItemBackground {
+	  object-fit: cover;
+	}
+	
+	.slideItemContent {
+	  position: relative;
+	  z-index: 2;
+	  width: 405px;
+	  text-align: center;
+	  padding-bottom: 150px;
+	}
+	
+	.slideItemSubTitle {
+	  font-size: 1rem;
+	  font-size: 1.5;
+	  margin-top: 20px;
+	}
+	
+	.slideItemTitle {
+	  font-size: 2.125rem;
+	  line-height: 1.23;
+	  font-weight: 700;
+	  font-family: $font-type;
+	}
+	
+	.navigation {
+	  position: absolute;
+	  bottom: 100px;
+	}
+
+```
+
 j2c-app/src/components/authentication/auth-forms/Divider/index.tsx```tsx
 	import * as React from 'react';
 	import { Box, Divider as MUIDivider } from '@mui/material';
@@ -24317,6 +26626,41 @@ j2c-app/src/components/authentication/auth-forms/Divider/index.tsx```tsx
 	      </Box>
 	    </MUIDivider>
 	  );
+	}
+
+```
+
+j2c-app/src/components/authentication/auth-forms/Divider/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.loginFormOr {
+	  margin: 20px 0 20px 0 !important;
+	}
+	
+	.loginFormOrText {
+	  display: flex;
+	  width: 136px;
+	  height: 44px;
+	  align-items: center;
+	  justify-content: center;
+	  border-radius: 12px;
+	  border: 1px solid #ede7f6;
+	  font-size: 16px;
+	  font-weight: 500;
+	  text-transform: uppercase;
+	}
+	
+	.signUp {
+	  margin-top: 22px;
+	  padding-top: 22px;
+	  border-top: 1px solid $grey100;
+	  display: flex;
+	  justify-content: flex-end;
+	  font-weight: 500;
+	}
+	
+	.signUpLink {
+	  color: $grey500;
 	}
 
 ```
@@ -24484,6 +26828,31 @@ j2c-app/src/components/authentication/auth-forms/ForgotPasswordForm/index.tsx```
 	}
 	
 	export default ForgotPasswordForm;
+
+```
+
+j2c-app/src/components/authentication/auth-forms/ForgotPasswordForm/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.signUp {
+	  margin-top: 22px;
+	  padding-top: 22px;
+	  border-top: 1px solid $grey100;
+	  display: flex;
+	  justify-content: flex-end;
+	}
+	
+	.signUpLink {
+	  color: $grey500;
+	  font-weight: 500;
+	}
+	
+	.note {
+	  line-height: 1.5;
+	  max-width: 380px;
+	  font-weight: normal;
+	  margin: 20px 0;
+	}
 
 ```
 
@@ -24742,6 +27111,15 @@ j2c-app/src/components/authentication/auth-forms/VerifyEmailForm/components/Form
 
 ```
 
+j2c-app/src/components/authentication/auth-forms/VerifyEmailForm/components/Form/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.line {
+	  margin: 20px 0;
+	}
+
+```
+
 j2c-app/src/components/authentication/auth-forms/VerifyEmailForm/components/VerifyCodeInput/index.tsx```tsx
 	import { ChangeEvent, useRef } from 'react';
 	import { Input, Box } from '@mui/material';
@@ -24799,6 +27177,36 @@ j2c-app/src/components/authentication/auth-forms/VerifyEmailForm/components/Veri
 	        })}
 	    </Box>
 	  );
+	}
+
+```
+
+j2c-app/src/components/authentication/auth-forms/VerifyEmailForm/components/VerifyCodeInput/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.wrapper {
+	  display: flex;
+	  gap: 20px;
+	}
+	
+	.inputRoot {
+	  border-radius: 12px;
+	  background-color: $grey50;
+	  height: 48px;
+	
+	  &::after,
+	  &:before {
+	    display: none;
+	  }
+	}
+	.input {
+	  font-size: 0.875rem;
+	  font-weight: 500;
+	  text-align: center;
+	}
+	
+	.error {
+	  border: 1px solid $errorMain;
 	}
 
 ```
@@ -25005,6 +27413,24 @@ j2c-app/src/components/authentication/auth-forms/LoginForm/index.tsx```tsx
 
 ```
 
+j2c-app/src/components/authentication/auth-forms/LoginForm/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.signUp {
+	  margin-top: 22px;
+	  padding-top: 22px;
+	  border-top: 1px solid $grey100;
+	  display: flex;
+	  justify-content: flex-end;
+	}
+	
+	.signUpLink {
+	  color: $grey500;
+	  font-weight: 500;
+	}
+
+```
+
 j2c-app/src/components/authentication/auth-forms/FormContainer/index.tsx```tsx
 	import React from 'react';
 	import NextImage from 'next/image';
@@ -25052,6 +27478,58 @@ j2c-app/src/components/authentication/auth-forms/FormContainer/index.tsx```tsx
 	      </Grid>
 	    </Grid>
 	  );
+	}
+
+```
+
+j2c-app/src/components/authentication/auth-forms/FormContainer/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.formContainer {
+	  background-color: $grey100;
+	}
+	.left {
+	  display: flex;
+	  align-items: center;
+	  justify-content: center;
+	  padding: 20px 20px;
+	  height: 100vh;
+	  overflow: auto;
+	}
+	
+	.innerLeft {
+	  width: 90%;
+	  background: #fff;
+	  padding: 40px 40px;
+	  border-radius: 12px;
+	  max-width: 508px;
+	  margin: auto;
+	}
+	
+	.leftHead {
+	  display: flex;
+	  justify-content: space-between;
+	  margin: 0 0 25px 0;
+	}
+	
+	.leftHeadTitle {
+	  color: $primaryNormal;
+	  margin: 0 0 5px 0;
+	}
+	
+	.leftHeadSubTitle {
+	  font-weight: 400;
+	  color: $grey700;
+	}
+	
+	// right side
+	
+	.rightInner {
+	  position: relative;
+	  display: flex;
+	  justify-content: center;
+	  align-items: flex-end;
+	  height: 100vh;
 	}
 
 ```
@@ -25305,6 +27783,25 @@ j2c-app/src/components/authentication/auth-forms/RegisterForm/index.tsx```tsx
 
 ```
 
+j2c-app/src/components/authentication/auth-forms/RegisterForm/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.signUp {
+	  margin-top: 22px;
+	  padding-top: 22px;
+	  border-top: 1px solid $grey100;
+	  display: flex;
+	  justify-content: flex-end;
+	  font-weight: 500;
+	}
+	
+	.signUpLink {
+	  color: $grey500;
+	  font-weight: 500;
+	}
+
+```
+
 j2c-app/src/components/authentication/auth-forms/ResetPasswordForm/index.tsx```tsx
 	import { Box, Grid, Typography } from '@mui/material';
 	import { useIntl } from 'react-intl';
@@ -25483,6 +27980,31 @@ j2c-app/src/components/authentication/auth-forms/ResetPasswordForm/index.tsx```t
 	}
 	
 	export default ResetPasswordForm;
+
+```
+
+j2c-app/src/components/authentication/auth-forms/ResetPasswordForm/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.signUp {
+	  margin-top: 22px;
+	  padding-top: 22px;
+	  border-top: 1px solid $grey100;
+	  display: flex;
+	  justify-content: flex-end;
+	}
+	
+	.signUpLink {
+	  color: $grey500;
+	  font-weight: 500;
+	}
+	
+	.note {
+	  line-height: 1.5;
+	  max-width: 380px;
+	  font-weight: normal;
+	  margin: 20px 0;
+	}
 
 ```
 
@@ -25959,6 +28481,36 @@ j2c-app/src/components/account/Profile/components/ProfilePicture/index.tsx```tsx
 
 ```
 
+j2c-app/src/components/account/Profile/components/ProfilePicture/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.wrapper {
+	  display: flex;
+	  flex-direction: column;
+	  align-items: center;
+	  justify-content: center;
+	}
+	
+	.avatar {
+	  margin: 0 auto;
+	}
+	
+	.button {
+	  position: relative;
+	}
+	
+	.file {
+	  position: absolute;
+	  top: 0;
+	  bottom: 0;
+	  left: 0;
+	  right: 0;
+	  opacity: 0;
+	  cursor: pointer;
+	}
+
+```
+
 j2c-app/src/components/user/index.tsx```tsx
 	'use client';
 	import { Box, Stack, Typography } from '@mui/material';
@@ -26239,6 +28791,46 @@ j2c-app/src/components/user/component/ButtonSelectStatus.tsx```tsx
 
 ```
 
+j2c-app/src/components/user/component/styles.module.scss```scss
+	@import 'styles/_variables.module';
+	
+	.selectButton{
+	  min-width: fit-content;
+	  display: flex;
+	  gap: 12px;
+	  border-radius: 4px;
+	  border-color: $highlightNormal;
+	  color: $highlightNormal;
+	}
+	.selectButton:hover{
+	  border-color: $highlightNormal;
+	  color: $highlightNormal;
+	  background-color: transparent;
+	}
+	.popoverContent{
+	  border: 1px solid $highlightNormal;
+	  min-width: 150px;
+	  border-radius: 4px;
+	  background-color: #FEFEFE;
+	  box-shadow: none;
+	}
+	.divider{
+	  border-color: $highlightNormal;
+	}
+	.status{
+	  font-weight: 500;
+	  padding: 10px 16px;
+	  cursor: pointer;
+	}
+	
+	.buttonDelete{
+	  padding: 5px 15px;
+	  border-color: #F20202;
+	  min-width: fit-content;
+	  border-radius: 4px;
+	}
+```
+
 j2c-app/src/components/user/detail/index.tsx```tsx
 	'use client';
 	
@@ -26495,6 +29087,36 @@ j2c-app/src/components/user/detail/components/ProfilePicture/index.tsx```tsx
 
 ```
 
+j2c-app/src/components/user/detail/components/ProfilePicture/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.wrapper {
+	  display: flex;
+	  flex-direction: column;
+	  align-items: center;
+	  justify-content: center;
+	}
+	
+	.avatar {
+	  margin: 0 auto;
+	}
+	
+	.button {
+	  position: relative;
+	}
+	
+	.file {
+	  position: absolute;
+	  top: 0;
+	  bottom: 0;
+	  left: 0;
+	  right: 0;
+	  opacity: 0;
+	  cursor: pointer;
+	}
+
+```
+
 j2c-app/src/components/Breadcrumbs/index.tsx```tsx
 	import React, { KeyboardEvent, useMemo } from 'react';
 	import NextImage from 'next/image';
@@ -26596,6 +29218,47 @@ j2c-app/src/components/Breadcrumbs/index.tsx```tsx
 	  );
 	}
 
+```
+
+j2c-app/src/components/Breadcrumbs/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.wrapper {
+	  background-color: #fff;
+	  padding: 15px 18px;
+	  border-radius: 8px;
+	  margin-bottom: 32px;
+	  display: flex;
+	  justify-content: space-between;
+	  width: 100%;
+	}
+	
+	.separator {
+	  margin-left: 4px;
+	  margin-right: 4px;
+	}
+	
+	.home {
+	  display: flex;
+	  align-items: center;
+	  svg {
+	    margin-left: 9px;
+	  }
+	}
+	.search{
+	  display: flex;
+	  align-items: center;
+	  padding: 5px 16px;
+	  border-radius: 12px;
+	  border: 1px solid #e0e0e0;
+	  gap: 4px;
+	}
+```
+
+j2c-app/src/components/contractor/contractor.module.scss```scss
+	.addButton{
+	  font-size: 1.5rem;
+	}
 ```
 
 j2c-app/src/components/contractor/index.tsx```tsx
@@ -26800,6 +29463,12 @@ j2c-app/src/components/contractor/index.tsx```tsx
 	
 	export default Contractor;
 
+```
+
+j2c-app/src/components/builder/builder.module.scss```scss
+	.addButton{
+	  font-size: 1.5rem;
+	}
 ```
 
 j2c-app/src/components/builder/index.tsx```tsx
