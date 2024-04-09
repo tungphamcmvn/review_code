@@ -1,96 +1,48 @@
-commit d0169d2d72464aeb4e2ef18f797054120caa26f1
+commit bcde9605b283588e059d34b36499d764fc0a763d
 Author: Huy Pham <huyphamnguyen@gmail.com>
-Date:   Sun Apr 7 17:19:19 2024 +0700
+Date:   Sun Apr 7 16:41:57 2024 +0700
 
-    Fix comment on PR
+    Fix api project detail
 
-diff --git a/src/backend/models/project.model.ts b/src/backend/models/project.model.ts
-index 1bd1855..ad4cf36 100644
---- a/src/backend/models/project.model.ts
-+++ b/src/backend/models/project.model.ts
-@@ -62,6 +62,11 @@ const ProjectSchema: mongoose.Schema<ProjectType> = new mongoose.Schema(
-       required: false,
-       default: null
-     },
-+    startDate: {
-+      type: Date,
-+      required: false,
-+      default: new DateUTC()
-+    },
-     items: {
-       type: String,
-       required: false,
-diff --git a/src/backend/services/project.service.ts b/src/backend/services/project.service.ts
-index 681349a..36e101b 100644
---- a/src/backend/services/project.service.ts
-+++ b/src/backend/services/project.service.ts
+diff --git a/next.config.js b/next.config.js
+index 546f2eb..a923bbd 100644
+--- a/next.config.js
++++ b/next.config.js
+@@ -38,7 +38,12 @@ module.exports = {
+     }
+   },
+   images: {
+-    domains: ['flagcdn.com']
++    remotePatterns: [
++      {
++        protocol: 'https',
++        hostname: 'j2ccdn.tnodes.com'
++      }
++    ]
+   },
+   env: {
+     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+diff --git a/src/components/projects/Detail/index.tsx b/src/components/projects/Detail/index.tsx
+index 612cce3..4b1d87a 100644
+--- a/src/components/projects/Detail/index.tsx
++++ b/src/components/projects/Detail/index.tsx
+@@ -44,8 +44,8 @@ const ProjectDetail = () => {
+   const getData = async () => {
+     if (params.id) {
+       const result = await execute(getProject(projectId));
+-      if (result.data) {
+-        setProject(result.data);
++      if (result?.data?.project) {
++        setProject(result.data.project);
+       } else {
+         router.push(projectUrl);
+       }
+diff --git a/src/types/resource/project.ts b/src/types/resource/project.ts
+index a82e659..cce0593 100644
+--- a/src/types/resource/project.ts
++++ b/src/types/resource/project.ts
 @@ -1,4 +1,3 @@
--import { ObjectId } from 'bson';
- import ProjectRepositoryInterface from '@/backend/repositories/interfaces/project.repository.interface';
- import RoleRepositoryInterface from '@/backend/repositories/interfaces/role.repository.interface';
- import { ROLE_LEVEL_ENUM_BUILDER, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
-@@ -12,6 +11,7 @@ import { parsePayloadProjectToCreateData } from '@/utils/helper';
- import { FolderName } from '@/utils/enums';
- import UserDto, { User } from '@/utils/dtos/user.dto';
- import PaginationStruct from '../structs/pagination.struct';
-+import NotFoundException from '../exceptions/notfound.exception';
+-
+ import { Project as ProjectDto } from '@/utils/dtos/project.dto';
  
- export default class ProjectService {
-   protected projectRepository: ProjectRepositoryInterface;
-@@ -215,7 +215,6 @@ export default class ProjectService {
-     }
-     projectDto.setData({
-       ...defaultData,
--      _id: new ObjectId(),
-       startDate: data.startDate,
-       projectName: data.projectName,
-       address: data.address,
-@@ -237,7 +236,7 @@ export default class ProjectService {
-   async updateProject(projectId: string, formData: FormData): Promise<mongoose.Document | null> {
-     const project = await this.getProject(projectId);
-     if (!project) {
--      throw 'Project not found';
-+      throw new NotFoundException('Project not found');
-     }
-     const data = parsePayloadProjectToCreateData(formData);
- 
-@@ -245,7 +244,7 @@ export default class ProjectService {
-     let imageUrl = project.imageUrl;
- 
-     if (data.image) {
--      imageUrl = imageUrl = await this.storageFactory.getStorage().uploadFile(data.image, FolderName.PROJECTS);
-+      imageUrl = await this.storageFactory.getStorage().uploadFile(data.image, FolderName.PROJECTS);
-     }
- 
-     try {
-diff --git a/src/backend/validator/project.validator.ts b/src/backend/validator/project.validator.ts
-index e4346ab..46757ad 100644
---- a/src/backend/validator/project.validator.ts
-+++ b/src/backend/validator/project.validator.ts
-@@ -1,5 +1,5 @@
- import BaseValidator from '@/backend/validator/base.validator';
--import { string } from 'yup';
-+import { date, number, string } from 'yup';
- import UploadValidator from './upload.validator';
- import { FolderName } from '@/utils/enums';
- import { ProjectRequestType } from '@/utils/dtos/project.dto';
-@@ -12,9 +12,9 @@ export default class ProjectValidator extends BaseValidator {
- 
-   validateRules() {
-     const projectNameRule = { projectName: string().required() };
--    const currentClaimNumberRule = { currentClaimNumber: string().required() };
-+    const currentClaimNumberRule = { currentClaimNumber: number().required() };
-     const addressRule = { address: string().required() };
--    const startDateRule = { startDate: string().required() };
-+    const startDateRule = { startDate: date().required() };
-     this.rules = [projectNameRule, currentClaimNumberRule, addressRule, startDateRule];
- 
-     return this;
-@@ -24,6 +24,7 @@ export default class ProjectValidator extends BaseValidator {
-     const data: ProjectRequestType = this.data;
-     if (!!data?.image) {
-       const uploadValidator = new UploadValidator({ file: data.image, folderName: FolderName.PROJECTS });
-+      uploadValidator.validate();
-       return uploadValidator.getErrors().length === 0;
-     }
-     return true;
+ export interface IProject extends Omit<ProjectDto, '_id'> {

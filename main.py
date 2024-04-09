@@ -54,13 +54,13 @@ def export_file_git_diff(folder_name):
 
         # Print out the first 10 non-merge commits
         print("Non-merge commits:")
-        for i, commit in enumerate(non_merge_commits[:10], start=1):
+        for i, commit in enumerate(non_merge_commits[:20], start=1):
             print(f"{i}. {commit}")
 
-        selected_commit = int(input("Select a number from 1 to 10 to view commit details: "))
+        selected_commit = int(input("Select a number from 1 to 20 to view commit details: "))
 
         # Output a file containing git diff information for the selected commit
-        if selected_commit in range(1, min(11, len(non_merge_commits) + 1)):
+        if selected_commit in range(1, min(21, len(non_merge_commits) + 1)):
             print(f"Commit {selected_commit}: {non_merge_commits[selected_commit - 1]}")
             git_diff_file = os.path.join(root_folder, "git-diff.txt")
             with open(git_diff_file, "w") as f:
@@ -69,7 +69,7 @@ def export_file_git_diff(folder_name):
                 subprocess.run(['git', 'show', selected_commit_hash], stdout=f, text=True, check=True)
             print("Successfully saved the file to git-diff.txt.")
         else:
-            print("Invalid number. Please select again from 1 to 10.")
+            print("Invalid number. Please select again from 1 to 20.")
     else:
         print("Log file 'git-log.txt' does not exist.")
     
