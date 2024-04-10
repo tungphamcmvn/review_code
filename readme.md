@@ -2,35 +2,33 @@
 ```txt
 Please analyze the 'git-diff.txt' file in relation to the attached codebase structured for a Next.js, React.js, and MongoDB application, as detailed in the 'j2c-app_output.txt' file. The application structure includes various directories and files, each with specific functionalities as outlined below:
 
-bin: MongoDB data dump commands.
-lib: OpenAPI Specifications generation for API endpoints.
-public: Image assets.
-src: Main source code, including:
-app: Web page route handlers for server-side rendering.
-dashboard: Dashboard interface components.
-minimal: Screens for authentication and user verification.
-api: Backend API endpoints categorized by model or functionality.
-[...nextauth]: Authentication route handlers.
-backend: Database connection and API logic.
-middleware: Authentication and authorization checks.
-model: MongoDB schema definitions.
-repositories: Database interaction methods.
-services: API controllers.
-storage: S3 configuration for file storage.
-observer: Notification configuration.
-structs: Common API response formats.
-validator: Input validation classes and rules.
-constant: Application-wide constants.
-contexts: Session context management.
-hook: Client-side logic.
-layout, menu-items, scss, store, theme: UI layout components.
-types: TypeScript object types.
-utils: Utility functions and constants.
-datetime: UTC time conversion class.
-dtos: Data transfer object conversions.
-views: Client-side rendering components.
-components: UI components for views.
-types: Custom fields for next-auth.
+j2c-app/lib: OpenAPI Specifications generation for API endpoints.
+j2c-app/types: Custom fields for next-auth.
+j2c-app/src: Main source code, including:
+j2c-app/src/app: Web page route handlers for server-side rendering.
+j2c-app/src/app/(dashboard): Dashboard interface components.
+j2c-app/src/app/(minimal): Screens for authentication and user verification.
+j2c-app/src/app/api: Backend API endpoints categorized by model or functionality.
+j2c-app/src/backend: Database connection and API logic.
+j2c-app/src/backend/middleware: Authentication and authorization checks.
+j2c-app/src/backend/model: MongoDB schema definitions.
+j2c-app/src/backend/repositories: Database interaction methods.
+j2c-app/src/backend/services: API controllers.
+j2c-app/src/backend/storage: S3 configuration for file storage.
+j2c-app/src/backend/observer: Notification configuration.
+j2c-app/src/backend/structs: Common API response formats.
+j2c-app/src/backend/validator: Input validation classes and rules.
+j2c-app/src/components: UI components for views.
+j2c-app/src/constant: Application-wide constants.
+j2c-app/src/contexts: Session context management.
+j2c-app/src/hook: Client-side logic.
+j2c-app/src/layout, menu-items scss, store, theme: UI layout components.
+j2c-app/src/types: TypeScript object types.
+j2c-app/src/utils: Utility functions and constants.
+j2c-app/src/utils/datetime: UTC time conversion class.
+j2c-app/src/utils/dtos: Data transfer object conversions.
+j2c-app/src/views: Client-side rendering components.
+
 Configuration and environment files such as .env, next.config.js, docker-compose.yml, entrypoint.sh, .eslintrc, .prettierrc, and tsconfig.json.
 Your task is to:
 

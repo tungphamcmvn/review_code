@@ -28,50 +28,22 @@ def export_file_git_diff(folder_name):
     # Set the paths
     root_folder = os.getcwd()
     repo_path = os.path.join(root_folder, folder_name)
-    log_file = os.path.join(root_folder, "git-log.txt")
+    log_file = os.path.join(root_folder, "git-pull_request.txt")
+    
+    os.chdir(repo_path)
+    subprocess.run(['gh', 'pr', 'list'], text=True, check=True)
 
-    # Run git log command and pipe output to log file
-    with open(log_file, "w") as f:
+    selected_pr = int(input("Select a number to view pull request details: "))
+
+    git_diff_file = os.path.join(root_folder, "git-diff.txt")
+    with open(git_diff_file, "w") as f:
         os.chdir(repo_path)
-        subprocess.run(['git', 'log', '--all'], stdout=f, text=True, check=True)
-
-    print("Git log exported to git-log.txt")
-
-    if os.path.exists(log_file):
-        with open(log_file, "r") as file:
-            log_content = file.read()
-
-        # Split commits into a list
-        commits = log_content.strip().split("commit ")
-
-        # Initialize a list to store non-merge commits
-        non_merge_commits = []
-
-        # Check each commit for the presence of "Merge:" line, if not present, it's a non-merge commit
-        for commit in commits[1:]:
-            if "Merge:" not in commit:
-                non_merge_commits.append(commit)
-
-        # Print out the first 10 non-merge commits
-        print("Non-merge commits:")
-        for i, commit in enumerate(non_merge_commits[:20], start=1):
-            print(f"{i}. {commit}")
-
-        selected_commit = int(input("Select a number from 1 to 20 to view commit details: "))
-
-        # Output a file containing git diff information for the selected commit
-        if selected_commit in range(1, min(21, len(non_merge_commits) + 1)):
-            print(f"Commit {selected_commit}: {non_merge_commits[selected_commit - 1]}")
-            git_diff_file = os.path.join(root_folder, "git-diff.txt")
-            with open(git_diff_file, "w") as f:
-                os.chdir(repo_path)
-                selected_commit_hash = non_merge_commits[selected_commit - 1].splitlines()[0]
-                subprocess.run(['git', 'show', selected_commit_hash], stdout=f, text=True, check=True)
-            print("Successfully saved the file to git-diff.txt.")
-        else:
-            print("Invalid number. Please select again from 1 to 20.")
-    else:
-        print("Log file 'git-log.txt' does not exist.")
+        subprocess.run(['gh', 'pr', 'view', str(selected_pr)], stdout=f, text=True, check=True)
+        subprocess.run(['echo', '\n'], stdout=f, text=True, check=True)
+        subprocess.run(['gh', 'pr', 'diff', str(selected_pr)], stdout=f, text=True, check=True)
+    print("Successfully saved the file to git-diff.txt.")
+        
+    
     
     
 # Specify the input directory

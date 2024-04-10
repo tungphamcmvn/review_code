@@ -1,59 +1,31 @@
-commit 22a287e955e807fa41b8c17388f06639de8817f2
-Author: Huy Pham <huyphamnguyen@gmail.com>
-Date:   Sun Apr 7 14:10:30 2024 +0700
+title:	correct the readme content
+state:	OPEN
+author:	thomasvan
+labels:	
+assignees:	
+reviewers:	
+projects:	
+milestone:	
+number:	16
+url:	https://github.com/invik-33/j2c-app/pull/16
+additions:	2
+deletions:	2
+--
+in-corrected docker command has been fixed 
 
-    Apply api delete project
 
-diff --git a/src/components/projects/DeleteDialog/index.tsx b/src/components/projects/DeleteDialog/index.tsx
-index f4abe3a..d01a0af 100644
---- a/src/components/projects/DeleteDialog/index.tsx
-+++ b/src/components/projects/DeleteDialog/index.tsx
-@@ -6,14 +6,14 @@ import { GridCloseIcon } from '@mui/x-data-grid';
- import * as notify from 'utils/notify';
- import { useAsync } from 'hooks/useAsync';
- import { Button } from 'ui-component/buttons';
--import { Project } from 'utils/dtos/project.dto';
- import { deleteProject } from 'utils/services/project';
- import styles from '@/styles/dataDialog.module.scss';
-+import { IProject } from '@/types/resource/project';
+diff --git a/README.md b/README.md
+index c2a17bf..bba0b60 100644
+--- a/README.md
++++ b/README.md
+@@ -25,8 +25,8 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml stop
+ # MongoDB:27017
  
- interface ProjectDeleteDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
--  project: Partial<Project>;
-+  project: Partial<IProject>;
-   onClose: () => void;
--  onSuccess?: (project: Partial<Project>) => void;
-+  onSuccess?: (project: Partial<IProject>) => void;
- }
+ # Start 
+-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
++docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
  
- export default function ProjectDeleteDialog({ onClose, project, onSuccess, ...props }: ProjectDeleteDialogProps) {
-@@ -30,7 +30,7 @@ export default function ProjectDeleteDialog({ onClose, project, onSuccess, ...pr
-   };
- 
-   const handleDelete = async () => {
--    const result = await request(deleteProject(`${project._id}`));
-+    const result = await request(deleteProject(`${project.id}`));
-     if (!result.error) {
-       if (onSuccess) onSuccess(project);
-       notify.success(formatMessage({ id: 'projectDialogDeletedSuccessful' }));
-diff --git a/src/utils/api.ts b/src/utils/api.ts
-index ffba8a2..0604e74 100644
---- a/src/utils/api.ts
-+++ b/src/utils/api.ts
-@@ -25,15 +25,11 @@ const APIS = {
-   VERIFY_CODE: '/auth/code/verify',
-   RESET_PASSWORD: '/auth/reset-password',
-   UPLOAD_FILE: '/file/upload',
--  GET_PROJECTS: '/project/list',
-+  PROJECT: '/project',
-   GET_PROJECT_ROLES: '/project/:id/roles',
-   GET_PROJECT_CONTRACTORS: '/project/:id/contractors',
-   GET_PROJECT_BUDGETS: '/project/:id/budgets',
--  GET_PROJECT_INVOICES: '/project/:id/invoices',
--  CREATE_PROJECT: '/project/create',
--  GET_PROJECT: '/project/:id',
--  UPDATE_PROJECT: '/project/:id',
--  DELETE_PROJECT: '/project/:id'
-+  GET_PROJECT_INVOICES: '/project/:id/invoices'
- };
- 
- export default APIS;
+ # Stop
+-docker-compose -f docker-compose.yml -f docker-compose.prod.yml --build stop
++docker-compose -f docker-compose.yml -f docker-compose.prod.yml stop
+ ```
