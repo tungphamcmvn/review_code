@@ -1,0 +1,71 @@
+<html>
+
+<head>
+  <title>Git Commit Analysis</title>
+  <style>
+    .negative {
+      background-color: red;
+    }
+
+    .positive {
+      background-color: green;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Git Commit Analysis</h1>
+  <h2>1. Commit Message</h2>
+  <p>The commit implements a contractor project invoices feature. It adds a new API route to retrieve invoices for a
+    given project ID, and creates an invoices tab component to display the invoice data in a table.</p>
+  <p class="positive">Commit Message: Implement contractor project invoices feature</p>
+  <ul>
+    <li>Add GET /api/contractor-project/[id]/invoices route to retrieve project invoices</li>
+    <li>Create ProjectInvoices component to display invoices data in a table</li>
+    <li>Add invoices tab to project details page</li>
+  </ul>
+  <h2>2. Application Architecture Alignment</h2>
+  <p>The changes mostly align well with the intended application architecture:</p>
+  <ul>
+    <li class="positive">The new API route is correctly placed under /api/contractor-project/[id]/invoices</li>
+    <li class="positive">The ProjectInvoices component is added under components/contractorProjects/Detail/invoices
+      which makes sense</li>
+    <li class="positive">Reusing existing UI components like Table, Button, etc.</li>
+  </ul>
+  <p class="negative">One improvement could be to move the invoice type definition (IInvoice) to the global types
+    directory since it is a core domain model that may be used in multiple places.</p>
+  <h2>3. Coding Best Practices</h2>
+  <p>The code generally follows good practices, but a few things could be improved:</p>
+  <ul>
+    <li class="positive">Uses functional components and hooks like useState, useEffect</li>
+    <li class="positive">TypeScript types are defined for component props</li>
+    <li class="negative">The mock invoice data should be moved to a separate file instead of being hardcoded in the API
+      route. An Invoice model and MongoDB collection should be created.</li>
+    <li class="negative">Strings like "Submitted", "Invoice Approved" should be extracted as constants or locale
+      messages</li>
+    <li class="negative">Date formatting logic should be extracted to a shared utility function</li>
+  </ul>
+  <h2>4. Performance and Security</h2>
+  <ul>
+    <li class="positive">Uses server-side rendering via Next.js API routes and getServerSideProps which is good for
+      performance</li>
+    <li class="negative">The API currently returns the entire invoices array which could be slow for large datasets.
+      Pagination should be implemented.</li>
+    <li class="negative">There is no authentication on the API route. It should check that the user is authorized to
+      view the project's invoices.</li>
+    <li class="negative">Invoice financial calculations are done on the frontend. To prevent tampering, calculations
+      like invoice total should be done on the backend.</li>
+  </ul>
+  <h2>5. Development Estimate</h2>
+  <p>For an experienced senior developer familiar with the codebase, implementing this feature would likely take in the
+    range of 6-10 hours:</p>
+  <ul>
+    <li>1-2 hours for the API route</li>
+    <li>3-5 hours for the invoices table component with status rendering, formatting, calculations, etc.</li>
+    <li>1-2 hours for adding the invoices tab and connecting it to the existing project page</li>
+    <li>1 hour for testing and code cleanup</li>
+  </ul>
+</body>
+
+</html>

@@ -1,0 +1,667 @@
+j2c-app/src/backend/models/project.model.ts```ts
+	import mongoose from 'mongoose';
+	import { Project as ProjectType } from '@/utils/dtos/project.dto';
+	
+	/* ProjectSchema will correspond to the project collection in the MongoDB database. */
+	const ProjectSchema: mongoose.Schema<ProjectType> = new mongoose.Schema(
+	  {
+	    _id: {
+	      type: mongoose.Schema.Types.ObjectId,
+	      required: true
+	    },
+	    projectName: {
+	      type: String,
+	      required: true
+	    },
+	    address: {
+	      type: String,
+	      required: true
+	    },
+	    amount: {
+	      type: Number
+	    },
+	    builderId: {
+	      type: String,
+	      required: true
+	    },
+	    category: {
+	      type: String,
+	      required: true
+	    },
+	    completionStatus: {
+	      type: String,
+	      required: true
+	    },
+	    creatorEmail: {
+	      type: String,
+	      required: true
+	    },
+	    creatorId: {
+	      type: String,
+	      required: true
+	    },
+	    currency: {
+	      type: String,
+	      required: true
+	    },
+	    currentClaimNumber: {
+	      type: String,
+	      required: true
+	    },
+	    budgetSeperatorComma: {
+	      type: Boolean,
+	      required: true
+	    },
+	    budgetSeperatorSemiColon: {
+	      type: Boolean,
+	      required: true
+	    },
+	    budgetSeperatorTab: {
+	      type: Boolean,
+	      required: true
+	    },
+	    date: {
+	      type: Date,
+	      required: true
+	    },
+	    dateCreate: {
+	      type: Date,
+	      required: true
+	    },
+	    dateModify: {
+	      type: Date,
+	      required: true
+	    },
+	    imageBucket: {
+	      type: String,
+	      required: true
+	    },
+	    items: {
+	      type: String,
+	      required: true
+	    },
+	    role0: {
+	      type: String
+	    },
+	    role1: {
+	      type: String
+	    },
+	    role2: {
+	      type: String
+	    },
+	    role3: {
+	      type: String
+	    },
+	    role4: {
+	      type: String
+	    },
+	    roleProjectContractors: {
+	      type: String
+	    }
+	  },
+	  { _id: false }
+	);
+	
+	export default mongoose.models.Project || mongoose.model<ProjectType>('Project', ProjectSchema);
+
+```
+
+j2c-app/src/backend/models/invoice.model.ts```ts
+	import mongoose from 'mongoose';
+	import { Invoice as InvoiceType } from '@/utils/dtos/invoice.dto';
+	
+	/* InvoiceSchema will correspond to the invoice collection in the MongoDB database. */
+	const InvoiceSchema: mongoose.Schema<InvoiceType> = new mongoose.Schema(
+	  {
+	    _id: {
+	      type: mongoose.Schema.Types.ObjectId,
+	      required: true
+	    },
+	    budgetId: {
+	      type: String,
+	      required: true
+	    },
+	    projectId: {
+	      type: String,
+	      required: true
+	    },
+	    creatorId: {
+	      type: String,
+	      required: true
+	    },
+	    creatorEmail: {
+	      type: String,
+	      required: true
+	    },
+	    invoiceContractorId: {
+	      type: String,
+	      required: true
+	    },
+	    invoiceContractorName: {
+	      type: String,
+	      required: true
+	    },
+	    invoiceIndex: {
+	      type: Number,
+	      required: true
+	    },
+	    invoiceNumber: {
+	      type: String,
+	      required: true
+	    },
+	    invoicePst: {
+	      type: String,
+	      required: true
+	    },
+	    invoicePstOverride: {
+	      type: Boolean,
+	      required: true
+	    },
+	    invoiceReceivedDate: {
+	      type: String,
+	      required: true
+	    },
+	    invoiceStatus: {
+	      type: Number,
+	      required: true
+	    },
+	    invoiceSubtotal: {
+	      type: Number,
+	      required: true
+	    },
+	    invoiceTotal: {
+	      type: Number,
+	      required: true
+	    },
+	    invoiceDate: {
+	      type: Date,
+	      required: true
+	    },
+	    invoiceDescription: {
+	      type: String,
+	      required: true
+	    },
+	    dateCreate: {
+	      type: Date,
+	      required: true
+	    },
+	    dateModify: {
+	      type: Date,
+	      required: true
+	    },
+	    imageBucket: {
+	      type: String,
+	      required: true
+	    },
+	    invoiceAdditionalFields: {
+	      type: [String],
+	      required: true
+	    },
+	    invoiceApprove: {
+	      type: Boolean,
+	      required: false
+	    },
+	    invoiceCategory: {
+	      type: String,
+	      required: true
+	    },
+	    invoiceChqDate: {
+	      type: String,
+	      required: true
+	    },
+	    invoiceChqNumber: {
+	      type: String,
+	      required: true
+	    },
+	    invoiceClaimNumber: {
+	      type: String,
+	      required: true
+	    },
+	    invoiceCode: {
+	      type: String,
+	      required: true
+	    },
+	    invoiceGst: {
+	      type: Object,
+	      required: true
+	    },
+	    invoiceGstOverride: {
+	      type: Boolean,
+	      required: true
+	    },
+	    invoiceHoldbackEnabled: {
+	      type: Boolean,
+	      required: false
+	    }
+	  },
+	  { _id: false }
+	);
+	
+	export default mongoose.models.Invoice || mongoose.model<InvoiceType>('Invoice', InvoiceSchema);
+
+```
+
+j2c-app/src/backend/models/user.model.ts```ts
+	import mongoose from 'mongoose';
+	import { User as UserType } from '@/utils/dtos/user.dto';
+	
+	/* UserSchema will correspond to the user collection in the MongoDB database. */
+	export const UserSchema: mongoose.Schema<UserType> = new mongoose.Schema(
+	  {
+	    email: {
+	      type: String,
+	      required: true,
+	      unique: true
+	    },
+	    name: {
+	      type: String,
+	      required: true
+	    },
+	    imageUrl: {
+	      type: String,
+	      required: false
+	    },
+	    company: {
+	      type: String,
+	      required: false
+	    },
+	    country: {
+	      type: String,
+	      required: false
+	    },
+	    phoneNumber: {
+	      type: String,
+	      required: false
+	    },
+	    birthDate: {
+	      type: Date,
+	      required: false
+	    },
+	    password: {
+	      type: String,
+	      required: false
+	    },
+	    emailConfirmed: {
+	      type: Boolean,
+	      required: true
+	    },
+	    confirmationToken: {
+	      type: String,
+	      required: false
+	    },
+	    passwordResetToken: {
+	      type: String,
+	      required: false
+	    },
+	    isContractor: {
+	      type: Boolean,
+	      required: true
+	    },
+	    status: {
+	      type: String,
+	      required: true
+	    },
+	    selectedContractorId: {
+	      type: String,
+	      required: false
+	    },
+	    selectedBuilderId: {
+	      type: String,
+	      required: false
+	    },
+	    failedLoginAttempts: {
+	      type: Number,
+	      required: true
+	    },
+	    accountLockedUntil: {
+	      type: Date,
+	      required: false
+	    },
+	    lastLogin: {
+	      type: Date,
+	      required: false
+	    },
+	    dateCreate: {
+	      type: Date,
+	      required: true
+	    },
+	    dateModify: {
+	      type: Date,
+	      required: true
+	    }
+	  },
+	  { _id: true }
+	);
+	
+	export default mongoose.models.User || mongoose.model<UserType>('User', UserSchema);
+
+```
+
+j2c-app/src/backend/models/builder.model.ts```ts
+	import mongoose from 'mongoose';
+	import { Builder as BuilderType } from '@/utils/dtos/builder.dto';
+	
+	/* BuilderSchema will correspond to the builder collection in the MongoDB database. */
+	const BuilderSchema: mongoose.Schema<BuilderType> = new mongoose.Schema(
+	  {
+	    _id: {
+	      type: mongoose.Schema.Types.ObjectId,
+	      required: true
+	    },
+	    creatorEmail: {
+	      type: String,
+	      required: true
+	    },
+	    creatorId: {
+	      type: mongoose.Schema.Types.ObjectId,
+	      required: true,
+	      ref: 'User'
+	    },
+	    address: {
+	      type: String,
+	      required: true
+	    },
+	    budgetSeperatorComma: {
+	      type: Boolean,
+	      required: true
+	    },
+	    budgetSeperatorSemiColon: {
+	      type: Boolean,
+	      required: true
+	    },
+	    budgetSeperatorTab: {
+	      type: Boolean,
+	      required: true
+	    },
+	    builderName: {
+	      type: String,
+	      required: true
+	    },
+	    category: {
+	      type: String,
+	      required: true
+	    },
+	    completionStatus: {
+	      type: String,
+	      required: true
+	    },
+	    date: {
+	      type: Date,
+	      required: true
+	    },
+	    dateCreate: {
+	      type: Date,
+	      required: true
+	    },
+	    dateModify: {
+	      type: Date,
+	      required: true
+	    },
+	    generalContractor: {
+	      type: String,
+	      required: true
+	    },
+	    imageUrl: {
+	      type: String,
+	      required: true
+	    },
+	    items: {
+	      type: String,
+	      required: true
+	    },
+	    role0: {
+	      type: String,
+	      required: false
+	    },
+	    role1: {
+	      type: String,
+	      required: false
+	    },
+	    role2: {
+	      type: String,
+	      required: false
+	    },
+	    role3: {
+	      type: String,
+	      required: false
+	    },
+	    role4: {
+	      type: String,
+	      required: false
+	    }
+	  },
+	  { _id: false }
+	);
+	
+	export default mongoose.models.Builder || mongoose.model<BuilderType>('Builder', BuilderSchema);
+
+```
+
+j2c-app/src/backend/models/budget.model.ts```ts
+	import mongoose from 'mongoose';
+	import { Budget as BudgetType } from '@/utils/dtos/budget.dto';
+	
+	/* BudgetSchema will correspond to the budget collection in the MongoDB database. */
+	export const BudgetSchema: mongoose.Schema<BudgetType> = new mongoose.Schema(
+	  {
+	    _id: {
+	      type: mongoose.Schema.Types.ObjectId,
+	      required: true
+	    },
+	    creatorId: {
+	      type: String,
+	      required: true
+	    },
+	    projectId: {
+	      type: String,
+	      required: true
+	    },
+	    creatorEmail: {
+	      type: String,
+	      required: true
+	    },
+	    budgetAdditionalFields: {
+	      type: [String],
+	      required: true
+	    },
+	    budgetCategory: {
+	      type: String,
+	      required: true
+	    },
+	    budgetCode: {
+	      type: String,
+	      required: true
+	    },
+	    budgetCurrentBudget: {
+	      type: Number,
+	      required: true
+	    },
+	    budgetCurrentClaim: {
+	      type: Number,
+	      required: true
+	    },
+	    budgetDescription: {
+	      type: String
+	    },
+	    budgetIndex: {
+	      type: Number,
+	      required: true
+	    },
+	    budgetOriginalBudget: {
+	      type: Number,
+	      required: true
+	    },
+	    budgetRevision: {
+	      type: Number,
+	      required: true
+	    },
+	    budgetTotalClaim: {
+	      type: Number,
+	      required: true
+	    },
+	    budgetTotalClaimBeforeHoldback: {
+	      type: Number,
+	      required: true
+	    },
+	    budgetTotalClaimPercentage: {
+	      type: Number,
+	      required: true
+	    },
+	    budgetTotalHoldback: {
+	      type: Number,
+	      required: true
+	    },
+	    dateCreate: {
+	      type: Date,
+	      required: true
+	    },
+	    dateModify: {
+	      type: Date,
+	      required: true
+	    }
+	  },
+	  { _id: false }
+	);
+	
+	export default mongoose.models.Budget || mongoose.model<BudgetType>('Budget', BudgetSchema);
+
+```
+
+j2c-app/src/backend/models/role.model.ts```ts
+	import mongoose from 'mongoose';
+	import { Role as RoleType } from '@/utils/dtos/role.dto';
+	
+	/* RoleSchema will correspond to the role collection in the MongoDB database. */
+	const RoleSchema: mongoose.Schema<RoleType> = new mongoose.Schema(
+	  {
+	    _id: {
+	      type: mongoose.Schema.Types.ObjectId,
+	      required: true
+	    },
+	    dateCreate: {
+	      type: Date
+	    },
+	    dateModify: {
+	      type: Date
+	    },
+	    individualEmail: {
+	      type: String
+	    },
+	    individualId: {
+	      type: String
+	    },
+	    parentId: {
+	      type: String
+	    },
+	    roleLevelEnum: {
+	      type: Number,
+	      required: true
+	    },
+	    targetId: {
+	      type: String,
+	      required: true
+	    },
+	    targetTypeEnum: {
+	      type: Number,
+	      required: true
+	    }
+	  },
+	  { _id: false }
+	);
+	
+	export default mongoose.models.Role || mongoose.model('Role', RoleSchema);
+
+```
+
+j2c-app/src/backend/models/contractor.model.ts```ts
+	import mongoose from 'mongoose';
+	import { Contractor as ContractorType } from '@/utils/dtos/contractor.dto';
+	
+	/* ContractorSchema will correspond to the contractor collection in the MongoDB database. */
+	const ContractorSchema: mongoose.Schema<ContractorType> = new mongoose.Schema(
+	  {
+	    creatorEmail: {
+	      type: String,
+	      required: true
+	    },
+	    creatorId: {
+	      type: String,
+	      required: true,
+	      ref: 'User'
+	    },
+	    address: {
+	      type: String,
+	      required: true
+	    },
+	    budgetSeperatorComma: {
+	      type: Boolean,
+	      required: true
+	    },
+	    budgetSeperatorSemiColon: {
+	      type: Boolean,
+	      required: true
+	    },
+	    budgetSeperatorTab: {
+	      type: Boolean,
+	      required: true
+	    },
+	    category: {
+	      type: String,
+	      required: true
+	    },
+	    completionStatus: {
+	      type: String,
+	      required: true
+	    },
+	    contractorName: {
+	      type: String,
+	      required: true
+	    },
+	    currency: {
+	      type: String,
+	      required: true
+	    },
+	    date: {
+	      type: Date,
+	      required: true
+	    },
+	    dateCreate: {
+	      type: Date,
+	      required: true
+	    },
+	    dateModify: {
+	      type: Date,
+	      required: true
+	    },
+	    generalContractor: {
+	      type: String,
+	      required: true
+	    },
+	    imageUrl: {
+	      type: String,
+	      required: false
+	    },
+	    items: {
+	      type: String,
+	      required: true
+	    },
+	    role0: {
+	      type: String,
+	      required: false
+	    },
+	    role1: {
+	      type: String,
+	      required: false
+	    },
+	    role2: {
+	      type: String,
+	      required: false
+	    }
+	  },
+	  { _id: true }
+	);
+	
+	export default mongoose.models.Contractor || mongoose.model<ContractorType>('Contractor', ContractorSchema);
+
+```
+

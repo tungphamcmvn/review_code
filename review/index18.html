@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Git Commit Analysis</title>
+  <style>
+    .negative {
+      background-color: red;
+      color: white;
+      padding: 10px;
+    }
+
+    .positive {
+      background-color: green;
+      color: white;
+      padding: 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Git Commit Analysis</h1>
+  <h2>1. Commit Message</h2>
+  <p class="positive">
+    The commit message "J2C-119 API for User Management - Activate/Deactivate Popup" adequately summarizes the purpose
+    of the changes, which is adding API endpoints for activating and deactivating users via a popup. The ticket number
+    J2C-119 helps link the code changes to the corresponding Jira task or requirement. Overall the message is clear and
+    descriptive.
+  </p>
+
+  <h2>2. Alignment with Application Architecture</h2>
+  <p class="positive">
+    The changes align well with the intended application architecture:
+  </p>
+  <ul>
+    <li>New API route handlers are added under src/app/api/user for updating user status</li>
+    <li>The user repository, service and DTO are utilized to interact with the database and structure the data</li>
+    <li>Enums like Actions and UserStatus are used to enforce allowed status values</li>
+    <li>Swagger documentation for the new endpoints is included under lib/swagger/doc/user</li>
+  </ul>
+  <p class="positive">
+    No major adjustments seem necessary. The changes are modular and follow the separation of concerns principle.
+  </p>
+
+  <h2>3. Adherence to Best Practices</h2>
+  <p class="positive">
+    The code generally follows best practices for Next.js, React and MongoDB:
+  </p>
+  <ul>
+    <li>API routes are implemented as individual functions for each HTTP method</li>
+    <li>Async/await is used to handle asynchronous database operations</li>
+    <li>The code is broken down into small, focused functions</li>
+    <li>Dependencies are imported at the top</li>
+    <li>Database connection is obtained from a separate module</li>
+    <li>Errors are caught and handled, returning appropriate HTTP status codes</li>
+  </ul>
+  <p class="negative">
+    One potential improvement is to move the repeated logic for getting the JWT token into middleware or a helper
+    function to keep the route handlers more concise, e.g.:
+  </p>
+  <pre>
+    const token = headers().get('authorization')?.split(' ')[1];
+const dataDecode: JWT | null = await decode({
+token: token as string,
+secret: (process.env.NEXTAUTH_SECRET as string) || ''
+});
+</pre>
+  <h2>4. Performance and Security</h2>
+  <p class="positive">
+    The changes do consider performance by only updating necessary fields in MongoDB and avoiding returning the full
+    user object. Proper HTTP status codes are returned which helps client performance.
+  </p>
+  <p class="positive">
+    From a security perspective:
+  </p>
+  <ul>
+    <li>The endpoints require authentication via JWT</li>
+    <li>A check is made to prevent users from deactivating themselves</li>
+    <li>Database operations use bound parameters to avoid injection</li>
+  </ul>
+  <p class="negative">
+    One risk is the JWT secret is taken from an environment variable. If that is ever leaked it would compromise the
+    authentication. Recommend using a vault or other secure storage, and rotating secrets regularly.
+  </p>
+
+  <h2>5. Development Time Estimate</h2>
+  <p>
+    For a senior developer familiar with the codebase, implementing these changes would likely take in the range of 4-6
+    hours. The breakdown might be:
+  </p>
+  <ul>
+    <li>1-2 hours for the core user status update API logic and Swagger docs</li>
+    <li>1 hour for the user bulk update status API logic</li>
+    <li>1-2 hours for testing, debugging, and code review iterations</li>
+    <li>1 hour for writing unit and integration tests (not included but recommended)</li>
+  </ul>
+</body>
+
+</html>

@@ -1,48 +1,59 @@
-commit bcde9605b283588e059d34b36499d764fc0a763d
+commit 22a287e955e807fa41b8c17388f06639de8817f2
 Author: Huy Pham <huyphamnguyen@gmail.com>
-Date:   Sun Apr 7 16:41:57 2024 +0700
+Date:   Sun Apr 7 14:10:30 2024 +0700
 
-    Fix api project detail
+    Apply api delete project
 
-diff --git a/next.config.js b/next.config.js
-index 546f2eb..a923bbd 100644
---- a/next.config.js
-+++ b/next.config.js
-@@ -38,7 +38,12 @@ module.exports = {
-     }
-   },
-   images: {
--    domains: ['flagcdn.com']
-+    remotePatterns: [
-+      {
-+        protocol: 'https',
-+        hostname: 'j2ccdn.tnodes.com'
-+      }
-+    ]
-   },
-   env: {
-     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-diff --git a/src/components/projects/Detail/index.tsx b/src/components/projects/Detail/index.tsx
-index 612cce3..4b1d87a 100644
---- a/src/components/projects/Detail/index.tsx
-+++ b/src/components/projects/Detail/index.tsx
-@@ -44,8 +44,8 @@ const ProjectDetail = () => {
-   const getData = async () => {
-     if (params.id) {
-       const result = await execute(getProject(projectId));
--      if (result.data) {
--        setProject(result.data);
-+      if (result?.data?.project) {
-+        setProject(result.data.project);
-       } else {
-         router.push(projectUrl);
-       }
-diff --git a/src/types/resource/project.ts b/src/types/resource/project.ts
-index a82e659..cce0593 100644
---- a/src/types/resource/project.ts
-+++ b/src/types/resource/project.ts
-@@ -1,4 +1,3 @@
--
- import { Project as ProjectDto } from '@/utils/dtos/project.dto';
+diff --git a/src/components/projects/DeleteDialog/index.tsx b/src/components/projects/DeleteDialog/index.tsx
+index f4abe3a..d01a0af 100644
+--- a/src/components/projects/DeleteDialog/index.tsx
++++ b/src/components/projects/DeleteDialog/index.tsx
+@@ -6,14 +6,14 @@ import { GridCloseIcon } from '@mui/x-data-grid';
+ import * as notify from 'utils/notify';
+ import { useAsync } from 'hooks/useAsync';
+ import { Button } from 'ui-component/buttons';
+-import { Project } from 'utils/dtos/project.dto';
+ import { deleteProject } from 'utils/services/project';
+ import styles from '@/styles/dataDialog.module.scss';
++import { IProject } from '@/types/resource/project';
  
- export interface IProject extends Omit<ProjectDto, '_id'> {
+ interface ProjectDeleteDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
+-  project: Partial<Project>;
++  project: Partial<IProject>;
+   onClose: () => void;
+-  onSuccess?: (project: Partial<Project>) => void;
++  onSuccess?: (project: Partial<IProject>) => void;
+ }
+ 
+ export default function ProjectDeleteDialog({ onClose, project, onSuccess, ...props }: ProjectDeleteDialogProps) {
+@@ -30,7 +30,7 @@ export default function ProjectDeleteDialog({ onClose, project, onSuccess, ...pr
+   };
+ 
+   const handleDelete = async () => {
+-    const result = await request(deleteProject(`${project._id}`));
++    const result = await request(deleteProject(`${project.id}`));
+     if (!result.error) {
+       if (onSuccess) onSuccess(project);
+       notify.success(formatMessage({ id: 'projectDialogDeletedSuccessful' }));
+diff --git a/src/utils/api.ts b/src/utils/api.ts
+index ffba8a2..0604e74 100644
+--- a/src/utils/api.ts
++++ b/src/utils/api.ts
+@@ -25,15 +25,11 @@ const APIS = {
+   VERIFY_CODE: '/auth/code/verify',
+   RESET_PASSWORD: '/auth/reset-password',
+   UPLOAD_FILE: '/file/upload',
+-  GET_PROJECTS: '/project/list',
++  PROJECT: '/project',
+   GET_PROJECT_ROLES: '/project/:id/roles',
+   GET_PROJECT_CONTRACTORS: '/project/:id/contractors',
+   GET_PROJECT_BUDGETS: '/project/:id/budgets',
+-  GET_PROJECT_INVOICES: '/project/:id/invoices',
+-  CREATE_PROJECT: '/project/create',
+-  GET_PROJECT: '/project/:id',
+-  UPDATE_PROJECT: '/project/:id',
+-  DELETE_PROJECT: '/project/:id'
++  GET_PROJECT_INVOICES: '/project/:id/invoices'
+ };
+ 
+ export default APIS;

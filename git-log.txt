@@ -1,3 +1,67 @@
+commit f19f7583dbcaa23cca64796f3622786cfc6388f5
+Merge: c8ffe7b 88b31f3
+Author: Phạm Thanh Tùng <140472132+tungphamcmvn@users.noreply.github.com>
+Date:   Tue Apr 9 14:58:03 2024 +0700
+
+    Merge pull request #15 from invik-33/feature/fix_not_open_project_detail
+    
+    Fix not open contractor , role on project detail
+
+commit 88b31f3054596421ff3750d8647c6cc7829bf9ef
+Author: Huy Pham <huyphamnguyen@gmail.com>
+Date:   Tue Apr 9 14:39:16 2024 +0700
+
+    [All] Replace _id to id
+
+commit c8ffe7b8e8ac3246a4fcccbfbe9169d561cb5c33
+Merge: 89b3e3e 9e462b0
+Author: MinhT191195 <165769771+MinhT191195@users.noreply.github.com>
+Date:   Mon Apr 8 22:44:01 2024 +0700
+
+    Merge pull request #14 from invik-33/feature/fe_account_detail
+    
+    fe account detail
+
+commit 9e462b09ce951a08097199310b2ee8cf4a35071a
+Author: Trung Ngo <trungngoquang@coffeemugvn.com>
+Date:   Mon Apr 8 22:40:51 2024 +0700
+
+    fix build
+
+commit 91e7663acbff4ea785747c7919a33a297f8cb5dd
+Merge: cb8c75a 89b3e3e
+Author: Trung Ngo <trungngoquang@coffeemugvn.com>
+Date:   Mon Apr 8 22:26:56 2024 +0700
+
+    Merge branch 'dev' into feature/fe_account_detail
+
+commit cb8c75a077f5b180e8bc57f1fdae302a9c783a74
+Author: Trung Ngo <trungngoquang@coffeemugvn.com>
+Date:   Mon Apr 8 22:26:28 2024 +0700
+
+    update params for update profile api
+
+commit 89b3e3eac201a3d727542b07be2e7aeb845f99e8
+Merge: f6710dc ff3713b
+Author: MinhT191195 <165769771+MinhT191195@users.noreply.github.com>
+Date:   Mon Apr 8 22:09:19 2024 +0700
+
+    Merge pull request #13 from invik-33/feature/fix_file_import
+    
+    Fix missing file import
+
+commit 3b0da89fbabbf944307bc15feaf8ca4e8c3e38c1
+Author: Trung Ngo <trungngoquang@coffeemugvn.com>
+Date:   Mon Apr 8 21:18:06 2024 +0700
+
+    add first name, last name to user profile
+
+commit ff3713b9e72671ac387416776f1beeb4e05bcf96
+Author: Huy Pham <huyphamnguyen@gmail.com>
+Date:   Mon Apr 8 20:53:56 2024 +0700
+
+    Add new line at end
+
 commit bf7ba0dad6b125cf9f2646c4dbec5d2dd07d3e37
 Author: Huy Pham <huyphamnguyen@gmail.com>
 Date:   Mon Apr 8 17:29:47 2024 +0700
