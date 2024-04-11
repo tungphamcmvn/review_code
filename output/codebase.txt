@@ -3120,8 +3120,8 @@ src/backend/validator/profile.validator.ts```ts
 	
 	    const idRule = { id: string().required() };
 	    const mailRule = { email: string().email().required() };
-	    const firstNameRule = { firstName: string().required() };
-	    const lastNameNameRule = { lastName: string().required() };
+	    const firstNameRule = { name: string().required() };
+	    const lastNameNameRule = { name: string().required() };
 	    const phoneRule = { phoneNumber: phoneNumberRule };
 	    const companyRule = { company: string().max(255).nullable() };
 	    const countryRule = { country: string().max(20).nullable() };
@@ -4977,8 +4977,7 @@ src/types/request.ts```ts
 	  id: string;
 	  imageUrl: string;
 	  email: string;
-	  firstName: string;
-	  lastName: string;
+	  name: string;
 	}
 	
 	/* PROJECT */
@@ -5192,7 +5191,7 @@ src/types/response.ts```ts
 	
 	/* PROJECT */
 	export interface IResponseProjects {
-	  projects: IProject[] | [];
+	  data: IProject[] | [];
 	  meta: ResponseMeta;
 	}
 	
@@ -20061,8 +20060,7 @@ src/utils/services/auth.ts```ts
 	  const url = endPoints.UPDATE_PROFILE.replace(':id', user.id);
 	  const res: IResponseRegister = await axios.put(url, {
 	    email: user.email,
-	    firstName: user.firstName,
-	    lastName: user.lastName,
+	    name: user.name,
 	    phoneNumber: user.phone,
 	    birthDate: user.birthdayText || null,
 	    company: user.company,
@@ -20077,8 +20075,7 @@ src/utils/services/auth.ts```ts
 	  const url = endPoints.UPDATE_PROFILE.replace(':id', params.id);
 	  const res: IResponseRegister = await axios.put(url, {
 	    image: params.imageUrl,
-	    firstName: params.firstName,
-	    lastName: params.lastName,
+	    name: params.name,
 	    email: params.email
 	  });
 	
@@ -21596,9 +21593,9 @@ src/components/ui-component/Select/index.tsx```tsx
 	import styles from './styles.module.scss';
 	import FormControl from '../FormControl';
 	
-	type Props = SelectProps & {
+	interface Props extends SelectProps {
 	  children?: React.ReactNode;
-	};
+	}
 	export default function SelectField({ labelId, label, children, ...props }: Props) {
 	  return (
 	    <FormControl fullWidth>
@@ -25212,18 +25209,6 @@ src/components/dialogs/contractor/ContractorDeleteDialog.tsx```tsx
 
 ```
 
-src/components/dialogs/contractor/style.module.scss```scss
-	.imageLocal{
-	  position: absolute;
-	  inset: 0;
-	  z-index: 0;
-	  width: 100%;
-	  height: 100%;
-	  object-fit: contain;
-	}
-
-```
-
 src/components/dialogs/contractor/ContractorDialog.tsx```tsx
 	import {
 	  Box,
@@ -25251,7 +25236,7 @@ src/components/dialogs/contractor/ContractorDialog.tsx```tsx
 	import { useAsync } from '@/hooks/useAsync';
 	import { success as notifySuccess } from '@/utils/notify';
 	import { CONTRACTOR_SERVICES, CONTRACTOR_STATUS, CONTRACTOR_STATUS_ACTIVE } from '@/constant/contractor';
-	import stylesDialog from './style.module.scss';
+	import stylesDialog from '../builder/style.module.scss';
 	import useCommonValidates from '@/hooks/useCommonValidates';
 	import { IContractor, createContractor, updateContractor } from '@/utils/services/contractor';
 	import { useSession } from 'next-auth/react';
@@ -25858,7 +25843,7 @@ src/components/projects/List/index.tsx```tsx
 	  const columns: GridColDef<IProject>[] = [
 	    { field: 'id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
 	    {
-	      field: 'projectName',
+	      field: 'name',
 	      headerName: formatMessage({ id: 'projectName' }),
 	      align: 'center',
 	      headerAlign: 'center',
@@ -27354,7 +27339,6 @@ src/components/projects/Detail/budgets/addBudget/index.tsx```tsx
 	                name="budgetCategory"
 	                id="budgetCategory"
 	                error={!!errors?.budgetCategory}
-	                variant="outlined"
 	              >
 	                {PROJECT_CATEGORY.map((item) => (
 	                  <MenuItem value={item} key={item}>
@@ -29713,8 +29697,7 @@ src/components/account/Profile/components/ProfilePicture/index.tsx```tsx
 	            await updateAvatar({
 	              id: user?.id || '',
 	              imageUrl: res.url,
-	              firstName: user?.firstName || '',
-	              lastName: user?.lastName || '',
+	              name: user?.name || '',
 	              email: user?.email || ''
 	            });
 	            dispatch(
@@ -30131,8 +30114,8 @@ src/components/contractorProjects/List/index.tsx```tsx
 	    const result = await request(getProjects());
 	
 	    if (!result.error) {
-	      const { projects = [] } = result.data as IResponseProjects;
-	      setProjects(projects);
+	      const { data } = result.data as IResponseProjects;
+	      setProjects(data);
 	    }
 	  };
 	

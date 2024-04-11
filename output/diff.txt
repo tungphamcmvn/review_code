@@ -1,307 +1,43 @@
-title:	fe account detail
+title:	Fix missing file import
 state:	MERGED
-author:	trungvn222
+author:	huyphamnguyen
 labels:	
 assignees:	
-reviewers:	
+reviewers:	MinhT191195 (Commented)
 projects:	
 milestone:	
-number:	14
-url:	https://github.com/invik-33/j2c-app/pull/14
-additions:	56
-deletions:	27
+number:	13
+url:	https://github.com/invik-33/j2c-app/pull/13
+additions:	9
+deletions:	1
 --
 
 
 
-diff --git a/src/backend/validator/profile.validator.ts b/src/backend/validator/profile.validator.ts
-index c663889..29a27ce 100644
---- a/src/backend/validator/profile.validator.ts
-+++ b/src/backend/validator/profile.validator.ts
-@@ -39,8 +39,8 @@ export default class ProfileValidator extends BaseValidator {
- 
-     const idRule = { id: string().required() };
-     const mailRule = { email: string().email().required() };
--    const firstNameRule = { name: string().required() };
--    const lastNameNameRule = { name: string().required() };
-+    const firstNameRule = { firstName: string().required() };
-+    const lastNameNameRule = { lastName: string().required() };
-     const phoneRule = { phoneNumber: phoneNumberRule };
-     const companyRule = { company: string().max(255).nullable() };
-     const countryRule = { country: string().max(20).nullable() };
-diff --git a/src/components/account/Profile/components/AccountDetail/index.tsx b/src/components/account/Profile/components/AccountDetail/index.tsx
-index b1d044b..a309782 100644
---- a/src/components/account/Profile/components/AccountDetail/index.tsx
-+++ b/src/components/account/Profile/components/AccountDetail/index.tsx
-@@ -24,12 +24,13 @@ export interface IAccountDetailProps {
- }
- 
- export interface IFormValues {
--  name: string;
-   email: string;
-   company: string;
-   country: string;
-   phoneNumber: string;
-   birthDate: string;
-+  firstName: string;
-+  lastName: string;
- }
- 
- export default function AccountDetail(props: IAccountDetailProps) {
-@@ -39,17 +40,19 @@ export default function AccountDetail(props: IAccountDetailProps) {
-   const { user } = useAccountSelector();
-   const validates = useCommonValidates();
-   const initialValues: IFormValues = {
--    name: user?.name || '',
-     email: user?.email || '',
-     country: user?.location || '',
-     phoneNumber: user?.phone || '',
-     birthDate: user?.birthdayText || '',
--    company: user?.company || ''
-+    company: user?.company || '',
-+    firstName: user?.firstName || '',
-+    lastName: user?.lastName || ''
-   };
- 
-   const validationSchema = Yup.object().shape({
-     email: validates.email({ isRequired: true }),
--    name: validates.text({ isRequired: true })
-+    lastName: validates.text({ isRequired: true }),
-+    firstName: validates.text({ isRequired: true })
-   });
- 
-   const handleSubmitForm = async (values: IFormValues, { setSubmitting }: FormikHelpers<IFormValues>) => {
-@@ -57,7 +60,8 @@ export default function AccountDetail(props: IAccountDetailProps) {
-     const result = await request(
-       updateProfile({
-         id: user?.id,
--        name: values.name,
-+        firstName: values.firstName,
-+        lastName: values.lastName,
-         email: values.email,
-         company: values.company,
-         location: values.country,
-@@ -70,7 +74,8 @@ export default function AccountDetail(props: IAccountDetailProps) {
-       notify.success(formatMessage({ id: 'profileUpdatedSuccessful' }));
-       dispatch(
-         accountActions.updateUser({
--          name: values.name,
-+          firstName: values.firstName,
-+          lastName: values.lastName,
-           email: values.email,
-           company: values.company,
-           location: values.country,
-@@ -89,15 +94,28 @@ export default function AccountDetail(props: IAccountDetailProps) {
-           return (
-             <form noValidate onSubmit={handleSubmit}>
-               <Grid container spacing={3.125}>
--                <Grid item xs={12}>
-+                <Grid item xs={6}>
-+                  <TextField
-+                    value={values.firstName}
-+                    label={formatMessage({ id: 'firstName' })}
-+                    name="firstName"
-+                    fullWidth
-+                    size="medium"
-+                    error={errorList.firstName?.error}
-+                    helperText={errorList.firstName?.message}
-+                    onBlur={handleBlur}
-+                    onChange={handleChange}
-+                  />
-+                </Grid>
-+                <Grid item xs={6}>
-                   <TextField
--                    value={values.name}
--                    label={formatMessage({ id: 'name' })}
--                    name="name"
-+                    value={values.lastName}
-+                    label={formatMessage({ id: 'lastName' })}
-+                    name="lastName"
-                     fullWidth
-                     size="medium"
--                    error={errorList.name?.error}
--                    helperText={errorList.name?.message}
-+                    error={errorList.lastName?.error}
-+                    helperText={errorList.lastName?.message}
-                     onBlur={handleBlur}
-                     onChange={handleChange}
-                   />
-diff --git a/src/components/account/Profile/components/ProfilePicture/index.tsx b/src/components/account/Profile/components/ProfilePicture/index.tsx
-index a55ee93..948005d 100644
---- a/src/components/account/Profile/components/ProfilePicture/index.tsx
-+++ b/src/components/account/Profile/components/ProfilePicture/index.tsx
-@@ -37,7 +37,8 @@ export default function ProfilePicture(props: IProfilePictureProps) {
-             await updateAvatar({
-               id: user?.id || '',
-               imageUrl: res.url,
--              name: user?.name || '',
-+              firstName: user?.firstName || '',
-+              lastName: user?.lastName || '',
-               email: user?.email || ''
-             });
-             dispatch(
-diff --git a/src/components/contractorProjects/List/index.tsx b/src/components/contractorProjects/List/index.tsx
-index 10a37d6..d4f24ee 100644
---- a/src/components/contractorProjects/List/index.tsx
-+++ b/src/components/contractorProjects/List/index.tsx
-@@ -89,8 +89,8 @@ const ProjectList = () => {
-     const result = await request(getProjects());
- 
-     if (!result.error) {
--      const { data } = result.data as IResponseProjects;
--      setProjects(data);
-+      const { projects = [] } = result.data as IResponseProjects;
-+      setProjects(projects);
-     }
-   };
- 
-diff --git a/src/components/projects/Detail/budgets/addBudget/index.tsx b/src/components/projects/Detail/budgets/addBudget/index.tsx
-index 36ffb3a..24a5853 100644
---- a/src/components/projects/Detail/budgets/addBudget/index.tsx
-+++ b/src/components/projects/Detail/budgets/addBudget/index.tsx
-@@ -127,6 +127,7 @@ export default function ProjectAddBudgetDialog({
-                 name="budgetCategory"
-                 id="budgetCategory"
-                 error={!!errors?.budgetCategory}
-+                variant="outlined"
-               >
-                 {PROJECT_CATEGORY.map((item) => (
-                   <MenuItem value={item} key={item}>
-diff --git a/src/components/projects/List/index.tsx b/src/components/projects/List/index.tsx
-index 7c70c04..56addd1 100644
---- a/src/components/projects/List/index.tsx
-+++ b/src/components/projects/List/index.tsx
-@@ -37,7 +37,7 @@ const ProjectList = () => {
-   const columns: GridColDef<IProject>[] = [
-     { field: 'id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
-     {
--      field: 'name',
-+      field: 'projectName',
-       headerName: formatMessage({ id: 'projectName' }),
-       align: 'center',
-       headerAlign: 'center',
-diff --git a/src/components/ui-component/Select/index.tsx b/src/components/ui-component/Select/index.tsx
-index 7475744..edfe9fa 100644
---- a/src/components/ui-component/Select/index.tsx
-+++ b/src/components/ui-component/Select/index.tsx
-@@ -4,9 +4,9 @@ import { InputLabel, Select, SelectProps } from '@mui/material';
- import styles from './styles.module.scss';
- import FormControl from '../FormControl';
- 
--interface Props extends SelectProps {
-+type Props = SelectProps & {
-   children?: React.ReactNode;
--}
-+};
- export default function SelectField({ labelId, label, children, ...props }: Props) {
-   return (
-     <FormControl fullWidth>
-diff --git a/src/layout/MainLayout/Header/ProfileSection/components/UserInfo/index.tsx b/src/layout/MainLayout/Header/ProfileSection/components/UserInfo/index.tsx
-index ba111a1..43893dd 100644
---- a/src/layout/MainLayout/Header/ProfileSection/components/UserInfo/index.tsx
-+++ b/src/layout/MainLayout/Header/ProfileSection/components/UserInfo/index.tsx
-@@ -17,11 +17,12 @@ export interface IUserInfoProps {
- const UserInfo = forwardRef((props: IUserInfoProps, ref) => {
-   const { onClick } = props;
-   const { user } = useAccountSelector();
-+  const name = `${user?.lastName} ${user?.firstName}`.trim();
- 
-   return (
-     <Box onClick={onClick} ref={ref} className={styles.wrapper}>
-       <Avatar src={user?.avatar || AVATAR_DEFAULT_URL} alt="user images" />
--      <Box className={styles.username}>{user?.name || user?.email}</Box>
-+      <Box className={styles.username}>{name || user?.email}</Box>
-       <Icon className={styles.icon} fontSize="medium">
-         <MoreVertIcon />
-       </Icon>
-diff --git a/src/store/ProviderWrapper.tsx b/src/store/ProviderWrapper.tsx
-index 7c4a640..34e5a01 100644
---- a/src/store/ProviderWrapper.tsx
-+++ b/src/store/ProviderWrapper.tsx
-@@ -38,7 +38,8 @@ export default function ProviderWrapper({ children }: { children: ReactNode }) {
-         const birthday = profile?.birthDate ? new DateCustom(profile.birthDate) : null;
-         dispatch(
-           accountActions.login({
--            name: profile?.name || '',
-+            firstName: profile?.firstName || '',
-+            lastName: profile?.lastName || '',
-             email: profile?.email || '',
-             avatar: profile?.imageUrl || '',
-             id: profile?.id,
-diff --git a/src/types/request.ts b/src/types/request.ts
-index 2fb418e..a10b6fe 100644
---- a/src/types/request.ts
-+++ b/src/types/request.ts
-@@ -87,7 +87,8 @@ export interface IRequestChangeAvatar {
-   id: string;
-   imageUrl: string;
-   email: string;
--  name: string;
-+  firstName: string;
-+  lastName: string;
- }
- 
- /* PROJECT */
-diff --git a/src/types/response.ts b/src/types/response.ts
-index 48c6168..db2bf6e 100644
---- a/src/types/response.ts
-+++ b/src/types/response.ts
-@@ -93,7 +93,7 @@ export interface IResponseResetPassword {
- 
- /* PROJECT */
- export interface IResponseProjects {
--  data: IProject[] | [];
-+  projects: IProject[] | [];
-   meta: ResponseMeta;
- }
- 
-diff --git a/src/types/user-profile.ts b/src/types/user-profile.ts
-index 3ee6890..7145b1b 100644
---- a/src/types/user-profile.ts
-+++ b/src/types/user-profile.ts
-@@ -14,6 +14,8 @@ export type UserProfile = {
-   avatar?: string;
-   image?: string;
-   name?: string;
-+  firstName?: string;
-+  lastName?: string;
-   role?: string;
-   about?: string;
-   email?: string;
-diff --git a/src/utils/locales/en/auth.json b/src/utils/locales/en/auth.json
-index 4d25fa1..2c224b3 100644
---- a/src/utils/locales/en/auth.json
-+++ b/src/utils/locales/en/auth.json
-@@ -75,5 +75,7 @@
-   "changePasswordFailed": "Change Password Failed",
-   "updateSuccessful": "Update Successful",
-   "updateFailed": "Update Failed",
--  "emailInValid": "Email is invalid"
-+  "emailInValid": "Email is invalid",
-+  "firstName": "First Name",
-+  "lastName": "Last Name"
- }
-diff --git a/src/utils/services/auth.ts b/src/utils/services/auth.ts
-index f5e19bb..a9e38e3 100644
---- a/src/utils/services/auth.ts
-+++ b/src/utils/services/auth.ts
-@@ -27,7 +27,8 @@ export const updateProfile = async (user: IRequestUpdateProfile): Promise<IRespo
-   const url = endPoints.UPDATE_PROFILE.replace(':id', user.id);
-   const res: IResponseRegister = await axios.put(url, {
-     email: user.email,
--    name: user.name,
-+    firstName: user.firstName,
-+    lastName: user.lastName,
-     phoneNumber: user.phone,
-     birthDate: user.birthdayText || null,
-     company: user.company,
-@@ -42,7 +43,8 @@ export const updateAvatar = async (params: IRequestChangeAvatar): Promise<IRespo
-   const url = endPoints.UPDATE_PROFILE.replace(':id', params.id);
-   const res: IResponseRegister = await axios.put(url, {
-     image: params.imageUrl,
--    name: params.name,
-+    firstName: params.firstName,
-+    lastName: params.lastName,
-     email: params.email
-   });
- 
+diff --git a/src/components/dialogs/contractor/ContractorDialog.tsx b/src/components/dialogs/contractor/ContractorDialog.tsx
+index 8570625..2fa2ca6 100644
+--- a/src/components/dialogs/contractor/ContractorDialog.tsx
++++ b/src/components/dialogs/contractor/ContractorDialog.tsx
+@@ -24,7 +24,7 @@ import { object as yupObject } from 'yup';
+ import { useAsync } from '@/hooks/useAsync';
+ import { success as notifySuccess } from '@/utils/notify';
+ import { CONTRACTOR_SERVICES, CONTRACTOR_STATUS, CONTRACTOR_STATUS_ACTIVE } from '@/constant/contractor';
+-import stylesDialog from '../builder/style.module.scss';
++import stylesDialog from './style.module.scss';
+ import useCommonValidates from '@/hooks/useCommonValidates';
+ import { IContractor, createContractor, updateContractor } from '@/utils/services/contractor';
+ import { useSession } from 'next-auth/react';
+diff --git a/src/components/dialogs/contractor/style.module.scss b/src/components/dialogs/contractor/style.module.scss
+new file mode 100644
+index 0000000..c38e58e
+--- /dev/null
++++ b/src/components/dialogs/contractor/style.module.scss
+@@ -0,0 +1,8 @@
++.imageLocal{
++  position: absolute;
++  inset: 0;
++  z-index: 0;
++  width: 100%;
++  height: 100%;
++  object-fit: contain;
++}
