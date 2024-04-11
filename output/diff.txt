@@ -1,1132 +1,1001 @@
-title:	[User]Apply api user for FE 
+title:	J2C-159: API for Project Details - Budgets - Add Budget
 state:	MERGED
 author:	huyphamnguyen
 labels:	
 assignees:	
-reviewers:	MinhT191195 (Requested)
+reviewers:	tungphamcmvn (Requested)
 projects:	
 milestone:	
-number:	12
-url:	https://github.com/invik-33/j2c-app/pull/12
-additions:	251
-deletions:	209
+number:	17
+url:	https://github.com/invik-33/j2c-app/pull/17
+additions:	347
+deletions:	327
 --
--  Apply appi get/update/delete user
-- Remove _id on builder, user
+J2C-159: API for Project Details - Budgets - Add Budget
 
 
-diff --git a/lib/swagger/doc/builder/get.ts b/lib/swagger/doc/builder/get.ts
-index e72b9a4..5015d88 100644
---- a/lib/swagger/doc/builder/get.ts
-+++ b/lib/swagger/doc/builder/get.ts
-@@ -22,29 +22,29 @@
- *         required: false
- *         description: Page size
- *       - in: query
--*         name: sortBy
-+*         name: sort
- *         schema:
- *           type: string
- *         required: false
--*         description: Sort by builder's column
-+*         description: Sort direction
- *       - in: query
--*         name: sortDir
-+*         name: field
- *         schema:
- *           type: string
- *         required: false
--*         description: Sort direction
-+*         description: Sort by this field
- *       - in: query
--*         name: search
-+*         name: fields
- *         schema:
- *           type: string
- *         required: false
--*         description: Search by builder name
-+*         description: Sort by these fields
- *       - in: query
--*         name: filterBy
-+*         name: search
- *         schema:
- *           type: string
- *         required: false
--*         description: Filter by builder's column
-+*         description: Search builder name
- *     responses:
- *       '200':
- *         description: List Builder
-@@ -59,7 +59,7 @@
- *       items:
- *         type: object
- *         properties:
--*           _id:
-+*           id:
- *             type: string      
- *           builderName:
- *             type: string
-diff --git a/lib/swagger/doc/builder/put.ts b/lib/swagger/doc/builder/put.ts
-index f0cafde..d62f52d 100644
---- a/lib/swagger/doc/builder/put.ts
-+++ b/lib/swagger/doc/builder/put.ts
-@@ -84,39 +84,6 @@
- *         success:
- *           type: boolean
- *           description: Builder updated
--*         builder:
--*           type: object
--*           properties:
--*             _id:
--*               type: string      
--*             builderName:
--*               type: string
--*             category:
--*               type: string
--*             address:
--*               type: string
--*             completionStatus:
--*               type: string
--*             imageUrl:
--*               type: string
--*             date:
--*               type: string
--*             dateCreate:
--*               type: string
--*             dateModify:
--*               type: string
--*             generalContractor:
--*               type: string
--*             budgetSeperatorComma:
--*               type: string
--*             budgetSeperatorSemiColon:
--*               type: string
--*             budgetSeperatorTab:
--*               type: string
--*             creatorId:
--*               type: string
--*             creatorEmail:
--*               type: string
- * @param request
- * @constructor
- */
-diff --git a/src/app/api/builder/[id]/route.ts b/src/app/api/builder/[id]/route.ts
-index b1fda55..9302486 100644
---- a/src/app/api/builder/[id]/route.ts
-+++ b/src/app/api/builder/[id]/route.ts
-@@ -47,8 +47,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
-       return NextResponse.json({ errors: builderValidator.getErrors() }, { status: 400 });
-     }
- 
--    const result = await builderService.updateBuilder(id, formData);
--    return NextResponse.json({ success: true, builder: result }, { status: 200 });
-+    await builderService.updateBuilder(id, formData);
+diff --git a/lib/swagger/doc/budget/post.ts b/lib/swagger/doc/budget/post.ts
+new file mode 100644
+index 0000000..4689afe
+--- /dev/null
++++ b/lib/swagger/doc/budget/post.ts
+@@ -0,0 +1,98 @@
++/**
++@swagger
++* /api/budget:
++*   post:
++*     tags:
++*       - Budget
++*     description: Create a budget
++*     summary: Create a budget
++*     security:
++*       - bearerAuth: []
++*     requestBody:
++*       required: true
++*       content:
++*         application/json:
++*           schema:
++*             $ref: '#/components/schemas/BudgetCreated'
++*     responses:
++*       200:
++*         description: Budget created
++*         content:
++*           application/json:
++*             schema:
++*               $ref: '#/components/schemas/BudgetResponse'
++*       400:
++*         description: Bad request
++*         content:
++*           application/json:
++*             schema:
++*               type: object
++*               properties:
++*                 errors:
++*                   type: array
++*                   items:
++*                     type: string
++* components:
++*   schemas:
++*     BudgetCreated:
++*       type: object
++*       properties:
++*         projectId:
++*           type: string
++*           format: projectId
++*           description: Project id
++*           required: true
++*         budgetCategory:
++*           type: string
++*           format: budgetCategory
++*           description: Budget's category
++*           required: true
++*         budgetCode:
++*           type: string
++*           format: budgetCode
++*           description: Budget's code
++*           required: true
++*         budgetOriginalBudget:
++*           type: number
++*           format: budgetOriginalBudget
++*           description: Original Budget
++*           required: true
++*         budgetCurrentBudget:
++*           type: number
++*           format: budgetCurrentBudget
++*           description: Current Budget
++*           required: true
++*         budgetClaimedToDate:
++*           type: number
++*           format: budgetClaimedToDate
++*           description: Claimed to Date
++*           required: true
++*         budgetRevision:
++*           type: number
++*           format: budgetRevision
++*           description: Revision
++*           required: true
++*         budgetCurrentClaim:
++*           type: number
++*           format: budgetCurrentClaim
++*           description: Current Claim
++*           required: true
++*         budgetTotalClaim:
++*           type: number
++*           format: budgetTotalClaim
++*           description: Total Claim
++*           required: true
++*         budgetTotalClaimPercentage:
++*           type: number
++*           format: budgetTotalClaimPercentage
++*           description: Total Claim %
++*           required: true
++*     BudgetResponse:
++*       type: object
++*       properties:
++*         success:
++*           type: boolean
++*           description: Budget created
++@constructor
++**/
++export {};
+diff --git a/src/app/api/budget/route.ts b/src/app/api/budget/route.ts
+new file mode 100644
+index 0000000..02b1779
+--- /dev/null
++++ b/src/app/api/budget/route.ts
+@@ -0,0 +1,43 @@
++import MongoConnect from '@/backend/connection/mongo.connection';
++import { NextRequest, NextResponse } from 'next/server';
++import AuthService from '@/backend/services/auth.service';
++import BudgetService from '@/backend/services/budget.service';
++import BudgetValidator from '@/backend/validator/budget.validator';
++import { Budget } from '@/utils/dtos/budget.dto';
++import mongoose from 'mongoose';
++import NotFoundException from '@/backend/exceptions/notfound.exception';
++
++export async function POST(request: NextRequest) {
++  try {
++    const data = await request.json();
++    const conn = await MongoConnect();
++    const budgetService = new BudgetService(conn);
++    const authService = new AuthService(conn);
++    const budgetValidator = new BudgetValidator(data, conn);
++    await budgetValidator.validate();
++
++    if (budgetValidator.getErrors().length > 0) {
++      return NextResponse.json({ errors: budgetValidator.getErrors() }, { status: 400 });
++    }
++
++    const lastBudget: mongoose.Document<Budget>[] = await budgetService.findLastBudget();
++    let lastIndex = 1;
++    if (!!lastBudget && lastBudget.length > 0) {
++      const lastItem: Budget = lastBudget[0].toObject();
++      lastIndex = lastItem.budgetIndex + 1;
++    }
++
++    const currentUser = await authService.getUserByToken(request);
++    if (!currentUser) {
++      throw new NotFoundException('User not found');
++    }
++    const dataWithNewIndex = {
++      ...data,
++      budgetIndex: lastIndex
++    };
++    await budgetService.addProjectBudget(dataWithNewIndex, currentUser);
 +    return NextResponse.json({ success: true }, { status: 200 });
-   } catch (error) {
-     return NextResponse.json({ errors: [error] }, { status: 400 });
-   }
-diff --git a/src/app/api/builder/route.ts b/src/app/api/builder/route.ts
-index aa12b75..6606f8a 100644
---- a/src/app/api/builder/route.ts
-+++ b/src/app/api/builder/route.ts
-@@ -1,15 +1,11 @@
--import BuilderRepository from '@/backend/repositories/mongodb/builder.repository';
- import MongoConnect from '@/backend/connection/mongo.connection';
- import BuilderValidator from '@/backend/validator/builder.validator';
--import { Builder } from '@/utils/dtos/builder.dto';
- import { NextRequest, NextResponse } from 'next/server';
- import BuilderService from '@/backend/services/builder.service';
- import AuthService from '@/backend/services/auth.service';
--import { PAGINATE_OFFSET, PAGINATE_PAGE_SIZE } from '@/utils/constant';
--import { SortOrder } from 'mongoose';
- import { parsePayloadBuilderToCreateData } from '@/utils/helper';
- import ResponseStruct from '@/backend/structs/response.struct';
--import PaginationStruct from '@/backend/structs/pagination.struct';
-+import { getListingQuery } from '../listing';
++  } catch (error: any) {
++    return NextResponse.json({ errors: [error.message] }, { status: 400 });
++  }
++}
+diff --git a/src/backend/models/budget.model.ts b/src/backend/models/budget.model.ts
+index 00f0df0..ae5e3d5 100644
+--- a/src/backend/models/budget.model.ts
++++ b/src/backend/models/budget.model.ts
+@@ -12,14 +12,6 @@ export const BudgetSchema: mongoose.Schema<BudgetType> = new mongoose.Schema(
+       type: String,
+       required: true
+     },
+-    creatorEmail: {
+-      type: String,
+-      required: true
+-    },
+-    budgetAdditionalFields: {
+-      type: [String],
+-      required: true
+-    },
+     budgetCategory: {
+       type: String,
+       required: true
+@@ -36,12 +28,13 @@ export const BudgetSchema: mongoose.Schema<BudgetType> = new mongoose.Schema(
+       type: Number,
+       required: true
+     },
+-    budgetDescription: {
+-      type: String
++    budgetClaimedToDate: {
++      type: Number,
++      required: true
+     },
+     budgetIndex: {
+       type: Number,
+-      required: true
++      default: 0
+     },
+     budgetOriginalBudget: {
+       type: Number,
+@@ -55,15 +48,11 @@ export const BudgetSchema: mongoose.Schema<BudgetType> = new mongoose.Schema(
+       type: Number,
+       required: true
+     },
+-    budgetTotalClaimBeforeHoldback: {
+-      type: Number,
+-      required: true
+-    },
+     budgetTotalClaimPercentage: {
+       type: Number,
+       required: true
+     },
+-    budgetTotalHoldback: {
++    budgetCostToComplete: {
+       type: Number,
+       required: true
+     },
+diff --git a/src/backend/repositories/interfaces/budget.repository.interface.ts b/src/backend/repositories/interfaces/budget.repository.interface.ts
+index d5500b0..9d61bba 100644
+--- a/src/backend/repositories/interfaces/budget.repository.interface.ts
++++ b/src/backend/repositories/interfaces/budget.repository.interface.ts
+@@ -1,8 +1,3 @@
+-import { Budget as BudgetType } from '@/utils/dtos/budget.dto';
+ import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
  
- export async function POST(request: NextRequest) {
-   const formData = await request.formData();
-@@ -36,36 +32,26 @@ export async function POST(request: NextRequest) {
-     return NextResponse.json({ errors: [error.message] }, { status: 400 });
-   }
- }
-+
- export async function GET(request: NextRequest) {
-   const conn = await MongoConnect();
--  const builderRepository = new BuilderRepository(conn);
--  const builderService = new BuilderService(conn);
--  const responseStructure = new ResponseStruct(true);
--  const params = request.nextUrl.searchParams;
--  const sortBy = (params.get?.('sortBy') || 'dateCreate') as keyof Builder;
--  const sortDir = (params.get('sortDir') || 'desc') as SortOrder;
--  const search = (params.get('search') || '') as string;
--  const page = +(params.get('page') || PAGINATE_OFFSET);
--  const limit = +(params.get('limit') || PAGINATE_PAGE_SIZE);
--  const filter = {
--    page,
--    sortBy,
--    limit,
--    sortDir,
--    search
--  };
-+  const responseStruct = new ResponseStruct(true);
-+
-   try {
--    const total = await builderRepository.count(filter.search ? { builderName: { $regex: filter.search } } : {});
--    const builders = (await builderService.findBuilders(filter)) as unknown as Builder[];
--    const pagination = new PaginationStruct(page, limit, total);
--    responseStructure.setData({
--      meta: pagination,
--      data: builders
-+    const { limit: limitValue, page: pageValue, order: orderValue, search } = getListingQuery(request);
-+    const builderService = new BuilderService(conn);
-+
-+    const data = await builderService.listBuilders(limitValue, pageValue, orderValue, search);
-+    responseStruct.setData({
-+      meta: data.pagination,
-+      data: data.collection
-     });
--    return NextResponse.json(responseStructure.getResponse(), { status: 200 });
-+    responseStruct.setStatus(200);
-   } catch (error: any) {
--    responseStructure.pushError(error.message);
--    responseStructure.setStatus(400);
--    return NextResponse.json(responseStructure.getResponse(), { status: 400 });
-+    responseStruct.pushError(error.message);
-+    responseStruct.setStatus(500);
-+
-+    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
-   }
-+  return NextResponse.json(responseStruct.getResponse(), { status: 200 });
- }
-diff --git a/src/app/api/user/[id]/status/route.ts b/src/app/api/user/[id]/status/route.ts
-index 322385b..98308ff 100644
---- a/src/app/api/user/[id]/status/route.ts
-+++ b/src/app/api/user/[id]/status/route.ts
-@@ -6,7 +6,7 @@ import UserDto from '@/utils/dtos/user.dto';
- import NotFoundException from '@/backend/exceptions/notfound.exception';
- import { headers } from 'next/headers';
- import { decode, JWT } from 'next-auth/jwt';
--import { Actions } from '@/utils/enums';
-+import { Actions, UserStatus } from '@/utils/enums';
- import DateCustom from '@/utils/datetime/date.custom';
- 
- export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
-@@ -50,7 +50,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
-     }
- 
-     await userRepository.update(params.id, {
--      status: data.status,
-+      status: data.status === Actions.ACTIVATE ? UserStatus.ACTIVE : UserStatus.INACTIVE,
-       dateModify: new DateCustom(),
-       failedLoginAttempts: data.status === Actions.ACTIVATE ? 0 : user.failedLoginAttempts
-     });
-diff --git a/src/backend/services/builder.service.ts b/src/backend/services/builder.service.ts
-index 2e6e55e..2a66c6d 100644
---- a/src/backend/services/builder.service.ts
-+++ b/src/backend/services/builder.service.ts
-@@ -5,14 +5,15 @@ import { BuilderRepositoryInterface } from '@/backend/repositories/interfaces/bu
- import { getCsvCompanyFieldValue, parsePayloadBuilderToCreateData } from '@/utils/helper';
- import { CSV_SEP } from '@/utils/constant';
- import { CSV_COMPANY_ENUM, ROLE_LEVEL_ENUM_BUILDER, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
--import mongoose, { Mongoose } from 'mongoose';
+-export default interface BudgetRepositoryInterface extends BaseRepositoryInterface {
+-  addBudget(data: BudgetType): Promise<BudgetType>;
+-
+-  getBudgetsByProjectId(projectId: string): Promise<any>;
+-}
++export default interface BudgetRepositoryInterface extends BaseRepositoryInterface {}
+diff --git a/src/backend/repositories/mongodb/budget.repository.ts b/src/backend/repositories/mongodb/budget.repository.ts
+index c822e97..e83f6ee 100644
+--- a/src/backend/repositories/mongodb/budget.repository.ts
++++ b/src/backend/repositories/mongodb/budget.repository.ts
+@@ -1,27 +1,31 @@
+ import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
+ import BudgetRepositoryInterface from '@/backend/repositories/interfaces/budget.repository.interface';
+-import mongoose, { Mongoose, Promise } from 'mongoose';
 +import mongoose, { Mongoose, SortOrder } from 'mongoose';
- import BuilderDto, { Builder, Builder as BuilderType } from '@/utils/dtos/builder.dto';
- import { Role as RoleType } from '@/utils/dtos/role.dto';
- import RoleRepositoryInterface from '@/backend/repositories/interfaces/role.repository.interface';
--import { PaginateQuery } from '@/types/pagination';
- import RoleRepository from '../repositories/mongodb/role.repository';
--import UserDto from '@/utils/dtos/user.dto';
-+import UserDto, { User } from '@/utils/dtos/user.dto';
- import { FolderName } from '@/utils/enums';
-+import PaginationStruct from '../structs/pagination.struct';
-+import NotFoundException from '../exceptions/notfound.exception';
+ import Budget from '@/backend/models/budget.model';
+-import BudgetDto from '@/utils/dtos/budget.dto';
++import { PAGINATE_PAGE_SIZE } from '@/utils/constant';
  
- export default class BuilderService {
-   protected builderRepository: BuilderRepositoryInterface;
-@@ -183,7 +184,7 @@ export default class BuilderService {
-     const currentBuilder = await this.getBuilder(builderId);
- 
-     if (!currentBuilder) {
--      throw 'Builder not found';
-+      throw new NotFoundException('Builder not found');
-     }
-     const data = parsePayloadBuilderToCreateData(formData);
- 
-@@ -235,24 +236,50 @@ export default class BuilderService {
-     return await this.builderRepository.delete(builderId);
+ export default class BudgetRepository extends BaseRepositoryAbstract implements BudgetRepositoryInterface {
+   constructor(connection: Mongoose) {
+     super(connection);
    }
- 
--  mapBuilder = (data: Builder[]): Builder[] => {
--    return data.map((item) => {
--      const newObject = (item as unknown as mongoose.Document<Builder>).toObject();
--      return {
--        ...newObject,
--        creatorId: newObject.creatorId?._id,
--        creator: newObject.creatorId
--      };
-+  async listBuilders(
-+    limit: number,
-+    offset: number,
-+    order: { [key: string]: SortOrder },
-+    search: string
-+  ): Promise<{
-+    pagination: PaginationStruct;
-+    collection: Builder[];
-+  }> {
-+    const projectDto = new BuilderDto();
-+
-+    const validOrderFields = Object.keys(projectDto);
-+
-+    for (const key in order) {
-+      if (!validOrderFields.includes(key)) {
-+        delete order[key];
-+      }
-+    }
-+
-+    if (Object.keys(order).length === 0) {
-+      order = { builderName: 'asc' };
-+    }
-+
-+    const filterSearch = search !== '' ? { builderName: { $regex: search } } : {};
-+    const total = await this.builderRepository.count(filterSearch);
-+    const projects = await this.builderRepository.findWithSort(filterSearch, order, limit, offset);
-+
-+    const collection: Builder[] = [];
-+
-+    projects.forEach((project: mongoose.Document<Builder>) => {
-+      projectDto.setData(project.toJSON());
-+      const currentObject = projectDto.toObject() as Builder;
-+      const creator = currentObject.creatorId as Partial<User & { id: string }>;
-+      collection.push({
-+        ...currentObject,
-+        creatorId: creator.id || '',
-+        creator
-+      });
-     });
--  };
--  async findBuilders(query: PaginateQuery<Builder>) {
--    const result = (await this.builderRepository.findWithSort(
--      !!query.search ? { builderName: { $regex: query.search } } : {},
--      { [query.sortBy || 'builderName']: query.sortDir || 'desc' },
--      query.limit,
--      query.page
--    )) as unknown as Builder[];
 -
--    return this.mapBuilder(result);
-+
-+    const pagination = new PaginationStruct(offset, limit, total);
-+    return {
-+      pagination,
-+      collection
-+    };
+   getModel(): mongoose.Model<mongoose.Document> {
+     return Budget;
+   }
+-
+-  async addBudget(data: BudgetDto): Promise<BudgetDto> {
+-    await this.create(data);
+-
+-    return new Promise((resolve: (arg0: BudgetDto) => void) => {
+-      resolve(data);
+-    });
+-  }
+-
+-  async getBudgetsByProjectId(projectId: string): Promise<any> {
+-    return this.find({ projectId: projectId });
++  async findWithSort(
++    filter: object,
++    sort: { [key: string]: SortOrder },
++    limit = PAGINATE_PAGE_SIZE,
++    currentPage = 1
++  ): Promise<mongoose.Document[]> {
++    return this._model
++      .find(filter)
++      .populate({
++        path: 'creatorId',
++        select: { name: 1, email: 1, imageUrl: 1, _id: 1 }
++      })
++      .limit(limit)
++      .skip(limit * (currentPage - 1))
++      .sort(sort)
++      .exec();
    }
  }
-diff --git a/src/components/dialogs/builder/BuilderDeleteDialog.tsx b/src/components/builder/dialog/BuilderDeleteDialog.tsx
-similarity index 93%
-rename from src/components/dialogs/builder/BuilderDeleteDialog.tsx
-rename to src/components/builder/dialog/BuilderDeleteDialog.tsx
-index b298922..a2c0135 100644
---- a/src/components/dialogs/builder/BuilderDeleteDialog.tsx
-+++ b/src/components/builder/dialog/BuilderDeleteDialog.tsx
-@@ -1,4 +1,3 @@
--import { Builder } from '@/utils/dtos/builder.dto';
- import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
- import { GridCloseIcon } from '@mui/x-data-grid';
- import { Button } from '@/components/ui-component/buttons';
-@@ -7,8 +6,9 @@ import { useAsync } from '@/hooks/useAsync';
- import { deleteBuilder } from '@/utils/services/builder';
- import * as notify from '@/utils/notify';
- import LoadingButton from '@mui/lab/LoadingButton';
-+import { IBuilder } from '@/types/resource/builder';
- interface BuilderDialogProps extends Omit<DialogProps, 'onClose'> {
--  builder: Partial<Builder> | null;
-+  builder: Partial<IBuilder> | null;
-   onClose?: () => void;
-   onSuccess?: () => void;
- }
-@@ -21,8 +21,8 @@ export default function BuilderDeleteDialog({ builder, onClose, onSuccess, ...pr
-   };
+diff --git a/src/backend/services/budget.service.ts b/src/backend/services/budget.service.ts
+index 5391f5b..6ca2b63 100644
+--- a/src/backend/services/budget.service.ts
++++ b/src/backend/services/budget.service.ts
+@@ -1,14 +1,17 @@
+ import BudgetRepositoryInterface from '@/backend/repositories/interfaces/budget.repository.interface';
+-import mongoose from 'mongoose';
++import mongoose, { Mongoose } from 'mongoose';
+ import BudgetDto, { Budget as BudgetType } from '@/utils/dtos/budget.dto';
+ import { BUDGET_ENUM } from '@/utils/common';
+ import { ObjectId } from 'bson';
++import BudgetRepository from '../repositories/mongodb/budget.repository';
++import UserDto from '@/utils/dtos/user.dto';
++import { IRequestCreateBudget } from '@/types/request';
  
-   const handleDelete = async () => {
--    if (builder?._id) {
--      const result = await execute(deleteBuilder(builder._id + ''));
-+    if (builder?.id) {
-+      const result = await execute(deleteBuilder(builder.id + ''));
-       if (result.data.success) {
-         handleClose();
-         notify.success(formatMessage({ id: 'builderApiDeleted' }));
-diff --git a/src/components/dialogs/builder/BuilderDialog.tsx b/src/components/builder/dialog/BuilderDialog.tsx
-similarity index 98%
-rename from src/components/dialogs/builder/BuilderDialog.tsx
-rename to src/components/builder/dialog/BuilderDialog.tsx
-index c13461a..bcb6e71 100644
---- a/src/components/dialogs/builder/BuilderDialog.tsx
-+++ b/src/components/builder/dialog/BuilderDialog.tsx
-@@ -16,7 +16,6 @@ import {
- import LoadingButton from '@mui/lab/LoadingButton';
- import TextField from 'components/ui-component/TextField';
- import styles from '@/styles/dataDialog.module.scss';
--import { Builder as BuilderType } from '@/utils/dtos/builder.dto';
- import { GridCloseIcon } from '@mui/x-data-grid';
- import { useIntl } from 'react-intl';
- import AddIcon from '@mui/icons-material/Add';
-@@ -28,6 +27,7 @@ import { success as notifySuccess } from '@/utils/notify';
- import { BUILDER_CATEGORIES, BUILDER_STATUS, BUILDER_STATUS_ACTIVE } from '@/constant/builder';
- import stylesDialog from './style.module.scss';
- import useCommonValidates from '@/hooks/useCommonValidates';
-+import { IBuilder } from '@/types/resource/builder';
+ export default class BudgetService {
+   protected budgetRepository: BudgetRepositoryInterface;
  
- export interface IFormValues {
-   builderName: string;
-@@ -39,7 +39,7 @@ export interface IFormValues {
- }
+-  constructor(budgetRepository: BudgetRepositoryInterface) {
+-    this.budgetRepository = budgetRepository;
++  constructor(conn: Mongoose) {
++    this.budgetRepository = new BudgetRepository(conn);
+   }
  
- interface BuilderDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
--  builder: Partial<BuilderType> | null;
-+  builder: Partial<IBuilder> | null;
-   onClose: () => void;
-   onSuccess?: () => void;
- }
-@@ -72,7 +72,7 @@ export default function BuilderDialog({ onClose, builder, onSuccess, ...props }:
-   const handleSubmitForm = async (values: IFormValues) => {
-     let result;
-     if (builder) {
--      result = await execute(updateBuilder(builder._id + '', values));
-+      result = await execute(updateBuilder(builder.id + '', values));
-       if (result.data.success) {
-         notifySuccess(formatMessage({ id: 'builderApiUpdated' }));
-         handleCloseDialog();
-diff --git a/src/components/dialogs/builder/style.module.scss b/src/components/builder/dialog/style.module.scss
-similarity index 100%
-rename from src/components/dialogs/builder/style.module.scss
-rename to src/components/builder/dialog/style.module.scss
-diff --git a/src/components/builder/index.tsx b/src/components/builder/index.tsx
-index fbca0fd..b0cd9c7 100644
---- a/src/components/builder/index.tsx
-+++ b/src/components/builder/index.tsx
-@@ -7,12 +7,12 @@ import Table from '@/components/ui-component/table';
- import { GridColDef, GridPaginationModel, GridSortModel } from '@mui/x-data-grid';
- import Chip from '../ui-component/extended/Chip';
- import { useIntl } from 'react-intl';
--import BuilderDeleteDialog from '../dialogs/builder/BuilderDeleteDialog';
-+import BuilderDeleteDialog from './dialog/BuilderDeleteDialog';
- import { useEffect, useState } from 'react';
- import { Builder } from '@/utils/dtos/builder.dto';
- import { getBuilders } from '@/utils/services/builder';
- import { useAsync } from '@/hooks/useAsync';
--import BuilderDialog from '../dialogs/builder/BuilderDialog';
-+import BuilderDialog from './dialog/BuilderDialog';
- import { BUILDER_STATUS_ARCHIVED, BUILDER_STATUS_INACTIVE } from '@/constant/builder';
- import Avatar from '../ui-component/extended/Avatar';
- import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT, SORT_FIELD_DEFAULT } from '@/utils/constant';
-@@ -41,7 +41,7 @@ const Builder = () => {
-     return <Chip chipcolor="success" label={value} sx={{ ':hover': null }} />;
-   };
-   const columns: GridColDef[] = [
--    { field: '_id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
-+    { field: 'id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
-     {
-       field: 'builderName',
-       headerName: formatMessage({ id: 'builderTableBuilderName' }),
-@@ -120,8 +120,8 @@ const Builder = () => {
-     const field = model?.[0]?.field || SORT_FIELD_DEFAULT;
-     const dir = model?.[0]?.sort || SORT_DIRECTION_DEFAULT;
-     await fetchBuilder({
--      sortBy: field,
--      sortDir: dir
-+      field: field,
-+      sort: dir
-     });
-   };
+   async getBudgetsByProjectId(projectId: string): Promise<{
+@@ -50,7 +53,8 @@ export default class BudgetService {
+         budgetTotalClaimBeforeHoldback: item.get('budgetTotalClaimBeforeHoldback'),
+         budgetTotalClaimPercentage: item.get('budgetTotalClaimPercentage'),
+         dateCreate: item.get('dateCreate'),
+-        dateModify: item.get('dateModify')
++        dateModify: item.get('dateModify'),
++        budgetCostToComplete: item.get('budgetCostToComplete')
+       };
+       budgetDto.setData(data);
  
-diff --git a/src/components/contractor/index.tsx b/src/components/contractor/index.tsx
-index 8b4b468..d9f721a 100644
---- a/src/components/contractor/index.tsx
-+++ b/src/components/contractor/index.tsx
-@@ -44,12 +44,11 @@ const Contractor = () => {
-   };
-   const columns: GridColDef[] = [
-     {
--      field: '_id',
-+      field: 'id',
-       headerName: formatMessage({ id: 'tableId' }),
-       align: 'center',
-       headerAlign: 'center',
--      flex: 1,
--      valueGetter: ({ row }) => row.id
-+      flex: 1
-     },
-     {
-       field: 'contractorName',
-diff --git a/src/components/ui-component/table/index.tsx b/src/components/ui-component/table/index.tsx
-index 7646de6..b8f173d 100644
---- a/src/components/ui-component/table/index.tsx
-+++ b/src/components/ui-component/table/index.tsx
-@@ -5,7 +5,6 @@ import { ArrowDropDown, ArrowDropUp } from '@mui/icons-material';
- import styles from './table.module.scss';
- import './default.scss';
- import clsx from 'clsx';
--import { useMemo } from 'react';
- import { useIntl } from 'react-intl';
- import { PAGINATE_PAGE_SIZE } from '@/utils/constant';
+@@ -80,8 +84,31 @@ export default class BudgetService {
+     await this.budgetRepository.updateMany({ projectId }, { budgetTotalClaim: currentClaimNumber });
+   }
  
-@@ -22,9 +21,6 @@ const IconSort = ({ dir = 'desc' }: { dir: GridSortDirection }) => (
- 
- export default function Table({ initialState, sx, slots, rows, columns, wrapperBox, rowCount, ...props }: CustomTableProps) {
-   const { formatMessage } = useIntl();
--  const formatRows = useMemo(() => {
--    return rows.map((item) => ({ ...item, id: item?._id || item?.id }));
--  }, [rows]);
- 
-   const renderNoItem = () => (
-     <Box width="100%" height="100%" display="flex" justifyContent="center" alignItems="center">
-@@ -36,7 +32,7 @@ export default function Table({ initialState, sx, slots, rows, columns, wrapperB
-   return (
-     <Box width="100%" sx={{ height: isNoItems ? '150px' : 'unset' }} {...wrapperBox}>
-       <DataGrid
--        rows={formatRows}
-+        rows={rows}
-         columns={columns}
-         initialState={{
-           pagination: {
-diff --git a/src/components/user/component/ButtonSelectStatus.tsx b/src/components/user/component/ButtonSelectStatus.tsx
-index 5e4e9b0..16aac92 100644
---- a/src/components/user/component/ButtonSelectStatus.tsx
-+++ b/src/components/user/component/ButtonSelectStatus.tsx
-@@ -1,9 +1,9 @@
--import { USER_STATUS_ACTIVE, USER_STATUS_DEACTIVED } from '@/constant/user';
- import { Box, Button, ButtonProps, Divider, Popover, PopoverProps, Typography } from '@mui/material';
- import { useState } from 'react';
- import { useIntl } from 'react-intl';
- import { CaretUp, CaretDown } from '@phosphor-icons/react';
- import styles from './styles.module.scss';
-+import { UserStatus } from '@/utils/enums';
- 
- interface Props {
-   buttonProps?: Partial<ButtonProps>;
-@@ -49,12 +49,12 @@ export const ButtonSelectStatus = ({ onSelect, buttonProps, popoverProps }: Prop
-         {...popoverProps}
-       >
-         <Box>
--          <Typography className={styles.status} onClick={() => handleSelect(USER_STATUS_ACTIVE)}>
--            {USER_STATUS_ACTIVE}
-+          <Typography className={styles.status} onClick={() => handleSelect(UserStatus.ACTIVE)}>
-+            {UserStatus.ACTIVE}
-           </Typography>
-           <Divider className={styles.divider} />
--          <Typography className={styles.status} onClick={() => handleSelect(USER_STATUS_DEACTIVED)}>
--            {USER_STATUS_DEACTIVED}
-+          <Typography className={styles.status} onClick={() => handleSelect(UserStatus.INACTIVE)}>
-+            {UserStatus.INACTIVE}
-           </Typography>
-         </Box>
-       </Popover>
-diff --git a/src/components/user/component/styles.module.scss b/src/components/user/component/styles.module.scss
-index 8a35459..c64d8f8 100644
---- a/src/components/user/component/styles.module.scss
-+++ b/src/components/user/component/styles.module.scss
-@@ -27,6 +27,7 @@
-   font-weight: 500;
-   padding: 10px 16px;
-   cursor: pointer;
-+  text-transform: capitalize;
- }
- 
- .buttonDelete{
-diff --git a/src/components/user/detail/components/AdditionalInformation/index.tsx b/src/components/user/detail/components/AdditionalInformation/index.tsx
-index cacdc2c..21e3ba8 100644
---- a/src/components/user/detail/components/AdditionalInformation/index.tsx
-+++ b/src/components/user/detail/components/AdditionalInformation/index.tsx
-@@ -4,7 +4,7 @@ import { useIntl } from 'react-intl';
- 
- import Card from '@/components/ui-component/Card';
- import TextField from 'components/ui-component/TextField';
--import { IUser } from '@/app/api/users/list/route';
-+import { IUser } from '@/types/resource/user';
- 
- interface Props {
-   user: IUser;
-diff --git a/src/components/user/detail/components/BasicInformation/index.tsx b/src/components/user/detail/components/BasicInformation/index.tsx
-index 6872e6d..aa8bbab 100644
---- a/src/components/user/detail/components/BasicInformation/index.tsx
-+++ b/src/components/user/detail/components/BasicInformation/index.tsx
-@@ -6,8 +6,8 @@ import { useIntl } from 'react-intl';
- import Card from '@/components/ui-component/Card';
- import TextField from 'components/ui-component/TextField';
- import { DATE_FORMAT } from '@/constant';
--import { IUser } from '@/app/api/users/list/route';
- import DateCustom from '@/utils/datetime/date.custom';
-+import { IUser } from '@/types/resource/user';
- 
- interface Props {
-   user: IUser;
-@@ -44,9 +44,14 @@ export default function BasicInformation({ user }: Props) {
-         <Grid item xs={6}>
-           <TextField
-             label={formatMessage({ id: 'userDetailStatus' })}
--            name="completionStatus"
--            value={user.completionStatus}
-+            name="status"
-+            value={user.status}
-             {...defaultProps}
-+            sx={{
-+              '& input': {
-+                textTransform: 'capitalize'
-+              }
-+            }}
-           />
-         </Grid>
-         <Grid item xs={6}>
-diff --git a/src/components/user/detail/components/ProfilePicture/index.tsx b/src/components/user/detail/components/ProfilePicture/index.tsx
-index 0a0def2..b6b0d28 100644
---- a/src/components/user/detail/components/ProfilePicture/index.tsx
-+++ b/src/components/user/detail/components/ProfilePicture/index.tsx
-@@ -9,7 +9,7 @@ import { AVATAR_DEFAULT_URL } from '@/constant';
- // store
- 
- import styles from './styles.module.scss';
--import { IUser } from '@/app/api/users/list/route';
-+import { IUser } from '@/types/resource/user';
- 
- export interface IProfilePictureProps {
-   user: IUser;
-@@ -21,7 +21,7 @@ export default function ProfilePicture({ user }: IProfilePictureProps) {
-   return (
-     <Card title={formatMessage({ id: 'userDetailProfilePicture' })}>
-       <Box className={styles.wrapper}>
--        <Avatar src={user?.avatarUrl || AVATAR_DEFAULT_URL} size="xl" className={styles.avatar} />
-+        <Avatar src={user?.imageUrl || AVATAR_DEFAULT_URL} size="xl" className={styles.avatar} />
-       </Box>
-     </Card>
-   );
-diff --git a/src/components/user/detail/index.tsx b/src/components/user/detail/index.tsx
-index 82f7763..7c7fa58 100644
---- a/src/components/user/detail/index.tsx
-+++ b/src/components/user/detail/index.tsx
-@@ -8,11 +8,11 @@ import { useIntl } from 'react-intl';
- import ProfilePicture from './components/ProfilePicture';
- import { useEffect, useState } from 'react';
- import { useAsync } from '@/hooks/useAsync';
--import { IUser } from '@/app/api/users/list/route';
- import Loader from '@/components/ui-component/Loader';
- import { getUserDetail } from '@/utils/services/user';
- import BasicInformation from './components/BasicInformation';
- import AdditionalInformation from './components/AdditionalInformation';
-+import { IUser } from '@/types/resource/user';
- 
- const UserDetail = () => {
-   const { formatMessage } = useIntl();
-@@ -37,8 +37,8 @@ const UserDetail = () => {
-   const getData = async () => {
-     if (params.id) {
-       const result = await execute(getUserDetail(userId));
--      if (result.data.user) {
--        setUser(result.data.user);
-+      if (result.data.data) {
-+        setUser(result.data.data);
-       } else {
-         router.push(userUrl);
-       }
-diff --git a/src/components/dialogs/user/UserChangeStatus.tsx b/src/components/user/dialog/UserChangeStatus.tsx
-similarity index 76%
-rename from src/components/dialogs/user/UserChangeStatus.tsx
-rename to src/components/user/dialog/UserChangeStatus.tsx
-index 8c97b15..663b16f 100644
---- a/src/components/dialogs/user/UserChangeStatus.tsx
-+++ b/src/components/user/dialog/UserChangeStatus.tsx
-@@ -5,16 +5,17 @@ import { useIntl } from 'react-intl';
- import { useAsync } from '@/hooks/useAsync';
- import { success as notifySuccess } from '@/utils/notify';
- import LoadingButton from '@mui/lab/LoadingButton';
--import { IUser } from '@/app/api/users/list/route';
--import { updateUser } from '@/utils/services/user';
--import { USER_STATUS_ACTIVE } from '@/constant/user';
-+import { bulkControlUser } from '@/utils/services/user';
-+import { IUser } from '@/types/resource/user';
-+import { Actions, UserStatus } from '@/utils/enums';
- interface UserDialogProps extends Omit<DialogProps, 'onClose'> {
-   users: Partial<IUser>[];
-   status: string;
-   onClose?: () => void;
-+  onSuccess?: () => void;
- }
- 
--export default function UserChangeStatusDialog({ users, status, onClose, ...props }: UserDialogProps): JSX.Element {
-+export default function UserChangeStatusDialog({ users, status, onClose, onSuccess, ...props }: UserDialogProps): JSX.Element {
-   const { formatMessage } = useIntl();
-   const { isLoading, execute } = useAsync();
-   const handleClose = () => {
-@@ -22,20 +23,19 @@ export default function UserChangeStatusDialog({ users, status, onClose, ...prop
-   };
- 
-   const handleSubmit = async () => {
--    for (let index = 0; index < users.length; index++) {
--      const item = users[index];
--      await execute(updateUser(item._id + '', { completionStatus: status }));
--    }
-+    const ids = users.map((u) => u?.id).filter((i) => Boolean(i)) as string[];
-+    const actionStatus = status === UserStatus.ACTIVE ? Actions.ACTIVATE : Actions.DEACTIVATE;
-+    await execute(bulkControlUser(ids, actionStatus));
-     handleClose();
-+    onSuccess?.();
-     notifySuccess(formatMessage({ id: 'userApiUpdated' }));
-   };
- 
-   const renderContent = () => {
--    const msgStatus = status === USER_STATUS_ACTIVE ? 'active' : 'deactivate';
--    let msg = formatMessage({ id: 'userDialogChangeStatusContent' }).replace('{status}', msgStatus);
-+    let msg = formatMessage({ id: 'userDialogChangeStatusContent' }).replace('{status}', status);
-     let noMsg = '';
-     if (users.length === 1) {
--      noMsg = `<strong>${users[0].firstName} ${users[0].lastName}</strong>`;
-+      noMsg = `<strong>${users[0]?.firstName} ${users[0]?.lastName}</strong>`;
-     } else {
-       noMsg = `<strong>${users.length}</strong> users`;
-     }
-@@ -45,7 +45,7 @@ export default function UserChangeStatusDialog({ users, status, onClose, ...prop
-   return (
-     <Dialog onClose={handleClose} {...props}>
-       <DialogTitle sx={{ pt: '8px' }}>
--        {formatMessage({ id: status === USER_STATUS_ACTIVE ? 'userDialogActiveTitle' : 'userDialogDeactiveTitle' })}
-+        {formatMessage({ id: status === UserStatus.ACTIVE ? 'userDialogActiveTitle' : 'userDialogDeactivatedTitle' })}
-       </DialogTitle>
-       <IconButton
-         aria-label="close"
-diff --git a/src/components/dialogs/user/UserDeleteDialog.tsx b/src/components/user/dialog/UserDeleteDialog.tsx
-similarity index 85%
-rename from src/components/dialogs/user/UserDeleteDialog.tsx
-rename to src/components/user/dialog/UserDeleteDialog.tsx
-index 5ea462d..1d80651 100644
---- a/src/components/dialogs/user/UserDeleteDialog.tsx
-+++ b/src/components/user/dialog/UserDeleteDialog.tsx
-@@ -5,14 +5,16 @@ import { useIntl } from 'react-intl';
- import { useAsync } from '@/hooks/useAsync';
- import { success as notifySuccess } from '@/utils/notify';
- import LoadingButton from '@mui/lab/LoadingButton';
--import { IUser } from '@/app/api/users/list/route';
--import { deleteUser } from '@/utils/services/user';
-+import { bulkControlUser } from '@/utils/services/user';
-+import { IUser } from '@/types/resource/user';
-+import { Actions } from '@/utils/enums';
- interface UserDialogProps extends Omit<DialogProps, 'onClose'> {
-   users: Partial<IUser>[];
-   onClose?: () => void;
-+  onSuccess?: () => void;
- }
- 
--export default function UserDeleteDialog({ users, onClose, ...props }: UserDialogProps): JSX.Element {
-+export default function UserDeleteDialog({ users, onClose, onSuccess, ...props }: UserDialogProps): JSX.Element {
-   const { formatMessage } = useIntl();
-   const { isLoading, execute } = useAsync();
-   const handleClose = () => {
-@@ -20,12 +22,12 @@ export default function UserDeleteDialog({ users, onClose, ...props }: UserDialo
-   };
- 
-   const handleDelete = async () => {
--    for (let index = 0; index < users.length; index++) {
--      const item = users[index];
--      await execute(deleteUser(item._id + ''));
--    }
-+    const ids = users.map((u) => u?.id).filter((i) => Boolean(i)) as string[];
-+    await execute(bulkControlUser(ids, Actions.DELETE));
+-  async addProjectBudget(budget: BudgetDto): Promise<mongoose.Document> {
+-    return this.budgetRepository.create(budget);
++  async addProjectBudget(data: IRequestCreateBudget, currentUser: UserDto): Promise<mongoose.Document> {
++    try {
++      const budgetDto = new BudgetDto();
++      const defaultData = budgetDto.toObject();
 +
-     handleClose();
-     notifySuccess(formatMessage({ id: 'userApiDeleted' }));
-+    onSuccess?.();
-   };
- 
-   const renderContent = () => {
-diff --git a/src/components/user/index.tsx b/src/components/user/index.tsx
-index 24d19bc..b4247a7 100644
---- a/src/components/user/index.tsx
-+++ b/src/components/user/index.tsx
-@@ -5,10 +5,8 @@ import { useIntl } from 'react-intl';
- import { getUsers } from '@/utils/services/user';
- import { useAsync } from '@/hooks/useAsync';
- import { useEffect, useState } from 'react';
--import { IUser } from '@/app/api/users/list/route';
--import { USER_STATUS_ACTIVE, USER_STATUS_DEACTIVED } from '@/constant/user';
- import Chip from '@/components/ui-component/extended/Chip';
--import { GridColDef, GridRowParams, GridRowSelectionModel } from '@mui/x-data-grid';
-+import { GridColDef, GridPaginationModel, GridRowParams, GridRowSelectionModel, GridSortModel } from '@mui/x-data-grid';
- import Avatar from '@/components/ui-component/extended/Avatar';
- import { Eye, Users as IconUsers, Buildings, LockKey, Plus } from '@phosphor-icons/react';
- import { Button } from '@/components/ui-component/buttons';
-@@ -18,10 +16,15 @@ import { DATE_FULL_FORMAT } from '@/constant';
- import { format } from 'date-fns';
- import { ButtonSelectStatus } from './component/ButtonSelectStatus';
- import { ButtonDelete } from './component/ButtonDelete';
--import UserDeleteDialog from '../dialogs/user/UserDeleteDialog';
--import UserChagenStatusDialog from '../dialogs/user/UserChangeStatus';
-+import UserDeleteDialog from './dialog/UserDeleteDialog';
-+import UserChangeStatusDialog from './dialog/UserChangeStatus';
- import NextLink from 'next/link';
- import routes from '@/routes';
-+import { IUser } from '@/types/resource/user';
-+import { IRequestFilter } from '@/types/request';
-+import { ResponseMeta } from '@/types/pagination';
-+import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT, SORT_FIELD_DEFAULT } from '@/utils/constant';
-+import { UserStatus } from '@/utils/enums';
- 
- const User = () => {
-   const { formatMessage } = useIntl();
-@@ -31,22 +34,31 @@ const User = () => {
-   const [statusSelected, setStatusSelected] = useState('');
-   const [deleteUsers, setDeleteUsers] = useState<IUser[]>([]);
-   const [changeStatusUsers, setChangeStatusUsers] = useState<IUser[]>([]);
-+  const [userFilters, setUserFilters] = useState<IRequestFilter>({});
-+  const [userMeta, setUserMeta] = useState<ResponseMeta | null>(null);
-   const renderStatus = (value: string) => {
-     let formatValue = value.toLowerCase();
--    if (formatValue === USER_STATUS_DEACTIVED.toLowerCase()) {
--      return <Chip chipcolor="error" variant="outlined" label={value} sx={{ ':hover': null }} />;
-+    if (formatValue === UserStatus.ACTIVE.toLocaleLowerCase()) {
-+      return <Chip chipcolor="success" label={formatValue} sx={{ ':hover': null, textTransform: 'capitalize' }} />;
-     }
--    return <Chip chipcolor="success" label={value} sx={{ ':hover': null }} />;
-+    return <Chip chipcolor="error" variant="outlined" label={formatValue} sx={{ ':hover': null, textTransform: 'capitalize' }} />;
-   };
- 
--  const initData = async () => {
--    const res = await execute(getUsers());
--    const data = res.data?.users && res.data?.users.length > 0 ? res.data?.users : [];
-+  const fetchUsers = async (filters?: IRequestFilter) => {
-+    const newFilter = {
-+      ...userFilters,
-+      ...filters
-+    };
-+    const result = await execute(getUsers(newFilter));
-+    const data = result.data?.data && result.data?.data.length > 0 ? result.data?.data : [];
-+    const meta = result.data.meta || null;
-+    setUserMeta(meta);
-     setUsers(data);
-+    setUserFilters(newFilter);
-   };
- 
-   useEffect(() => {
--    initData();
-+    fetchUsers();
-     // eslint-disable-next-line react-hooks/exhaustive-deps
-   }, []);
- 
-@@ -58,10 +70,8 @@ const User = () => {
-       align: 'center',
-       renderCell: ({ row }) => (
-         <Box display="flex" gap="12px" alignItems="center">
--          {row?.avatarUrl ? <Avatar alt={`${row.firstName} ${row.lastName}`} src={row.avatarUrl} size="xs" /> : null}
--          <Typography variant="h4">
--            {row.firstName} {row.lastName}
--          </Typography>
-+          {row?.imageUrl ? <Avatar alt={`${row.firstName} ${row.lastName}`} src={row.imageUrl} size="xs" /> : null}
-+          <Typography variant="h4">{`${row.firstName} ${row.lastName}`}</Typography>
-         </Box>
-       ),
-       flex: 2
-@@ -77,7 +87,7 @@ const User = () => {
-       field: 'status',
-       headerName: formatMessage({ id: 'tableStatus' }),
-       headerAlign: 'center',
--      renderCell: ({ row }) => <Box fontWeight={500}>{renderStatus(row.completionStatus || USER_STATUS_ACTIVE)}</Box>,
-+      renderCell: ({ row }) => <Box fontWeight={500}>{renderStatus(row.status || UserStatus.ACTIVE)}</Box>,
-       flex: 1,
-       align: 'center'
-     },
-@@ -111,7 +121,7 @@ const User = () => {
-   ];
- 
-   const handleSelectStatus = (value: string) => {
--    const listUsers = users.filter((item) => rowsSelected.includes(item._id) && item.completionStatus !== value);
-+    const listUsers = users.filter((item) => rowsSelected.includes(item.id) && item.status !== value);
-     if (listUsers.length > 0) {
-       setStatusSelected(value);
-       setChangeStatusUsers(listUsers);
-@@ -124,7 +134,7 @@ const User = () => {
-     setChangeStatusUsers([]);
-   };
-   const handleDelete = () => {
--    const listUsers = users.filter((item) => rowsSelected.includes(item._id));
-+    const listUsers = users.filter((item) => rowsSelected.includes(item.id));
-     setDeleteUsers(listUsers);
-   };
-   const handleResetDelete = () => {
-@@ -135,6 +145,36 @@ const User = () => {
-     setRowsSelected(rowSelectionModel);
-   };
- 
-+  const handleSort = async (model: GridSortModel) => {
-+    const field = model?.[0]?.field || SORT_FIELD_DEFAULT;
-+    const dir = model?.[0]?.sort || SORT_DIRECTION_DEFAULT;
-+    await fetchUsers({
-+      field: field,
-+      sort: dir
-+    });
-+  };
-+
-+  const handlePaginationChange = async (model: GridPaginationModel) => {
-+    const newPage = (model?.page || 0) + 1;
-+    const limit = model?.pageSize || PAGINATE_PAGE_SIZE;
-+    await fetchUsers({
-+      page: newPage,
-+      limit
-+    });
-+  };
-+
-+  const handleActionSuccess = async () => {
-+    await fetchUsers({});
-+  };
-+
-+  const handleSearch = async (keyword: string) => {
-+    if (keyword !== userFilters.search) {
-+      await fetchUsers({
-+        search: keyword
++      budgetDto.setData({
++        ...defaultData,
++        projectId: data.projectId,
++        budgetCategory: data.budgetCategory,
++        budgetCode: data.budgetCode,
++        budgetOriginalBudget: data.budgetOriginalBudget,
++        budgetCurrentBudget: data.budgetCurrentBudget,
++        budgetClaimedToDate: data.budgetClaimedToDate,
++        budgetCurrentClaim: data.budgetCurrentClaim,
++        budgetTotalClaim: data.budgetTotalClaim,
++        budgetTotalClaimPercentage: data.budgetTotalClaimPercentage,
++        budgetCostToComplete: data.budgetCostToComplete,
++        budgetRevision: data.budgetRevision,
++        budgetIndex: data.budgetIndex,
++        creatorId: currentUser.toObject().id + ''
 +      });
++      return this.budgetRepository.create(budgetDto);
++    } catch (error) {
++      throw error;
 +    }
-+  };
-+
-   const renderHeaderAction = () => (
-     <>
-       <Button
-@@ -159,7 +199,7 @@ const User = () => {
+   }
  
-   return (
-     <Stack direction="column">
--      <Breadcrumbs title={formatMessage({ id: 'userTitle' })} onSearch={() => console.log('hello')} actionCom={renderHeaderAction} />
-+      <Breadcrumbs title={formatMessage({ id: 'userTitle' })} onSearch={handleSearch} actionCom={renderHeaderAction} />
-       <Table
-         rows={users}
-         columns={columns}
-@@ -167,13 +207,26 @@ const User = () => {
-         checkboxSelection
-         onRowSelectionModelChange={handleSelectRow}
-         rowSelectionModel={rowsSelected}
-+        onSortModelChange={handleSort}
-+        paginationModel={{
-+          page: (userFilters?.page || 1) - 1,
-+          pageSize: userFilters.limit || PAGINATE_PAGE_SIZE
-+        }}
-+        rowCount={userMeta?.total || 0}
-+        onPaginationModelChange={handlePaginationChange}
-+      />
-+      <UserDeleteDialog
-+        open={Boolean(deleteUsers?.length > 0)}
-+        users={deleteUsers}
-+        onClose={handleResetDelete}
-+        onSuccess={handleActionSuccess}
-       />
--      <UserDeleteDialog open={Boolean(deleteUsers?.length > 0)} users={deleteUsers} onClose={handleResetDelete} />
--      <UserChagenStatusDialog
-+      <UserChangeStatusDialog
-         open={Boolean(changeStatusUsers?.length > 0 && statusSelected !== '')}
-         users={changeStatusUsers}
-         status={statusSelected}
-         onClose={handleDeselectStatus}
-+        onSuccess={handleActionSuccess}
-       />
-     </Stack>
-   );
-diff --git a/src/constant/user.ts b/src/constant/user.ts
+   async importBudgets(
+@@ -132,6 +159,7 @@ export default class BudgetService {
+         budgetTotalClaimPercentage: 0,
+         budgetDescription: '',
+         budgetAdditionalFields: budgetFields.slice(BUDGET_ENUM.maxCount),
++        budgetCostToComplete: 0,
+         creatorEmail,
+         dateCreate: new Date(),
+         dateModify: new Date()
+@@ -143,6 +171,10 @@ export default class BudgetService {
+     await this.budgetRepository.createMany(budgetData);
+   }
+ 
++  async findLastBudget() {
++    return await this.budgetRepository.findWithSort({}, { dateCreate: -1 }, 1);
++  }
++
+   async updateBudgetTotalClaim(budgetId: string, currentClaimNumber: string | null, total: number): Promise<mongoose.Document | null> {
+     const budgetTotalClaimDictionary =
+       currentClaimNumber === null
+diff --git a/src/backend/validator/budget.validator.ts b/src/backend/validator/budget.validator.ts
+new file mode 100644
+index 0000000..0d86344
+--- /dev/null
++++ b/src/backend/validator/budget.validator.ts
+@@ -0,0 +1,65 @@
++import BaseValidator from '@/backend/validator/base.validator';
++import { number, string } from 'yup';
++import ProjectRepositoryInterface from '../repositories/interfaces/project.repository.interface';
++import { Mongoose } from 'mongoose';
++import ProjectRepository from '../repositories/mongodb/project.repository';
++import { IRequestCreateBudget } from '@/types/request';
++
++export default class BudgetValidator extends BaseValidator {
++  private projectRepository: ProjectRepositoryInterface;
++
++  constructor(data: IRequestCreateBudget, conn: Mongoose) {
++    super();
++    this.data = data;
++    this.projectRepository = new ProjectRepository(conn);
++  }
++
++  validateRules() {
++    const projectIdRule = { projectId: string().required() };
++    const budgetCategoryRule = { budgetCategory: string().required() };
++    const budgetCodeRule = { budgetCode: string().max(25).required() };
++    const budgetOriginalBudgetRule = { budgetOriginalBudget: number().required() };
++    const budgetCurrentBudgetRule = { budgetCurrentBudget: number().required() };
++    const budgetRevisionRule = { budgetRevision: number().required() };
++    const budgetClaimedToDateRule = { budgetClaimedToDate: number().required() };
++    const budgetCurrentClaimRule = { budgetCurrentClaim: number().required() };
++    const budgetTotalClaimRule = { budgetTotalClaim: number().required() };
++    const budgetTotalClaimPercentageRule = { budgetTotalClaimPercentage: number().integer().required() };
++    const budgetCostToCompleteRule = { budgetCostToComplete: number().required() };
++    this.rules = [
++      projectIdRule,
++      budgetCategoryRule,
++      budgetCodeRule,
++      budgetOriginalBudgetRule,
++      budgetRevisionRule,
++      budgetCurrentBudgetRule,
++      budgetClaimedToDateRule,
++      budgetCurrentClaimRule,
++      budgetTotalClaimRule,
++      budgetTotalClaimPercentageRule,
++      budgetCostToCompleteRule
++    ];
++
++    return this;
++  }
++
++  async existsProject(): Promise<boolean> {
++    const project = await this.projectRepository.findProjectId(this.data.projectId);
++
++    if (!project) {
++      this.setErrors(['Project not found']);
++
++      return false;
++    }
++
++    return true;
++  }
++
++  async validate(): Promise<boolean> {
++    super.validate();
++    if (this.getErrors().length > 0) {
++      return false;
++    }
++    return await this.existsProject();
++  }
++}
+diff --git a/src/components/dialogs/BudgetAddDialog.tsx b/src/components/dialogs/BudgetAddDialog.tsx
 deleted file mode 100644
-index f4da194..0000000
---- a/src/constant/user.ts
+index ab419bd..0000000
+--- a/src/components/dialogs/BudgetAddDialog.tsx
 +++ /dev/null
-@@ -1,4 +0,0 @@
--export const USER_STATUS_ACTIVE = 'Active';
--export const USER_STATUS_DEACTIVED = 'Deactivated';
+@@ -1,256 +0,0 @@
+-/**
+- * @license
+- * Copyright 2024 J2C
+- */
 -
--export const USER_STATUS = [USER_STATUS_ACTIVE, USER_STATUS_DEACTIVED];
-diff --git a/src/types/pagination.ts b/src/types/pagination.ts
-index 96477ce..dc2e95c 100644
---- a/src/types/pagination.ts
-+++ b/src/types/pagination.ts
-@@ -1,14 +1,3 @@
--import { SortOrder } from 'mongoose';
+-import { useState, useEffect, ChangeEvent, Dispatch, SetStateAction } from 'react';
+-import { Button, Dialog, DialogActions, DialogContent, TextField, Typography } from '@mui/material';
+-import { PROJECTS_ENUM } from '@/utils/common';
+-import { updateFormField, updateFormFieldFloat, updateFormFieldInt } from '@/utils/helper';
+-import styles from '@/styles/dataDialog.module.scss';
+-import axiosServices from '@/utils/axios';
+-import APIS from '@/utils/api';
 -
--export type PaginateQuery<T> = {
--  page: number;
--  limit?: number;
--  sortBy?: keyof T;
--  sortDir?: SortOrder;
--  search?: string;
--  filterBy?: string;
+-const DEFAULT_FORM_STATE = {
+-  budgetIndex: 0,
+-  budgetCode: '',
+-  budgetOriginalBudget: '',
+-  budgetCurrentBudget: '',
+-  budgetCategory: '',
+-  budgetRevision: '',
+-  budgetTotalClaimBeforeHoldback: '',
+-  budgetTotalHoldback: '',
+-  budgetCurrentClaim: '',
+-  budgetTotalClaim: '',
+-  budgetTotalClaimPercentage: '',
+-  budgetDescription: ''
 -};
 -
- export type ResponseMeta = {
-   total: number;
-   page: number;
+-const FEATURE_FLAG: boolean = false;
+-
+-interface BudgetAddDialogProps {
+-  setAction: Dispatch<SetStateAction<any>>;
+-  showDialog: boolean;
+-  currentEditObject: any;
+-  budgetIndexMax: number;
+-  onCloseDialog: () => void;
+-  onSuccess: (action: number) => void;
+-  onError: (action: number) => void;
+-}
+-
+-export default function BudgetAddDialog(props: BudgetAddDialogProps): JSX.Element {
+-  const showDialog = props.showDialog;
+-
+-  const [formFields, setFormFields] = useState<any>(DEFAULT_FORM_STATE);
+-  const [isSubmitting, setIsSubmitting] = useState(false);
+-
+-  useEffect(() => {
+-    if (showDialog) {
+-      const initFormData = {
+-        ...props.currentEditObject,
+-        budgetIndex: Math.floor(props.budgetIndexMax) + 1, // desired index = max + 1
+-        budgetCode: '',
+-        budgetOriginalBudget: '',
+-        budgetCurrentBudget: '',
+-        budgetCategory: '',
+-        budgetRevision: '',
+-        budgetTotalClaimBeforeHoldback: '',
+-        budgetTotalHoldback: '',
+-        budgetCurrentClaim: '',
+-        budgetTotalClaim: '',
+-        budgetTotalClaimPercentage: '',
+-        budgetDescription: ''
+-      };
+-      setFormFields(initFormData);
+-    }
+-  }, [props.currentEditObject, showDialog, props.budgetIndexMax]);
+-
+-  if (!showDialog) {
+-    return <></>;
+-  }
+-
+-  const isDisabled = () =>
+-    formFields.budgetIndex === 0 ||
+-    formFields.budgetCode.length === 0 ||
+-    formFields.budgetOriginalBudget.length === 0 ||
+-    formFields.budgetCategory.length === 0;
+-
+-  const closeDialog = () => {
+-    setIsSubmitting(false);
+-    props.onCloseDialog();
+-  };
+-
+-  const handleSubmit = async () => {
+-    setIsSubmitting(true);
+-
+-    try {
+-      await axiosServices.post(APIS.PROJECT_ADD_BUDGET, {
+-        projectId: formFields.id,
+-        creatorId: formFields.creatorId,
+-        creatorEmail: formFields.creatorEmail,
+-        budgetIndex: formFields.budgetIndex,
+-        budgetCode: formFields.budgetCode,
+-        budgetOriginalBudget: formFields.budgetOriginalBudget,
+-        budgetCurrentBudget: formFields.budgetCurrentBudget,
+-        budgetCategory: formFields.budgetCategory,
+-        budgetRevision: formFields.budgetRevision,
+-        budgetTotalClaimBeforeHoldback: formFields.budgetTotalClaimBeforeHoldback,
+-        budgetTotalHoldback: formFields.budgetTotalHoldback,
+-        budgetCurrentClaim: formFields.budgetCurrentClaim,
+-        budgetTotalClaim: formFields.budgetTotalClaim,
+-        budgetTotalClaimPercentage: formFields.budgetTotalClaimPercentage,
+-        budgetDescription: formFields.budgetDescription
+-      });
+-
+-      props.onSuccess(PROJECTS_ENUM.addBudget);
+-    } catch (error) {
+-      props.onError(PROJECTS_ENUM.addBudget);
+-    }
+-
+-    closeDialog();
+-  };
+-
+-  return (
+-    <Dialog classes={{ paper: styles.dialog }} onClose={closeDialog} open={showDialog} component="form">
+-      <Typography variant="h5" className={styles.title}>
+-        ADD BUDGET ITEM
+-      </Typography>
+-
+-      <DialogContent className={styles.fields}>
+-        {FEATURE_FLAG && (
+-          <>
+-            <TextField
+-              disabled={true}
+-              // color="tertiary"
+-              label="projectId*"
+-              variant="standard"
+-              value={formFields.id}
+-              onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormField(setFormFields, event, 'id')}
+-            />
+-            <TextField
+-              disabled={true}
+-              // color="tertiary"
+-              label="UID*"
+-              variant="standard"
+-              value={formFields.creatorId}
+-              onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormField(setFormFields, event, 'creatorId')}
+-            />
+-            <TextField
+-              disabled={true}
+-              // color="tertiary"
+-              label="CreatorEmail*"
+-              variant="standard"
+-              value={formFields.creatorEmail}
+-              onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormField(setFormFields, event, 'creatorEmail')}
+-            />
+-            <TextField
+-              // color="tertiary"
+-              label="Description"
+-              variant="standard"
+-              value={formFields.budgetDescription}
+-              onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormField(setFormFields, event, 'budgetDescription')}
+-            />
+-
+-            <TextField
+-              // color="tertiary"
+-              label="Revision"
+-              variant="standard"
+-              value={formFields.budgetRevision}
+-              onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormFieldInt(setFormFields, event, 'budgetRevision')}
+-            />
+-            <TextField
+-              // color="tertiary"
+-              label="Total Claim Before Holdback"
+-              variant="standard"
+-              value={formFields.budgetTotalClaimBeforeHoldback}
+-              onChange={(event: ChangeEvent<HTMLInputElement>) => {
+-                updateFormFieldFloat(setFormFields, event, 'budgetTotalClaimBeforeHoldback');
+-              }}
+-            />
+-            <TextField
+-              // color="tertiary"
+-              label="Total Holdback"
+-              variant="standard"
+-              value={formFields.budgetTotalHoldback}
+-              onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormFieldFloat(setFormFields, event, 'budgetTotalHoldback')}
+-            />
+-            <TextField
+-              // color="tertiary"
+-              label="Current Claim"
+-              variant="standard"
+-              value={formFields.budgetCurrentClaim}
+-              onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormFieldFloat(setFormFields, event, 'budgetCurrentClaim')}
+-            />
+-            <TextField
+-              // color="tertiary"
+-              label="Total Claim"
+-              variant="standard"
+-              value={formFields.budgetTotalClaim}
+-              onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormFieldFloat(setFormFields, event, 'budgetTotalClaim')}
+-            />
+-            <TextField
+-              // color="tertiary"
+-              label="Total Claim %"
+-              variant="standard"
+-              value={formFields.budgetTotalClaimPercentage}
+-              onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormFieldFloat(setFormFields, event, 'budgetTotalClaimPercentage')}
+-            />
+-          </>
+-        )}
+-
+-        <TextField
+-          // color="tertiary"
+-          label="Code"
+-          variant="standard"
+-          value={formFields.budgetCode}
+-          onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormField(setFormFields, event, 'budgetCode')}
+-        />
+-        <TextField
+-          // color="tertiary"
+-          label="Category"
+-          variant="standard"
+-          value={formFields.budgetCategory}
+-          onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormField(setFormFields, event, 'budgetCategory')}
+-        />
+-
+-        <TextField
+-          // color="tertiary"
+-          label="Original Budget ($)"
+-          variant="standard"
+-          value={formFields.budgetOriginalBudget}
+-          onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormFieldFloat(setFormFields, event, 'budgetOriginalBudget')}
+-        />
+-
+-        <TextField
+-          // color="tertiary"
+-          label="Current Budget ($)"
+-          variant="standard"
+-          value={formFields.budgetCurrentBudget}
+-          onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormFieldFloat(setFormFields, event, 'budgetCurrentBudget')}
+-        />
+-
+-        <TextField
+-          // color="tertiary"
+-          label="Row Index"
+-          variant="standard"
+-          value={formFields.budgetIndex}
+-          onChange={(event: ChangeEvent<HTMLInputElement>) => updateFormFieldInt(setFormFields, event, 'budgetIndex')}
+-        />
+-      </DialogContent>
+-      <DialogActions>
+-        <Button color="secondary" variant="contained" onClick={closeDialog}>
+-          Cancel
+-        </Button>
+-        {isSubmitting ? (
+-          <Button color="secondary" variant="contained" disabled={true}>
+-            Submitting...
+-          </Button>
+-        ) : (
+-          <Button color="secondary" variant="contained" onClick={handleSubmit} disabled={isDisabled()}>
+-            Submit
+-          </Button>
+-        )}
+-      </DialogActions>
+-    </Dialog>
+-  );
+-}
+diff --git a/src/components/projects/Detail/budgets/addBudget/index.tsx b/src/components/projects/Detail/budgets/addBudget/index.tsx
+index 24a5853..23b4e9b 100644
+--- a/src/components/projects/Detail/budgets/addBudget/index.tsx
++++ b/src/components/projects/Detail/budgets/addBudget/index.tsx
+@@ -13,6 +13,9 @@ import { Button } from 'ui-component/buttons';
+ import styles from '@/styles/dataDialog.module.scss';
+ import { PROJECT_CATEGORY } from '@/constant/project';
+ import { IProject } from '@/types/resource/project';
++import { IRequestCreateBudget } from '@/types/request';
++import { useAsync } from '@/hooks/useAsync';
++import { createBudget } from '@/utils/services/budget';
+ 
+ export interface IFormValues {
+   projectId: string;
+@@ -21,7 +24,7 @@ export interface IFormValues {
+   budgetOriginalBudget?: number;
+   budgetCurrentBudget?: number;
+   budgetRevision?: number;
+-  budgetClaimToDate?: number;
++  budgetClaimedToDate?: number;
+   budgetCurrentClaim?: number;
+   budgetTotalClaim?: number;
+   budgetTotalClaimPercentage?: number;
+@@ -43,6 +46,7 @@ export default function ProjectAddBudgetDialog({
+   ...props
+ }: ProjectAddDialogProps): JSX.Element {
+   const { formatMessage } = useIntl();
++  const { execute } = useAsync();
+   const validates = useCommonValidates();
+ 
+   const { handleSubmit, values, errors, isSubmitting, handleChange, resetForm } = useFormik({
+@@ -50,21 +54,21 @@ export default function ProjectAddBudgetDialog({
+       projectId
+     },
+     onSubmit: async (currentValues: IFormValues) => {
+-      console.log('currentValues', currentValues);
++      await handleCreateBudget(currentValues);
+       notifySuccess(formatMessage({ id: 'budgetApiAdded' }));
+       resetForm();
+       onClose();
+     },
+     validationSchema: yupObject().shape({
+-      budgetCode: validates.text({ isRequired: true }),
++      budgetCode: validates.text({ isRequired: true, maxLength: 25 }),
+       budgetCategory: validates.text({ isRequired: true }),
+       budgetOriginalBudget: validates.number({ isRequired: true }),
+       budgetCurrentBudget: validates.number({ isRequired: true }),
+       budgetRevision: validates.number({ isRequired: true }),
+-      budgetClaimToDate: validates.number({ isRequired: true }),
++      budgetClaimedToDate: validates.number({ isRequired: true }),
+       budgetCurrentClaim: validates.number({ isRequired: true }),
+       budgetTotalClaim: validates.number({ isRequired: true }),
+-      budgetTotalClaimPercentage: validates.number({ isRequired: true }),
++      budgetTotalClaimPercentage: validates.number({ isRequired: true, allowDecimal: false }),
+       budgetCostToComplete: validates.number({ isRequired: true })
+     }),
+     validateOnBlur: false,
+@@ -85,6 +89,23 @@ export default function ProjectAddBudgetDialog({
+     }
+   };
+ 
++  const handleCreateBudget = async (values: IFormValues) => {
++    const data: IRequestCreateBudget = {
++      projectId,
++      budgetCode: values?.budgetCode || '',
++      budgetCategory: values?.budgetCategory || '',
++      budgetOriginalBudget: values?.budgetOriginalBudget || 0,
++      budgetCurrentBudget: values?.budgetCurrentBudget || 0,
++      budgetRevision: values?.budgetRevision || 0,
++      budgetClaimedToDate: values?.budgetClaimedToDate || 0,
++      budgetCurrentClaim: values?.budgetOriginalBudget || 0,
++      budgetTotalClaim: values?.budgetTotalClaim || 0,
++      budgetTotalClaimPercentage: values?.budgetTotalClaimPercentage || 0,
++      budgetCostToComplete: values?.budgetCostToComplete || 0
++    };
++    await execute(createBudget(data));
++  };
++
+   return (
+     <Dialog onClose={handleCloseDialog} {...props}>
+       <DialogTitle sx={{ pt: '8px' }}>{formatMessage({ id: 'budgetDialogAddTitle' })}</DialogTitle>
+@@ -122,7 +143,7 @@ export default function ProjectAddBudgetDialog({
+                 labelId="labelBudgetCategory"
+                 value={values.budgetCategory}
+                 fullWidth
+-                placeholder={formatMessage({ id: 'builderDialogCreateCategoryPlaceholder' })}
++                placeholder={formatMessage({ id: 'budgetDialogAddCategoryPlaceholder' })}
+                 onChange={handleChange}
+                 name="budgetCategory"
+                 id="budgetCategory"
+@@ -189,13 +210,13 @@ export default function ProjectAddBudgetDialog({
+             <Grid item xs={6}>
+               <TextField
+                 label={formatMessage({ id: 'budgetTableClaimedToDate' })}
+-                value={values.budgetClaimToDate}
+-                name="budgetClaimToDate"
++                value={values.budgetClaimedToDate}
++                name="budgetClaimedToDate"
+                 fullWidth
+                 size="medium"
+                 type="number"
+-                error={!!errors?.budgetClaimToDate}
+-                helperText={errors.budgetClaimToDate}
++                error={!!errors?.budgetClaimedToDate}
++                helperText={errors.budgetClaimedToDate}
+                 onChange={handleChange}
+               />
+             </Grid>
+diff --git a/src/hooks/useCommonValidates.ts b/src/hooks/useCommonValidates.ts
+index 94f8d64..3a87f7f 100644
+--- a/src/hooks/useCommonValidates.ts
++++ b/src/hooks/useCommonValidates.ts
+@@ -64,7 +64,7 @@ const useCommonValidates = () => {
+ 
+       return commonRules;
+     },
+-    number: ({ isRequired = false, max = undefined, min = undefined } = {}) => {
++    number: ({ isRequired = false, max = undefined, min = undefined, allowDecimal = true } = {}) => {
+       let commonRules = Yup.number().typeError(formatMessage({ id: 'validateNumberMessage' }));
+ 
+       if (!isUndefined(max)) {
+@@ -75,6 +75,10 @@ const useCommonValidates = () => {
+         commonRules = commonRules.min(min);
+       }
+ 
++      if (!allowDecimal) {
++        commonRules = commonRules.integer(formatMessage({ id: 'validateIntegerNumberMessage' }));
++      }
++
+       if (isRequired) {
+         return commonRules.required(formatMessage({ id: 'requiredValidateMessage' }));
+       }
 diff --git a/src/types/request.ts b/src/types/request.ts
-index 8552d73..2fb418e 100644
+index a10b6fe..5b0425a 100644
 --- a/src/types/request.ts
 +++ b/src/types/request.ts
-@@ -1,16 +1,13 @@
--import { SortOrder } from 'mongoose';
- import { UserProfile } from './user-profile';
- import { FolderName } from 'utils/enums';
- 
- export interface IRequestFilter {
-   search?: string;
--  sortBy?: string;
--  sortDir?: SortOrder;
-   limit?: number;
-   page?: number;
-   filterBy?: string;
--  sort?: string; // TODO: for contractor - need update
--  field?: string; // TODO: for contractor - need update
-+  sort?: string;
-+  field?: string;
+@@ -125,3 +125,20 @@ export interface IRequestContractorCreateProject {
+   address: string;
+   imageUrl: string;
  }
- export interface IRequestRegister {
-   email: string;
-@@ -46,7 +43,7 @@ export interface IRequestCreateUser {
-   lastName: string;
-   email: string;
-   role: string;
--  completionStatus: string;
-+  status: string;
-   company: string;
-   country: string;
-   phoneNumber: string;
-diff --git a/src/types/resource/builder.ts b/src/types/resource/builder.ts
-new file mode 100644
-index 0000000..81412c6
---- /dev/null
-+++ b/src/types/resource/builder.ts
-@@ -0,0 +1,5 @@
-+import { Builder as BuilderDto } from '@/utils/dtos/builder.dto';
 +
-+export interface IBuilder extends BuilderDto {
-+  id: string;
-+}
-diff --git a/src/types/resource/project.ts b/src/types/resource/project.ts
-index cce0593..6a9c5f2 100644
---- a/src/types/resource/project.ts
-+++ b/src/types/resource/project.ts
-@@ -1,5 +1,5 @@
- import { Project as ProjectDto } from '@/utils/dtos/project.dto';
- 
--export interface IProject extends Omit<ProjectDto, '_id'> {
-+export interface IProject extends ProjectDto {
-   id: string;
- }
-diff --git a/src/types/resource/user.ts b/src/types/resource/user.ts
-new file mode 100644
-index 0000000..5038f3c
---- /dev/null
-+++ b/src/types/resource/user.ts
-@@ -0,0 +1,13 @@
-+import { User as UserDto } from '@/utils/dtos/user.dto';
++/* BUDGET */
 +
-+export interface IUser extends UserDto {
-+  id: string;
-+  contactName?: string;
-+  contactEmail?: string;
-+  contactPhoneNumber?: string;
-+  address?: string;
-+  gst?: string;
-+  insuranceNumber?: string;
-+  workSafeBCNumber?: string;
-+  role?: string;
++export interface IRequestCreateBudget {
++  projectId: string;
++  budgetCategory: string;
++  budgetCode: string;
++  budgetOriginalBudget: number;
++  budgetCurrentBudget: number;
++  budgetRevision: number;
++  budgetClaimedToDate: number;
++  budgetCurrentClaim: number;
++  budgetTotalClaim: number;
++  budgetTotalClaimPercentage: number;
++  budgetCostToComplete: number;
++  budgetIndex?: number;
 +}
 diff --git a/src/types/response.ts b/src/types/response.ts
-index 5a91d95..48c6168 100644
+index db2bf6e..fee9b9a 100644
 --- a/src/types/response.ts
 +++ b/src/types/response.ts
-@@ -57,10 +57,12 @@ export interface IResponseCreateUser {
- 
- export interface IResponseDeleteUser {
-   status: number;
-+  success: true;
+@@ -116,3 +116,8 @@ export interface IResponseUpload {
+   message: string;
+   url: string;
  }
- 
- export interface IResponseUpdateUser {
-   status: number;
-+  success: true;
- }
- 
- export interface IResponseDeleteContractor {
++
++export interface IResponseCreateBudget {
++  success: boolean;
++  status: number;
++}
 diff --git a/src/utils/api.ts b/src/utils/api.ts
-index 5890095..d24a4bc 100644
+index d24a4bc..56de730 100644
 --- a/src/utils/api.ts
 +++ b/src/utils/api.ts
-@@ -10,8 +10,9 @@ const APIS = {
-   GET_USERS: '/user/list',
-   GET_USER_DETAIL: '/user/:id',
-   CREATE_USER: '/user/create',
--  UPDATE_USER: '/user/update',
--  DELETE_USER: '/user/delete',
-+  BULK_CONTROL_USER: '/user/bulk-control',
-+  UPDATE_USER: '/user/:id/update',
-+  DELETE_USER: '/user/:id/delete',
-   UPDATE_PROJECT_ROLES: '/projects/update-project-roles',
-   IMPORT_PROJECT_BUDGET: '/projects/import-project-budget',
-   UPDATE_CONTRACTOR_ROLE: '/contractors/update-contractor-role',
-diff --git a/src/utils/constant.ts b/src/utils/constant.ts
-index c3322cb..18a60f5 100644
---- a/src/utils/constant.ts
-+++ b/src/utils/constant.ts
-@@ -21,11 +21,11 @@ export const ROLE_REGEX_SEPARATOR = /[,;\n\s\t]+/;
- export const PAGINATE_PAGE_SIZE = 10;
- export const PAGINATE_OFFSET = 1;
- export const SORT_DIRECTION_DEFAULT = 'asc';
--export const SORT_FIELD_DEFAULT = '_id';
-+export const SORT_FIELD_DEFAULT = 'id';
- 
- export const API_FILTER_DEFAULT: IRequestFilter = {
--  sortBy: SORT_FIELD_DEFAULT,
--  sortDir: SORT_DIRECTION_DEFAULT,
-+  sort: SORT_DIRECTION_DEFAULT,
-+  field: SORT_FIELD_DEFAULT,
-   filterBy: '',
-   limit: PAGINATE_PAGE_SIZE,
-   page: PAGINATE_OFFSET
-diff --git a/src/utils/locales/en/user.json b/src/utils/locales/en/user.json
-index 60f713f..4005084 100644
---- a/src/utils/locales/en/user.json
-+++ b/src/utils/locales/en/user.json
-@@ -8,7 +8,7 @@
-   "userDialogDeleteButtonDelete": "Delete User",
-   "userDialogAddTitle": "Add User",
-   "userDialogEditTitle": "Edit User",
--  "userDialogDeactiveTitle": "Deactivate User",
-+  "userDialogDeactivatedTitle": "Deactivate User",
-   "userDialogActiveTitle": "Active User",
-   "userDialogChangeStatusContent": "Are you sure you want to {status} {no} ?",
-   "userDialogCreateButtonSubmit": "Save User",
-diff --git a/src/utils/services/user.ts b/src/utils/services/user.ts
-index 19eb061..fd96220 100644
---- a/src/utils/services/user.ts
-+++ b/src/utils/services/user.ts
-@@ -1,23 +1,26 @@
- import axiosServices from '../axios';
- import endPoints from '../api';
- import { IResponseCreateUser, IResponseDeleteUser, IResponseListUsers, IResponseUpdateUser } from '@/types/response';
--import { IRequestCreateUser, IRequestUpdateUser } from '@/types/request';
--import { IUser } from '@/app/api/users/list/route';
-+import { IRequestCreateUser, IRequestFilter } from '@/types/request';
-+import { IUser } from '@/types/resource/user';
-+import { generateQueryFromFilter } from '../helper';
-+import { Actions } from '../enums';
- 
--export const getUsers = async () => {
--  return await axiosServices.get<IResponseListUsers<IUser>>(endPoints.GET_USERS);
-+export const getUsers = async (params?: IRequestFilter) => {
-+  const query = params ? generateQueryFromFilter(endPoints.GET_USERS, params) : endPoints.GET_USERS;
-+  return await axiosServices.get<IResponseListUsers<IUser>>(query);
+@@ -38,7 +38,8 @@ const APIS = {
+   CREATE_CONTRACTOR_PROJECT: '/contractor-project/create',
+   GET_CONTRACTOR_PROJECT: '/contractor-project/:id',
+   GET_CONTRACTOR_PROJECT_INVOICES: '/contractor-project/:id/invoices',
+-  GET_PROJECT_INVOICES: '/project/:id/invoices'
++  GET_PROJECT_INVOICES: '/project/:id/invoices',
++  BUDGET: '/budget'
  };
  
- export const createUser = async (payload: IRequestCreateUser) => {
-   return await axiosServices.post<IResponseCreateUser>(endPoints.CREATE_USER, payload);
+ export default APIS;
+diff --git a/src/utils/dtos/budget.dto.ts b/src/utils/dtos/budget.dto.ts
+index e69e4e5..bb769b4 100644
+--- a/src/utils/dtos/budget.dto.ts
++++ b/src/utils/dtos/budget.dto.ts
+@@ -8,20 +8,17 @@ import BaseDto from '@/utils/dtos/base.dto';
+ export type Budget = {
+   creatorId: string;
+   projectId: string;
+-  creatorEmail: string;
+-  budgetAdditionalFields: Array<string>;
++  budgetIndex: number;
+   budgetCategory: string;
+   budgetCode: string;
+   budgetCurrentBudget: number;
++  budgetClaimedToDate: number;
+   budgetCurrentClaim: number;
+-  budgetDescription?: string;
+-  budgetIndex: number;
+   budgetOriginalBudget: number;
+   budgetRevision: number;
+   budgetTotalClaim: number;
+-  budgetTotalClaimBeforeHoldback: number;
+   budgetTotalClaimPercentage: number;
+-  budgetTotalHoldback: number;
++  budgetCostToComplete: number;
+   dateCreate: Date;
+   dateModify: Date;
  };
+@@ -29,20 +26,17 @@ export type Budget = {
+ export default class BudgetDto extends BaseDto {
+   creatorId: string;
+   projectId: string;
+-  creatorEmail: string;
+-  budgetAdditionalFields: Array<string>;
+   budgetCategory: string;
+   budgetCode: string;
+   budgetCurrentBudget: number;
++  budgetClaimedToDate: number;
+   budgetCurrentClaim: number;
+-  budgetDescription?: string;
+   budgetIndex: number;
+   budgetOriginalBudget: number;
+   budgetRevision: number;
+   budgetTotalClaim: number;
+-  budgetTotalClaimBeforeHoldback: number;
+   budgetTotalClaimPercentage: number;
+-  budgetTotalHoldback: number;
++  budgetCostToComplete: number;
+   dateCreate: Date;
+   dateModify: Date;
  
--export const updateUser = async (id: string, payload: IRequestUpdateUser) => {
--  return await axiosServices.put<IResponseUpdateUser>(`${endPoints.UPDATE_USER}/${id}`, payload);
-+export const bulkControlUser = async (ids: string[], action: Actions) => {
-+  return await axiosServices.patch<IResponseUpdateUser>(endPoints.BULK_CONTROL_USER, { ids, action });
- };
- 
- export const deleteUser = async (id: string) => {
--  return await axiosServices.delete<IResponseDeleteUser>(`${endPoints.DELETE_USER}/${id}`);
-+  return await axiosServices.delete<IResponseDeleteUser>(endPoints.DELETE_USER.replace(':id', id));
- };
- 
- export const getUserDetail = async (id: string) => {
+@@ -50,19 +44,17 @@ export default class BudgetDto extends BaseDto {
+     super();
+     this.creatorId = '';
+     this.projectId = '';
+-    this.creatorEmail = '';
+-    this.budgetAdditionalFields = [];
+     this.budgetCategory = '';
+     this.budgetCode = '';
+     this.budgetCurrentBudget = 0;
++    this.budgetClaimedToDate = 0;
+     this.budgetCurrentClaim = 0;
+     this.budgetIndex = 0;
+     this.budgetOriginalBudget = 0;
+     this.budgetRevision = 0;
+     this.budgetTotalClaim = 0;
+-    this.budgetTotalClaimBeforeHoldback = 0;
+     this.budgetTotalClaimPercentage = 0;
+-    this.budgetTotalHoldback = 0;
++    this.budgetCostToComplete = 0;
+     this.dateCreate = new Date();
+     this.dateModify = new Date();
+   }
+diff --git a/src/utils/locales/en/budget.json b/src/utils/locales/en/budget.json
+index 2e76b8b..548cdd7 100644
+--- a/src/utils/locales/en/budget.json
++++ b/src/utils/locales/en/budget.json
+@@ -13,5 +13,6 @@
+   "budgetTableCostToComplete": "Cost to Complete",
+   "budgetDialogAddTitle": "Add Budget",
+   "budgetApiAdded": "Added budget",
+-  "budgetDialogAddCodePlaceholder": "Enter project code"
++  "budgetDialogAddCodePlaceholder": "Enter project code",
++  "budgetDialogAddCategoryPlaceholder": "Select budget category"
+ }
+\ No newline at end of file
+diff --git a/src/utils/locales/en/form.json b/src/utils/locales/en/form.json
+index a71831d..31db508 100644
+--- a/src/utils/locales/en/form.json
++++ b/src/utils/locales/en/form.json
+@@ -1,3 +1,4 @@
+ {
+-  "validateNumberMessage": "Please enter number"
++  "validateNumberMessage": "Please enter number",
++  "validateIntegerNumberMessage": "Please enter an integer number"
+ }
+diff --git a/src/utils/services/budget.ts b/src/utils/services/budget.ts
+new file mode 100644
+index 0000000..87eb953
+--- /dev/null
++++ b/src/utils/services/budget.ts
+@@ -0,0 +1,8 @@
++import { IResponseCreateBudget } from 'types/response';
++import axios from '../axios';
++import endPoints from '../api';
++import { IRequestCreateBudget } from '@/types/request';
++
++export const createBudget = async (data: IRequestCreateBudget) => {
++  return await axios.post<IResponseCreateBudget>(endPoints.BUDGET, data);
++};
