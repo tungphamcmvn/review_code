@@ -446,7 +446,6 @@ src/backend/services/user.service.ts```ts
 	import { User as UserType } from '@/utils/dtos/user.dto';
 	import IdsNotFoundException from '@/backend/exceptions/idsnotfound.exception';
 	import NotFoundException from "@/backend/exceptions/notfound.exception";
-	import DateCustom from '@/utils/datetime/date.custom';
 	
 	export default class UserService {
 	  protected userRepository: UserRepositoryInterface;
@@ -590,13 +589,13 @@ src/backend/services/user.service.ts```ts
 	        await this.userRepository.deleteMany({ _id: { $in: ids } });
 	        break;
 	      case Actions.ACTIVATE:
-	        await this.userRepository.updateMany({ _id: { $in: ids } }, { status: UserStatus.ACTIVE, dateModify: new DateCustom() });
+	        await this.userRepository.updateMany({ _id: { $in: ids } }, { status: UserStatus.ACTIVE });
 	        break;
 	      case Actions.DEACTIVATE:
-	        await this.userRepository.updateMany({ _id: { $in: ids } }, { status: UserStatus.INACTIVE, dateModify: new DateCustom() });
+	        await this.userRepository.updateMany({ _id: { $in: ids } }, { status: UserStatus.INACTIVE });
 	        break;
 	      case Actions.ARCHIVE:
-	        await this.userRepository.updateMany({ _id: { $in: ids } }, { status: UserStatus.LOCKED, dateModify: new DateCustom() });
+	        await this.userRepository.updateMany({ _id: { $in: ids } }, { status: UserStatus.LOCKED });
 	        break;
 	    }
 	  }
@@ -613,13 +612,13 @@ src/backend/services/user.service.ts```ts
 	        await this.userRepository.delete(id);
 	        break;
 	      case Actions.ACTIVATE:
-	        await this.userRepository.update(id, { status: UserStatus.ACTIVE, dateModify: new DateCustom() });
+	        await this.userRepository.update(id, { status: UserStatus.ACTIVE });
 	        break;
 	      case Actions.DEACTIVATE:
-	        await this.userRepository.update(id, { status: UserStatus.INACTIVE, dateModify: new DateCustom() });
+	        await this.userRepository.update(id, { status: UserStatus.INACTIVE });
 	        break;
 	      case Actions.ARCHIVE:
-	        await this.userRepository.update(id, { status: UserStatus.LOCKED, dateModify: new DateCustom() });
+	        await this.userRepository.update(id, { status: UserStatus.LOCKED });
 	        break;
 	    }
 	  }
@@ -17771,7 +17770,7 @@ src/app/api/user/delete/[id]/route.ts```ts
 
 src/app/api/user/bulk-control/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
-	import { Actions } from '@/utils/enums';
+	import { BulkAction } from '@/utils/enums';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import UserRepository from '@/backend/repositories/mongodb/user.repository';
 	import UserService from '@/backend/services/user.service';
@@ -17782,7 +17781,7 @@ src/app/api/user/bulk-control/route.ts```ts
 	import { decode, JWT } from 'next-auth/jwt';
 	
 	export async function PATCH(request: NextRequest) {
-	  const data: { ids: string[]; action: Actions } = await request.json();
+	  const data: { ids: string[]; action: BulkAction } = await request.json();
 	  const token = headers().get('authorization')?.split(' ')[1];
 	  const dataDecode: JWT | null = await decode({
 	    token: token as string,
@@ -17961,80 +17960,6 @@ src/app/api/user/[id]/delete/route.ts```ts
 	
 	    responseStruct.setStatus(200);
 	  } catch (error: NotFoundException | any) {
-	    responseStruct.setStatus(500);
-	
-	    if (error instanceof NotFoundException) {
-	      responseStruct.setStatus(404);
-	    }
-	
-	    responseStruct.pushError(error.message);
-	  }
-	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	}
-
-```
-
-src/app/api/user/[id]/status/route.ts```ts
-	import { NextRequest, NextResponse } from 'next/server';
-	import MongoConnect from '@/backend/connection/mongo.connection';
-	import ResponseStruct from '@/backend/structs/response.struct';
-	import UserRepository from '@/backend/repositories/mongodb/user.repository';
-	import UserDto from '@/utils/dtos/user.dto';
-	import NotFoundException from '@/backend/exceptions/notfound.exception';
-	import { headers } from 'next/headers';
-	import { decode, JWT } from 'next-auth/jwt';
-	import { Actions } from '@/utils/enums';
-	import DateCustom from '@/utils/datetime/date.custom';
-	
-	export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
-	  const token = headers().get('authorization')?.split(' ')[1];
-	  const dataDecode: JWT | null = await decode({
-	    token: token as string,
-	    secret: (process.env.NEXTAUTH_SECRET as string) || ''
-	  });
-	
-	  const data: { status: Actions } = await request.json();
-	  const responseStruct = new ResponseStruct(true);
-	
-	  if (!params.id) {
-	    responseStruct.setStatus(400);
-	    responseStruct.pushError('User id is required.');
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-	  }
-	
-	  if (dataDecode && dataDecode.id === params.id) {
-	    responseStruct.setStatus(400);
-	    responseStruct.pushError('You cannot update yourself.');
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-	  }
-	
-	  if (data.status !== Actions.ACTIVATE && data.status !== Actions.DEACTIVATE) {
-	    responseStruct.setStatus(400);
-	    responseStruct.pushError('Allowed status are activate or deactivate.');
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-	  }
-	
-	  const conn = await MongoConnect();
-	  const userRepository = new UserRepository(conn);
-	  try {
-	    const user: UserDto = await userRepository.findUserId(params.id);
-	
-	    if (!user) {
-	      throw new NotFoundException('User not found.');
-	    }
-	
-	    await userRepository.update(params.id, {
-	      status: data.status,
-	      dateModify: new DateCustom(),
-	      failedLoginAttempts: data.status === Actions.ACTIVATE ? 0 : user.failedLoginAttempts
-	    });
-	
-	    responseStruct.setStatus(200);
-	  } catch (error: any) {
 	    responseStruct.setStatus(500);
 	
 	    if (error instanceof NotFoundException) {
@@ -32587,85 +32512,6 @@ lib/swagger/doc/file/upload.ts```ts
 
 ```
 
-lib/swagger/doc/user/updateStatus.ts```ts
-	/**
-	 * @swagger
-	 * /user/{id}/status:
-	 *   patch:
-	 *     summary: Update user status to activate or deactivate
-	 *     tags:
-	 *       - User
-	 *     security:
-	 *       - bearerAuth: []
-	 *     parameters:
-	 *       - in: path
-	 *         name: id
-	 *         required: true
-	 *         description: User ID
-	 *     requestBody:
-	 *       required: true
-	 *       content:
-	 *         application/json:
-	 *           schema:
-	 *             type: object
-	 *             properties:
-	 *               status:
-	 *                 type: string
-	 *                 enum: [activate, deactivate]
-	 *                 example: activate
-	 *                 required: true
-	 *     responses:
-	 *       200:
-	 *         content:
-	 *           application/json:
-	 *             schema:
-	 *               $ref: '#/components/schemas/SuccessResponse'
-	 *       400:
-	 *         content:
-	 *           application/json:
-	 *             schema:
-	 *               $ref: '#/components/schemas/ErrorResponse'
-	 *       404:
-	 *         content:
-	 *           application/json:
-	 *             schema:
-	 *               $ref: '#/components/schemas/ErrorResponse'
-	 *       500:
-	 *         content:
-	 *           application/json:
-	 *             schema:
-	 *               $ref: '#/components/schemas/ErrorResponse'
-	 * components:
-	 *   schemas:
-	 *     SuccessResponse:
-	 *       type: object
-	 *       properties:
-	 *         status:
-	 *           type: number
-	 *           example: 200
-	 *         success:
-	 *           type: boolean
-	 *           example: true
-	 *     ErrorResponse:
-	 *       type: object
-	 *       properties:
-	 *         status:
-	 *           type: number
-	 *           example: 400
-	 *           description: Error status code
-	 *         success:
-	 *           type: boolean
-	 *           example: false
-	 *         errors:
-	 *           type: array
-	 *           items:
-	 *             type: string
-	 *             example: User id is required.
-	 */
-	export {};
-
-```
-
 lib/swagger/doc/user/delete.ts```ts
 	/**
 	 * @swagger
@@ -33043,8 +32889,8 @@ lib/swagger/doc/user/bulkControl.ts```ts
 	 * @swagger
 	 * /user/bulk-control:
 	 *   patch:
-	 *     summary: Bulk control users update status to activate, deactivate, locked or delete by ids
-	 *     description: Bulk control users update status to activate, deactivate, locked or delete by ids
+	 *     summary: Bulk control users
+	 *     description: Bulk control users
 	 *     tags:
 	 *       - User
 	 *     requestBody:
