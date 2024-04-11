@@ -2113,15 +2113,14 @@ src/backend/services/builder.service.ts```ts
 	import { getCsvCompanyFieldValue, parsePayloadBuilderToCreateData } from '@/utils/helper';
 	import { CSV_SEP } from '@/utils/constant';
 	import { CSV_COMPANY_ENUM, ROLE_LEVEL_ENUM_BUILDER, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
-	import mongoose, { Mongoose, SortOrder } from 'mongoose';
+	import mongoose, { Mongoose } from 'mongoose';
 	import BuilderDto, { Builder, Builder as BuilderType } from '@/utils/dtos/builder.dto';
 	import { Role as RoleType } from '@/utils/dtos/role.dto';
 	import RoleRepositoryInterface from '@/backend/repositories/interfaces/role.repository.interface';
+	import { PaginateQuery } from '@/types/pagination';
 	import RoleRepository from '../repositories/mongodb/role.repository';
-	import UserDto, { User } from '@/utils/dtos/user.dto';
+	import UserDto from '@/utils/dtos/user.dto';
 	import { FolderName } from '@/utils/enums';
-	import PaginationStruct from '../structs/pagination.struct';
-	import NotFoundException from '../exceptions/notfound.exception';
 	
 	export default class BuilderService {
 	  protected builderRepository: BuilderRepositoryInterface;
@@ -2292,7 +2291,7 @@ src/backend/services/builder.service.ts```ts
 	    const currentBuilder = await this.getBuilder(builderId);
 	
 	    if (!currentBuilder) {
-	      throw new NotFoundException('Builder not found');
+	      throw 'Builder not found';
 	    }
 	    const data = parsePayloadBuilderToCreateData(formData);
 	
@@ -2344,51 +2343,25 @@ src/backend/services/builder.service.ts```ts
 	    return await this.builderRepository.delete(builderId);
 	  }
 	
-	  async listBuilders(
-	    limit: number,
-	    offset: number,
-	    order: { [key: string]: SortOrder },
-	    search: string
-	  ): Promise<{
-	    pagination: PaginationStruct;
-	    collection: Builder[];
-	  }> {
-	    const projectDto = new BuilderDto();
-	
-	    const validOrderFields = Object.keys(projectDto);
-	
-	    for (const key in order) {
-	      if (!validOrderFields.includes(key)) {
-	        delete order[key];
-	      }
-	    }
-	
-	    if (Object.keys(order).length === 0) {
-	      order = { builderName: 'asc' };
-	    }
-	
-	    const filterSearch = search !== '' ? { builderName: { $regex: search } } : {};
-	    const total = await this.builderRepository.count(filterSearch);
-	    const projects = await this.builderRepository.findWithSort(filterSearch, order, limit, offset);
-	
-	    const collection: Builder[] = [];
-	
-	    projects.forEach((project: mongoose.Document<Builder>) => {
-	      projectDto.setData(project.toJSON());
-	      const currentObject = projectDto.toObject() as Builder;
-	      const creator = currentObject.creatorId as Partial<User & { id: string }>;
-	      collection.push({
-	        ...currentObject,
-	        creatorId: creator.id || '',
-	        creator
-	      });
+	  mapBuilder = (data: Builder[]): Builder[] => {
+	    return data.map((item) => {
+	      const newObject = (item as unknown as mongoose.Document<Builder>).toObject();
+	      return {
+	        ...newObject,
+	        creatorId: newObject.creatorId?._id,
+	        creator: newObject.creatorId
+	      };
 	    });
+	  };
+	  async findBuilders(query: PaginateQuery<Builder>) {
+	    const result = (await this.builderRepository.findWithSort(
+	      !!query.search ? { builderName: { $regex: query.search } } : {},
+	      { [query.sortBy || 'builderName']: query.sortDir || 'desc' },
+	      query.limit,
+	      query.page
+	    )) as unknown as Builder[];
 	
-	    const pagination = new PaginationStruct(offset, limit, total);
-	    return {
-	      pagination,
-	      collection
-	    };
+	    return this.mapBuilder(result);
 	  }
 	}
 
@@ -4888,16 +4861,19 @@ src/menu-items/index.tsx```tsx
 ```
 
 src/types/request.ts```ts
+	import { SortOrder } from 'mongoose';
 	import { UserProfile } from './user-profile';
 	import { FolderName } from 'utils/enums';
 	
 	export interface IRequestFilter {
 	  search?: string;
+	  sortBy?: string;
+	  sortDir?: SortOrder;
 	  limit?: number;
 	  page?: number;
 	  filterBy?: string;
-	  sort?: string;
-	  field?: string;
+	  sort?: string; // TODO: for contractor - need update
+	  field?: string; // TODO: for contractor - need update
 	}
 	export interface IRequestRegister {
 	  email: string;
@@ -4933,7 +4909,7 @@ src/types/request.ts```ts
 	  lastName: string;
 	  email: string;
 	  role: string;
-	  status: string;
+	  completionStatus: string;
 	  company: string;
 	  country: string;
 	  phoneNumber: string;
@@ -5018,6 +4994,17 @@ src/types/request.ts```ts
 ```
 
 src/types/pagination.ts```ts
+	import { SortOrder } from 'mongoose';
+	
+	export type PaginateQuery<T> = {
+	  page: number;
+	  limit?: number;
+	  sortBy?: keyof T;
+	  sortDir?: SortOrder;
+	  search?: string;
+	  filterBy?: string;
+	};
+	
 	export type ResponseMeta = {
 	  total: number;
 	  page: number;
@@ -5155,12 +5142,10 @@ src/types/response.ts```ts
 	
 	export interface IResponseDeleteUser {
 	  status: number;
-	  success: true;
 	}
 	
 	export interface IResponseUpdateUser {
 	  status: number;
-	  success: true;
 	}
 	
 	export interface IResponseDeleteContractor {
@@ -6007,15 +5992,6 @@ src/types/overrides/createTheme.d.ts```ts
 
 ```
 
-src/types/resource/builder.ts```ts
-	import { Builder as BuilderDto } from '@/utils/dtos/builder.dto';
-	
-	export interface IBuilder extends BuilderDto {
-	  id: string;
-	}
-
-```
-
 src/types/resource/invoice.ts```ts
 	import { Invoice as InvoiceDto } from '@/utils/dtos/invoice.dto';
 	
@@ -6038,27 +6014,10 @@ src/types/resource/budget.ts```ts
 
 ```
 
-src/types/resource/user.ts```ts
-	import { User as UserDto } from '@/utils/dtos/user.dto';
-	
-	export interface IUser extends UserDto {
-	  id: string;
-	  contactName?: string;
-	  contactEmail?: string;
-	  contactPhoneNumber?: string;
-	  address?: string;
-	  gst?: string;
-	  insuranceNumber?: string;
-	  workSafeBCNumber?: string;
-	  role?: string;
-	}
-
-```
-
 src/types/resource/project.ts```ts
 	import { Project as ProjectDto } from '@/utils/dtos/project.dto';
 	
-	export interface IProject extends ProjectDto {
+	export interface IProject extends Omit<ProjectDto, '_id'> {
 	  id: string;
 	}
 
@@ -14120,6 +14079,14 @@ src/constant/upload.ts```ts
 
 ```
 
+src/constant/user.ts```ts
+	export const USER_STATUS_ACTIVE = 'Active';
+	export const USER_STATUS_DEACTIVED = 'Deactivated';
+	
+	export const USER_STATUS = [USER_STATUS_ACTIVE, USER_STATUS_DEACTIVED];
+
+```
+
 src/constant/project.ts```ts
 	export const PROJECT_ROLE = ['Builder/Admin', 'Builder/Project Manager', 'Builder/Site Supervisor', 'Builder/Account Payable'];
 	export const PROJECT_CATEGORY = ['A', 'B', 'C', 'D', 'E', 'F'];
@@ -18361,7 +18328,7 @@ src/app/api/user/[id]/status/route.ts```ts
 	import NotFoundException from '@/backend/exceptions/notfound.exception';
 	import { headers } from 'next/headers';
 	import { decode, JWT } from 'next-auth/jwt';
-	import { Actions, UserStatus } from '@/utils/enums';
+	import { Actions } from '@/utils/enums';
 	import DateCustom from '@/utils/datetime/date.custom';
 	
 	export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
@@ -18405,7 +18372,7 @@ src/app/api/user/[id]/status/route.ts```ts
 	    }
 	
 	    await userRepository.update(params.id, {
-	      status: data.status === Actions.ACTIVATE ? UserStatus.ACTIVE : UserStatus.INACTIVE,
+	      status: data.status,
 	      dateModify: new DateCustom(),
 	      failedLoginAttempts: data.status === Actions.ACTIVATE ? 0 : user.failedLoginAttempts
 	    });
@@ -18730,14 +18697,18 @@ src/app/api/contractor/update/[id]/route.ts```ts
 ```
 
 src/app/api/builder/route.ts```ts
+	import BuilderRepository from '@/backend/repositories/mongodb/builder.repository';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import BuilderValidator from '@/backend/validator/builder.validator';
+	import { Builder } from '@/utils/dtos/builder.dto';
 	import { NextRequest, NextResponse } from 'next/server';
 	import BuilderService from '@/backend/services/builder.service';
 	import AuthService from '@/backend/services/auth.service';
+	import { PAGINATE_OFFSET, PAGINATE_PAGE_SIZE } from '@/utils/constant';
+	import { SortOrder } from 'mongoose';
 	import { parsePayloadBuilderToCreateData } from '@/utils/helper';
 	import ResponseStruct from '@/backend/structs/response.struct';
-	import { getListingQuery } from '../listing';
+	import PaginationStruct from '@/backend/structs/pagination.struct';
 	
 	export async function POST(request: NextRequest) {
 	  const formData = await request.formData();
@@ -18764,28 +18735,38 @@ src/app/api/builder/route.ts```ts
 	    return NextResponse.json({ errors: [error.message] }, { status: 400 });
 	  }
 	}
-	
 	export async function GET(request: NextRequest) {
 	  const conn = await MongoConnect();
-	  const responseStruct = new ResponseStruct(true);
-	
+	  const builderRepository = new BuilderRepository(conn);
+	  const builderService = new BuilderService(conn);
+	  const responseStructure = new ResponseStruct(true);
+	  const params = request.nextUrl.searchParams;
+	  const sortBy = (params.get?.('sortBy') || 'dateCreate') as keyof Builder;
+	  const sortDir = (params.get('sortDir') || 'desc') as SortOrder;
+	  const search = (params.get('search') || '') as string;
+	  const page = +(params.get('page') || PAGINATE_OFFSET);
+	  const limit = +(params.get('limit') || PAGINATE_PAGE_SIZE);
+	  const filter = {
+	    page,
+	    sortBy,
+	    limit,
+	    sortDir,
+	    search
+	  };
 	  try {
-	    const { limit: limitValue, page: pageValue, order: orderValue, search } = getListingQuery(request);
-	    const builderService = new BuilderService(conn);
-	
-	    const data = await builderService.listBuilders(limitValue, pageValue, orderValue, search);
-	    responseStruct.setData({
-	      meta: data.pagination,
-	      data: data.collection
+	    const total = await builderRepository.count(filter.search ? { builderName: { $regex: filter.search } } : {});
+	    const builders = (await builderService.findBuilders(filter)) as unknown as Builder[];
+	    const pagination = new PaginationStruct(page, limit, total);
+	    responseStructure.setData({
+	      meta: pagination,
+	      data: builders
 	    });
-	    responseStruct.setStatus(200);
+	    return NextResponse.json(responseStructure.getResponse(), { status: 200 });
 	  } catch (error: any) {
-	    responseStruct.pushError(error.message);
-	    responseStruct.setStatus(500);
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
+	    responseStructure.pushError(error.message);
+	    responseStructure.setStatus(400);
+	    return NextResponse.json(responseStructure.getResponse(), { status: 400 });
 	  }
-	  return NextResponse.json(responseStruct.getResponse(), { status: 200 });
 	}
 
 ```
@@ -18840,8 +18821,8 @@ src/app/api/builder/[id]/route.ts```ts
 	      return NextResponse.json({ errors: builderValidator.getErrors() }, { status: 400 });
 	    }
 	
-	    await builderService.updateBuilder(id, formData);
-	    return NextResponse.json({ success: true }, { status: 200 });
+	    const result = await builderService.updateBuilder(id, formData);
+	    return NextResponse.json({ success: true, builder: result }, { status: 200 });
 	  } catch (error) {
 	    return NextResponse.json({ errors: [error] }, { status: 400 });
 	  }
@@ -19394,9 +19375,8 @@ src/utils/api.ts```ts
 	  GET_USERS: '/user/list',
 	  GET_USER_DETAIL: '/user/:id',
 	  CREATE_USER: '/user/create',
-	  BULK_CONTROL_USER: '/user/bulk-control',
-	  UPDATE_USER: '/user/:id/update',
-	  DELETE_USER: '/user/:id/delete',
+	  UPDATE_USER: '/user/update',
+	  DELETE_USER: '/user/delete',
 	  UPDATE_PROJECT_ROLES: '/projects/update-project-roles',
 	  IMPORT_PROJECT_BUDGET: '/projects/import-project-budget',
 	  UPDATE_CONTRACTOR_ROLE: '/contractors/update-contractor-role',
@@ -19743,11 +19723,11 @@ src/utils/constant.ts```ts
 	export const PAGINATE_PAGE_SIZE = 10;
 	export const PAGINATE_OFFSET = 1;
 	export const SORT_DIRECTION_DEFAULT = 'asc';
-	export const SORT_FIELD_DEFAULT = 'id';
+	export const SORT_FIELD_DEFAULT = '_id';
 	
 	export const API_FILTER_DEFAULT: IRequestFilter = {
-	  sort: SORT_DIRECTION_DEFAULT,
-	  field: SORT_FIELD_DEFAULT,
+	  sortBy: SORT_FIELD_DEFAULT,
+	  sortDir: SORT_DIRECTION_DEFAULT,
 	  filterBy: '',
 	  limit: PAGINATE_PAGE_SIZE,
 	  page: PAGINATE_OFFSET
@@ -19998,26 +19978,23 @@ src/utils/services/user.ts```ts
 	import axiosServices from '../axios';
 	import endPoints from '../api';
 	import { IResponseCreateUser, IResponseDeleteUser, IResponseListUsers, IResponseUpdateUser } from '@/types/response';
-	import { IRequestCreateUser, IRequestFilter } from '@/types/request';
-	import { IUser } from '@/types/resource/user';
-	import { generateQueryFromFilter } from '../helper';
-	import { Actions } from '../enums';
+	import { IRequestCreateUser, IRequestUpdateUser } from '@/types/request';
+	import { IUser } from '@/app/api/users/list/route';
 	
-	export const getUsers = async (params?: IRequestFilter) => {
-	  const query = params ? generateQueryFromFilter(endPoints.GET_USERS, params) : endPoints.GET_USERS;
-	  return await axiosServices.get<IResponseListUsers<IUser>>(query);
+	export const getUsers = async () => {
+	  return await axiosServices.get<IResponseListUsers<IUser>>(endPoints.GET_USERS);
 	};
 	
 	export const createUser = async (payload: IRequestCreateUser) => {
 	  return await axiosServices.post<IResponseCreateUser>(endPoints.CREATE_USER, payload);
 	};
 	
-	export const bulkControlUser = async (ids: string[], action: Actions) => {
-	  return await axiosServices.patch<IResponseUpdateUser>(endPoints.BULK_CONTROL_USER, { ids, action });
+	export const updateUser = async (id: string, payload: IRequestUpdateUser) => {
+	  return await axiosServices.put<IResponseUpdateUser>(`${endPoints.UPDATE_USER}/${id}`, payload);
 	};
 	
 	export const deleteUser = async (id: string) => {
-	  return await axiosServices.delete<IResponseDeleteUser>(endPoints.DELETE_USER.replace(':id', id));
+	  return await axiosServices.delete<IResponseDeleteUser>(`${endPoints.DELETE_USER}/${id}`);
 	};
 	
 	export const getUserDetail = async (id: string) => {
@@ -23614,6 +23591,7 @@ src/components/ui-component/table/index.tsx```tsx
 	import styles from './table.module.scss';
 	import './default.scss';
 	import clsx from 'clsx';
+	import { useMemo } from 'react';
 	import { useIntl } from 'react-intl';
 	import { PAGINATE_PAGE_SIZE } from '@/utils/constant';
 	
@@ -23630,6 +23608,9 @@ src/components/ui-component/table/index.tsx```tsx
 	
 	export default function Table({ initialState, sx, slots, rows, columns, wrapperBox, rowCount, ...props }: CustomTableProps) {
 	  const { formatMessage } = useIntl();
+	  const formatRows = useMemo(() => {
+	    return rows.map((item) => ({ ...item, id: item?._id || item?.id }));
+	  }, [rows]);
 	
 	  const renderNoItem = () => (
 	    <Box width="100%" height="100%" display="flex" justifyContent="center" alignItems="center">
@@ -23641,7 +23622,7 @@ src/components/ui-component/table/index.tsx```tsx
 	  return (
 	    <Box width="100%" sx={{ height: isNoItems ? '150px' : 'unset' }} {...wrapperBox}>
 	      <DataGrid
-	        rows={rows}
+	        rows={formatRows}
 	        columns={columns}
 	        initialState={{
 	          pagination: {
@@ -25128,6 +25109,183 @@ src/components/dialogs/InvoiceDialog.tsx```tsx
 
 ```
 
+src/components/dialogs/user/UserDeleteDialog.tsx```tsx
+	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
+	import { GridCloseIcon } from '@mui/x-data-grid';
+	import { Button } from '@/components/ui-component/buttons';
+	import { useIntl } from 'react-intl';
+	import { useAsync } from '@/hooks/useAsync';
+	import { success as notifySuccess } from '@/utils/notify';
+	import LoadingButton from '@mui/lab/LoadingButton';
+	import { IUser } from '@/app/api/users/list/route';
+	import { deleteUser } from '@/utils/services/user';
+	interface UserDialogProps extends Omit<DialogProps, 'onClose'> {
+	  users: Partial<IUser>[];
+	  onClose?: () => void;
+	}
+	
+	export default function UserDeleteDialog({ users, onClose, ...props }: UserDialogProps): JSX.Element {
+	  const { formatMessage } = useIntl();
+	  const { isLoading, execute } = useAsync();
+	  const handleClose = () => {
+	    onClose?.();
+	  };
+	
+	  const handleDelete = async () => {
+	    for (let index = 0; index < users.length; index++) {
+	      const item = users[index];
+	      await execute(deleteUser(item._id + ''));
+	    }
+	    handleClose();
+	    notifySuccess(formatMessage({ id: 'userApiDeleted' }));
+	  };
+	
+	  const renderContent = () => {
+	    let msg = formatMessage({ id: 'userDialogDeleteContent' });
+	    let noMsg = '';
+	    if (users.length === 1) {
+	      noMsg = `<strong>${users[0].firstName} ${users[0].lastName}</strong>`;
+	    } else {
+	      noMsg = `<strong>${users.length}</strong> users`;
+	    }
+	    return msg.replace('{userName}', noMsg);
+	  };
+	
+	  return (
+	    <Dialog onClose={handleClose} {...props}>
+	      <DialogTitle sx={{ pt: '8px' }}>{formatMessage({ id: 'userDialogDeleteTitle' })}</DialogTitle>
+	      <IconButton
+	        aria-label="close"
+	        onClick={handleClose}
+	        sx={{
+	          position: 'absolute',
+	          right: 10,
+	          top: 16,
+	          color: (theme) => theme.palette.grey[500]
+	        }}
+	      >
+	        <GridCloseIcon />
+	      </IconButton>
+	      <DialogContent dividers sx={{ minWidth: '600px' }}>
+	        <Typography gutterBottom sx={{ my: '12px' }}>
+	          <span
+	            dangerouslySetInnerHTML={{
+	              __html: renderContent()
+	            }}
+	          />
+	        </Typography>
+	      </DialogContent>
+	      <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
+	        <Button variant="text" color="error" onClick={handleClose}>
+	          {formatMessage({ id: 'buttonLabelCancel' })}
+	        </Button>
+	        {isLoading ? (
+	          <LoadingButton loading variant="contained" color="error" type="submit">
+	            {formatMessage({ id: 'userDialogDeleteButtonDelete' })}
+	          </LoadingButton>
+	        ) : (
+	          <Button variant="contained" color="error" type="submit" onClick={handleDelete}>
+	            {formatMessage({ id: 'userDialogDeleteButtonDelete' })}
+	          </Button>
+	        )}
+	      </DialogActions>
+	    </Dialog>
+	  );
+	}
+
+```
+
+src/components/dialogs/user/UserChangeStatus.tsx```tsx
+	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
+	import { GridCloseIcon } from '@mui/x-data-grid';
+	import { Button } from '@/components/ui-component/buttons';
+	import { useIntl } from 'react-intl';
+	import { useAsync } from '@/hooks/useAsync';
+	import { success as notifySuccess } from '@/utils/notify';
+	import LoadingButton from '@mui/lab/LoadingButton';
+	import { IUser } from '@/app/api/users/list/route';
+	import { updateUser } from '@/utils/services/user';
+	import { USER_STATUS_ACTIVE } from '@/constant/user';
+	interface UserDialogProps extends Omit<DialogProps, 'onClose'> {
+	  users: Partial<IUser>[];
+	  status: string;
+	  onClose?: () => void;
+	}
+	
+	export default function UserChangeStatusDialog({ users, status, onClose, ...props }: UserDialogProps): JSX.Element {
+	  const { formatMessage } = useIntl();
+	  const { isLoading, execute } = useAsync();
+	  const handleClose = () => {
+	    onClose?.();
+	  };
+	
+	  const handleSubmit = async () => {
+	    for (let index = 0; index < users.length; index++) {
+	      const item = users[index];
+	      await execute(updateUser(item._id + '', { completionStatus: status }));
+	    }
+	    handleClose();
+	    notifySuccess(formatMessage({ id: 'userApiUpdated' }));
+	  };
+	
+	  const renderContent = () => {
+	    const msgStatus = status === USER_STATUS_ACTIVE ? 'active' : 'deactivate';
+	    let msg = formatMessage({ id: 'userDialogChangeStatusContent' }).replace('{status}', msgStatus);
+	    let noMsg = '';
+	    if (users.length === 1) {
+	      noMsg = `<strong>${users[0].firstName} ${users[0].lastName}</strong>`;
+	    } else {
+	      noMsg = `<strong>${users.length}</strong> users`;
+	    }
+	    return msg.replace('{no}', noMsg);
+	  };
+	
+	  return (
+	    <Dialog onClose={handleClose} {...props}>
+	      <DialogTitle sx={{ pt: '8px' }}>
+	        {formatMessage({ id: status === USER_STATUS_ACTIVE ? 'userDialogActiveTitle' : 'userDialogDeactiveTitle' })}
+	      </DialogTitle>
+	      <IconButton
+	        aria-label="close"
+	        onClick={handleClose}
+	        sx={{
+	          position: 'absolute',
+	          right: 10,
+	          top: 16,
+	          color: (theme) => theme.palette.grey[500]
+	        }}
+	      >
+	        <GridCloseIcon />
+	      </IconButton>
+	      <DialogContent dividers sx={{ minWidth: '600px' }}>
+	        <Typography gutterBottom sx={{ my: '12px' }}>
+	          <span
+	            dangerouslySetInnerHTML={{
+	              __html: renderContent()
+	            }}
+	          />
+	        </Typography>
+	      </DialogContent>
+	      <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
+	        <Button variant="text" color="error" type="submit" onClick={handleClose}>
+	          {formatMessage({ id: 'buttonLabelCancel' })}
+	        </Button>
+	        {isLoading ? (
+	          <LoadingButton loading variant="contained" color="error" type="submit">
+	            {status}
+	          </LoadingButton>
+	        ) : (
+	          <Button variant="contained" color="error" type="submit" onClick={handleSubmit}>
+	            {status}
+	          </Button>
+	        )}
+	      </DialogActions>
+	    </Dialog>
+	  );
+	}
+
+```
+
 src/components/dialogs/contractor/ContractorDeleteDialog.tsx```tsx
 	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
 	import { GridCloseIcon } from '@mui/x-data-grid';
@@ -25466,6 +25624,345 @@ src/components/dialogs/contractor/ContractorDialog.tsx```tsx
 	          );
 	        }}
 	      </Formik>
+	    </Dialog>
+	  );
+	}
+
+```
+
+src/components/dialogs/builder/style.module.scss```scss
+	.imageLocal{
+	  position: absolute;
+	  inset: 0;
+	  z-index: 0;
+	  width: 100%;
+	  height: 100%;
+	  object-fit: contain;
+	}
+```
+
+src/components/dialogs/builder/BuilderDialog.tsx```tsx
+	import {
+	  Box,
+	  Button,
+	  Dialog,
+	  DialogActions,
+	  DialogContent,
+	  DialogProps,
+	  DialogTitle,
+	  Grid,
+	  IconButton,
+	  MenuItem,
+	  Select,
+	  Typography,
+	  FormHelperText
+	} from '@mui/material';
+	import LoadingButton from '@mui/lab/LoadingButton';
+	import TextField from 'components/ui-component/TextField';
+	import styles from '@/styles/dataDialog.module.scss';
+	import { Builder as BuilderType } from '@/utils/dtos/builder.dto';
+	import { GridCloseIcon } from '@mui/x-data-grid';
+	import { useIntl } from 'react-intl';
+	import AddIcon from '@mui/icons-material/Add';
+	import { Formik } from 'formik';
+	import { object as yupObject } from 'yup';
+	import { useAsync } from '@/hooks/useAsync';
+	import { createBuilder, updateBuilder } from '@/utils/services/builder';
+	import { success as notifySuccess } from '@/utils/notify';
+	import { BUILDER_CATEGORIES, BUILDER_STATUS, BUILDER_STATUS_ACTIVE } from '@/constant/builder';
+	import stylesDialog from './style.module.scss';
+	import useCommonValidates from '@/hooks/useCommonValidates';
+	
+	export interface IFormValues {
+	  builderName: string;
+	  category: string;
+	  completionStatus: string;
+	  imageUrl: string;
+	  address: string;
+	  image?: File;
+	}
+	
+	interface BuilderDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
+	  builder: Partial<BuilderType> | null;
+	  onClose: () => void;
+	  onSuccess?: () => void;
+	}
+	
+	export default function BuilderDialog({ onClose, builder, onSuccess, ...props }: BuilderDialogProps): JSX.Element {
+	  const { formatMessage } = useIntl();
+	  const { execute, isLoading } = useAsync();
+	  const validates = useCommonValidates();
+	  const initialValues: IFormValues = {
+	    builderName: builder?.builderName || '',
+	    category: builder?.category || '',
+	    completionStatus: builder?.completionStatus || BUILDER_STATUS_ACTIVE,
+	    address: builder?.address || '',
+	    imageUrl: builder?.imageUrl || ''
+	  };
+	
+	  const validationSchema = yupObject().shape({
+	    builderName: validates.text({ isRequired: true }),
+	    category: validates.text({ isRequired: true }),
+	    address: validates.text({ isRequired: true })
+	  });
+	
+	  const handleCloseDialog = () => {
+	    if (isLoading) {
+	      return;
+	    }
+	    onClose();
+	  };
+	
+	  const handleSubmitForm = async (values: IFormValues) => {
+	    let result;
+	    if (builder) {
+	      result = await execute(updateBuilder(builder._id + '', values));
+	      if (result.data.success) {
+	        notifySuccess(formatMessage({ id: 'builderApiUpdated' }));
+	        handleCloseDialog();
+	        onSuccess?.();
+	      }
+	    } else {
+	      result = await execute(createBuilder(values));
+	      if (result.data.success) {
+	        notifySuccess(formatMessage({ id: 'builderApiCreated' }));
+	        handleCloseDialog();
+	        onSuccess?.();
+	      }
+	    }
+	  };
+	  return (
+	    <Dialog onClose={handleCloseDialog} {...props}>
+	      <DialogTitle sx={{ pt: '8px' }}>{formatMessage({ id: builder ? 'builderDialogEditTitle' : 'builderDialogAddTitle' })}</DialogTitle>
+	      <IconButton
+	        aria-label="close"
+	        onClick={handleCloseDialog}
+	        sx={{
+	          position: 'absolute',
+	          right: 10,
+	          top: 16,
+	          color: (theme) => theme.palette.grey[500]
+	        }}
+	      >
+	        <GridCloseIcon />
+	      </IconButton>
+	      <Formik
+	        validateOnBlur={false}
+	        validateOnChange={false}
+	        initialValues={initialValues}
+	        validationSchema={validationSchema}
+	        onSubmit={handleSubmitForm}
+	      >
+	        {({ errors, handleChange, handleSubmit, values, setFieldValue }) => {
+	          return (
+	            <form noValidate onSubmit={handleSubmit}>
+	              <DialogContent dividers className={styles.content}>
+	                <Grid container spacing={2.5}>
+	                  <Grid item xs={8}>
+	                    <Typography variant="h5" mb="4px">
+	                      {formatMessage({ id: 'builderDialogCreateNameLabel' })}
+	                    </Typography>
+	                    <TextField
+	                      hiddenLabel
+	                      value={values.builderName}
+	                      name="builderName"
+	                      fullWidth
+	                      size="medium"
+	                      placeholder={formatMessage({ id: 'builderDialogCreateNamePlaceholder' })}
+	                      error={!!errors.builderName}
+	                      helperText={errors.builderName}
+	                      onChange={handleChange}
+	                    />
+	                    <Box sx={{ mb: 2 }} />
+	                    <Typography variant="h5" mb="4px">
+	                      {formatMessage({ id: 'builderDialogCreateCategoryLabel' })}
+	                    </Typography>
+	                    <Select
+	                      value={values.category}
+	                      fullWidth
+	                      placeholder={formatMessage({ id: 'builderDialogCreateCategoryPlaceholder' })}
+	                      sx={{ borderRadius: '12px' }}
+	                      error={!!errors.category}
+	                      onChange={handleChange}
+	                      name="category"
+	                    >
+	                      {BUILDER_CATEGORIES.map((item) => (
+	                        <MenuItem value={item} key={item}>
+	                          {item}
+	                        </MenuItem>
+	                      ))}
+	                    </Select>
+	                    {!!errors.category && (
+	                      <FormHelperText error sx={{ mx: '14px' }}>
+	                        {errors.category}
+	                      </FormHelperText>
+	                    )}
+	                  </Grid>
+	                  <Grid item xs={4} display="flex" flexDirection="column">
+	                    <Typography variant="h5" mb="4px">
+	                      {formatMessage({ id: 'builderDialogCreateThumbnailLabel' })}
+	                    </Typography>
+	                    <Box flex="1" display="flex">
+	                      <Button variant="outlined" color="primary" sx={{ width: '100%', position: 'relative' }} component="label">
+	                        <AddIcon />
+	                        {
+	                          // eslint-disable-next-line @next/next/no-img-element
+	                          !!values.image && <img alt="local" src={URL.createObjectURL(values.image)} className={stylesDialog.imageLocal} />
+	                        }
+	                        <input
+	                          type="file"
+	                          hidden
+	                          id="image"
+	                          name="image"
+	                          accept="image/*"
+	                          onChange={(e) => {
+	                            if (e.currentTarget.files?.[0]) {
+	                              setFieldValue('image', e.currentTarget.files?.[0]);
+	                            }
+	                          }}
+	                        />
+	                      </Button>
+	                    </Box>
+	                  </Grid>
+	                </Grid>
+	                <Box sx={{ mb: 2 }} />
+	                <Grid container spacing={3.125} flexDirection="column">
+	                  <Grid item xs={12}>
+	                    <Typography variant="h5" mb="4px">
+	                      {formatMessage({ id: 'builderDialogCreateAddressLabel' })}
+	                    </Typography>
+	                    <TextField
+	                      multiline
+	                      minRows={4}
+	                      hiddenLabel
+	                      fullWidth
+	                      size="medium"
+	                      name="address"
+	                      placeholder={formatMessage({ id: 'builderDialogCreateAddressPlaceholder' })}
+	                      error={!!errors.address}
+	                      helperText={errors.address}
+	                      onChange={handleChange}
+	                      value={values.address}
+	                    />
+	                  </Grid>
+	                  <Grid item xs={12}>
+	                    <Typography variant="h5" mb="4px">
+	                      {formatMessage({ id: 'builderDialogCreateStatusLabel' })}
+	                    </Typography>
+	                    <Select
+	                      value={values.completionStatus}
+	                      fullWidth
+	                      placeholder={formatMessage({ id: 'builderDialogCreateCategoryPlaceholder' })}
+	                      sx={{ borderRadius: '12px' }}
+	                      onChange={handleChange}
+	                      name="completionStatus"
+	                    >
+	                      {BUILDER_STATUS.map((item) => (
+	                        <MenuItem value={item} key={item}>
+	                          {item}
+	                        </MenuItem>
+	                      ))}
+	                    </Select>
+	                  </Grid>
+	                </Grid>
+	              </DialogContent>
+	
+	              <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
+	                <Button variant="text" color="error" onClick={handleCloseDialog}>
+	                  {formatMessage({ id: 'buttonLabelCancel' })}
+	                </Button>
+	                {isLoading ? (
+	                  <LoadingButton loading variant="contained" color="error" type="submit">
+	                    {formatMessage({ id: 'builderDialogCreateButtonSubmit' })}
+	                  </LoadingButton>
+	                ) : (
+	                  <Button variant="contained" color="error" type="submit">
+	                    {formatMessage({ id: 'builderDialogCreateButtonSubmit' })}
+	                  </Button>
+	                )}
+	              </DialogActions>
+	            </form>
+	          );
+	        }}
+	      </Formik>
+	    </Dialog>
+	  );
+	}
+
+```
+
+src/components/dialogs/builder/BuilderDeleteDialog.tsx```tsx
+	import { Builder } from '@/utils/dtos/builder.dto';
+	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
+	import { GridCloseIcon } from '@mui/x-data-grid';
+	import { Button } from '@/components/ui-component/buttons';
+	import { useIntl } from 'react-intl';
+	import { useAsync } from '@/hooks/useAsync';
+	import { deleteBuilder } from '@/utils/services/builder';
+	import * as notify from '@/utils/notify';
+	import LoadingButton from '@mui/lab/LoadingButton';
+	interface BuilderDialogProps extends Omit<DialogProps, 'onClose'> {
+	  builder: Partial<Builder> | null;
+	  onClose?: () => void;
+	  onSuccess?: () => void;
+	}
+	
+	export default function BuilderDeleteDialog({ builder, onClose, onSuccess, ...props }: BuilderDialogProps): JSX.Element {
+	  const { formatMessage } = useIntl();
+	  const { isLoading, execute } = useAsync();
+	  const handleClose = () => {
+	    onClose?.();
+	  };
+	
+	  const handleDelete = async () => {
+	    if (builder?._id) {
+	      const result = await execute(deleteBuilder(builder._id + ''));
+	      if (result.data.success) {
+	        handleClose();
+	        notify.success(formatMessage({ id: 'builderApiDeleted' }));
+	        onSuccess?.();
+	      }
+	    }
+	  };
+	  const content = formatMessage({ id: 'builderDialogDeleteContent' }).replace('{builderName}', builder?.builderName || '');
+	  return (
+	    <Dialog onClose={handleClose} {...props}>
+	      <DialogTitle sx={{ pt: '8px' }}>{formatMessage({ id: 'builderDialogDeleteTitle' })}</DialogTitle>
+	      <IconButton
+	        aria-label="close"
+	        onClick={handleClose}
+	        sx={{
+	          position: 'absolute',
+	          right: 10,
+	          top: 16,
+	          color: (theme) => theme.palette.grey[500]
+	        }}
+	      >
+	        <GridCloseIcon />
+	      </IconButton>
+	      <DialogContent dividers sx={{ minWidth: '600px' }}>
+	        <Typography gutterBottom sx={{ my: '12px' }}>
+	          <span
+	            dangerouslySetInnerHTML={{
+	              __html: content
+	            }}
+	          />
+	        </Typography>
+	      </DialogContent>
+	      <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
+	        <Button variant="text" color="error" onClick={handleClose}>
+	          {formatMessage({ id: 'buttonLabelCancel' })}
+	        </Button>
+	        {isLoading ? (
+	          <LoadingButton loading variant="contained" color="error" type="submit">
+	            {formatMessage({ id: 'builderDialogDeleteButtonDelete' })}
+	          </LoadingButton>
+	        ) : (
+	          <Button variant="contained" color="error" type="submit" onClick={handleDelete}>
+	            {formatMessage({ id: 'builderDialogDeleteButtonDelete' })}
+	          </Button>
+	        )}
+	      </DialogActions>
 	    </Dialog>
 	  );
 	}
@@ -30618,8 +31115,10 @@ src/components/user/index.tsx```tsx
 	import { getUsers } from '@/utils/services/user';
 	import { useAsync } from '@/hooks/useAsync';
 	import { useEffect, useState } from 'react';
+	import { IUser } from '@/app/api/users/list/route';
+	import { USER_STATUS_ACTIVE, USER_STATUS_DEACTIVED } from '@/constant/user';
 	import Chip from '@/components/ui-component/extended/Chip';
-	import { GridColDef, GridPaginationModel, GridRowParams, GridRowSelectionModel, GridSortModel } from '@mui/x-data-grid';
+	import { GridColDef, GridRowParams, GridRowSelectionModel } from '@mui/x-data-grid';
 	import Avatar from '@/components/ui-component/extended/Avatar';
 	import { Eye, Users as IconUsers, Buildings, LockKey, Plus } from '@phosphor-icons/react';
 	import { Button } from '@/components/ui-component/buttons';
@@ -30629,15 +31128,10 @@ src/components/user/index.tsx```tsx
 	import { format } from 'date-fns';
 	import { ButtonSelectStatus } from './component/ButtonSelectStatus';
 	import { ButtonDelete } from './component/ButtonDelete';
-	import UserDeleteDialog from './dialog/UserDeleteDialog';
-	import UserChangeStatusDialog from './dialog/UserChangeStatus';
+	import UserDeleteDialog from '../dialogs/user/UserDeleteDialog';
+	import UserChagenStatusDialog from '../dialogs/user/UserChangeStatus';
 	import NextLink from 'next/link';
 	import routes from '@/routes';
-	import { IUser } from '@/types/resource/user';
-	import { IRequestFilter } from '@/types/request';
-	import { ResponseMeta } from '@/types/pagination';
-	import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT, SORT_FIELD_DEFAULT } from '@/utils/constant';
-	import { UserStatus } from '@/utils/enums';
 	
 	const User = () => {
 	  const { formatMessage } = useIntl();
@@ -30647,31 +31141,22 @@ src/components/user/index.tsx```tsx
 	  const [statusSelected, setStatusSelected] = useState('');
 	  const [deleteUsers, setDeleteUsers] = useState<IUser[]>([]);
 	  const [changeStatusUsers, setChangeStatusUsers] = useState<IUser[]>([]);
-	  const [userFilters, setUserFilters] = useState<IRequestFilter>({});
-	  const [userMeta, setUserMeta] = useState<ResponseMeta | null>(null);
 	  const renderStatus = (value: string) => {
 	    let formatValue = value.toLowerCase();
-	    if (formatValue === UserStatus.ACTIVE.toLocaleLowerCase()) {
-	      return <Chip chipcolor="success" label={formatValue} sx={{ ':hover': null, textTransform: 'capitalize' }} />;
+	    if (formatValue === USER_STATUS_DEACTIVED.toLowerCase()) {
+	      return <Chip chipcolor="error" variant="outlined" label={value} sx={{ ':hover': null }} />;
 	    }
-	    return <Chip chipcolor="error" variant="outlined" label={formatValue} sx={{ ':hover': null, textTransform: 'capitalize' }} />;
+	    return <Chip chipcolor="success" label={value} sx={{ ':hover': null }} />;
 	  };
 	
-	  const fetchUsers = async (filters?: IRequestFilter) => {
-	    const newFilter = {
-	      ...userFilters,
-	      ...filters
-	    };
-	    const result = await execute(getUsers(newFilter));
-	    const data = result.data?.data && result.data?.data.length > 0 ? result.data?.data : [];
-	    const meta = result.data.meta || null;
-	    setUserMeta(meta);
+	  const initData = async () => {
+	    const res = await execute(getUsers());
+	    const data = res.data?.users && res.data?.users.length > 0 ? res.data?.users : [];
 	    setUsers(data);
-	    setUserFilters(newFilter);
 	  };
 	
 	  useEffect(() => {
-	    fetchUsers();
+	    initData();
 	    // eslint-disable-next-line react-hooks/exhaustive-deps
 	  }, []);
 	
@@ -30683,8 +31168,10 @@ src/components/user/index.tsx```tsx
 	      align: 'center',
 	      renderCell: ({ row }) => (
 	        <Box display="flex" gap="12px" alignItems="center">
-	          {row?.imageUrl ? <Avatar alt={`${row.firstName} ${row.lastName}`} src={row.imageUrl} size="xs" /> : null}
-	          <Typography variant="h4">{`${row.firstName} ${row.lastName}`}</Typography>
+	          {row?.avatarUrl ? <Avatar alt={`${row.firstName} ${row.lastName}`} src={row.avatarUrl} size="xs" /> : null}
+	          <Typography variant="h4">
+	            {row.firstName} {row.lastName}
+	          </Typography>
 	        </Box>
 	      ),
 	      flex: 2
@@ -30700,7 +31187,7 @@ src/components/user/index.tsx```tsx
 	      field: 'status',
 	      headerName: formatMessage({ id: 'tableStatus' }),
 	      headerAlign: 'center',
-	      renderCell: ({ row }) => <Box fontWeight={500}>{renderStatus(row.status || UserStatus.ACTIVE)}</Box>,
+	      renderCell: ({ row }) => <Box fontWeight={500}>{renderStatus(row.completionStatus || USER_STATUS_ACTIVE)}</Box>,
 	      flex: 1,
 	      align: 'center'
 	    },
@@ -30734,7 +31221,7 @@ src/components/user/index.tsx```tsx
 	  ];
 	
 	  const handleSelectStatus = (value: string) => {
-	    const listUsers = users.filter((item) => rowsSelected.includes(item.id) && item.status !== value);
+	    const listUsers = users.filter((item) => rowsSelected.includes(item._id) && item.completionStatus !== value);
 	    if (listUsers.length > 0) {
 	      setStatusSelected(value);
 	      setChangeStatusUsers(listUsers);
@@ -30747,7 +31234,7 @@ src/components/user/index.tsx```tsx
 	    setChangeStatusUsers([]);
 	  };
 	  const handleDelete = () => {
-	    const listUsers = users.filter((item) => rowsSelected.includes(item.id));
+	    const listUsers = users.filter((item) => rowsSelected.includes(item._id));
 	    setDeleteUsers(listUsers);
 	  };
 	  const handleResetDelete = () => {
@@ -30756,36 +31243,6 @@ src/components/user/index.tsx```tsx
 	  };
 	  const handleSelectRow = (rowSelectionModel: GridRowSelectionModel) => {
 	    setRowsSelected(rowSelectionModel);
-	  };
-	
-	  const handleSort = async (model: GridSortModel) => {
-	    const field = model?.[0]?.field || SORT_FIELD_DEFAULT;
-	    const dir = model?.[0]?.sort || SORT_DIRECTION_DEFAULT;
-	    await fetchUsers({
-	      field: field,
-	      sort: dir
-	    });
-	  };
-	
-	  const handlePaginationChange = async (model: GridPaginationModel) => {
-	    const newPage = (model?.page || 0) + 1;
-	    const limit = model?.pageSize || PAGINATE_PAGE_SIZE;
-	    await fetchUsers({
-	      page: newPage,
-	      limit
-	    });
-	  };
-	
-	  const handleActionSuccess = async () => {
-	    await fetchUsers({});
-	  };
-	
-	  const handleSearch = async (keyword: string) => {
-	    if (keyword !== userFilters.search) {
-	      await fetchUsers({
-	        search: keyword
-	      });
-	    }
 	  };
 	
 	  const renderHeaderAction = () => (
@@ -30812,7 +31269,7 @@ src/components/user/index.tsx```tsx
 	
 	  return (
 	    <Stack direction="column">
-	      <Breadcrumbs title={formatMessage({ id: 'userTitle' })} onSearch={handleSearch} actionCom={renderHeaderAction} />
+	      <Breadcrumbs title={formatMessage({ id: 'userTitle' })} onSearch={() => console.log('hello')} actionCom={renderHeaderAction} />
 	      <Table
 	        rows={users}
 	        columns={columns}
@@ -30820,211 +31277,19 @@ src/components/user/index.tsx```tsx
 	        checkboxSelection
 	        onRowSelectionModelChange={handleSelectRow}
 	        rowSelectionModel={rowsSelected}
-	        onSortModelChange={handleSort}
-	        paginationModel={{
-	          page: (userFilters?.page || 1) - 1,
-	          pageSize: userFilters.limit || PAGINATE_PAGE_SIZE
-	        }}
-	        rowCount={userMeta?.total || 0}
-	        onPaginationModelChange={handlePaginationChange}
 	      />
-	      <UserDeleteDialog
-	        open={Boolean(deleteUsers?.length > 0)}
-	        users={deleteUsers}
-	        onClose={handleResetDelete}
-	        onSuccess={handleActionSuccess}
-	      />
-	      <UserChangeStatusDialog
+	      <UserDeleteDialog open={Boolean(deleteUsers?.length > 0)} users={deleteUsers} onClose={handleResetDelete} />
+	      <UserChagenStatusDialog
 	        open={Boolean(changeStatusUsers?.length > 0 && statusSelected !== '')}
 	        users={changeStatusUsers}
 	        status={statusSelected}
 	        onClose={handleDeselectStatus}
-	        onSuccess={handleActionSuccess}
 	      />
 	    </Stack>
 	  );
 	};
 	
 	export default User;
-
-```
-
-src/components/user/dialog/UserDeleteDialog.tsx```tsx
-	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
-	import { GridCloseIcon } from '@mui/x-data-grid';
-	import { Button } from '@/components/ui-component/buttons';
-	import { useIntl } from 'react-intl';
-	import { useAsync } from '@/hooks/useAsync';
-	import { success as notifySuccess } from '@/utils/notify';
-	import LoadingButton from '@mui/lab/LoadingButton';
-	import { bulkControlUser } from '@/utils/services/user';
-	import { IUser } from '@/types/resource/user';
-	import { Actions } from '@/utils/enums';
-	interface UserDialogProps extends Omit<DialogProps, 'onClose'> {
-	  users: Partial<IUser>[];
-	  onClose?: () => void;
-	  onSuccess?: () => void;
-	}
-	
-	export default function UserDeleteDialog({ users, onClose, onSuccess, ...props }: UserDialogProps): JSX.Element {
-	  const { formatMessage } = useIntl();
-	  const { isLoading, execute } = useAsync();
-	  const handleClose = () => {
-	    onClose?.();
-	  };
-	
-	  const handleDelete = async () => {
-	    const ids = users.map((u) => u?.id).filter((i) => Boolean(i)) as string[];
-	    await execute(bulkControlUser(ids, Actions.DELETE));
-	
-	    handleClose();
-	    notifySuccess(formatMessage({ id: 'userApiDeleted' }));
-	    onSuccess?.();
-	  };
-	
-	  const renderContent = () => {
-	    let msg = formatMessage({ id: 'userDialogDeleteContent' });
-	    let noMsg = '';
-	    if (users.length === 1) {
-	      noMsg = `<strong>${users[0].firstName} ${users[0].lastName}</strong>`;
-	    } else {
-	      noMsg = `<strong>${users.length}</strong> users`;
-	    }
-	    return msg.replace('{userName}', noMsg);
-	  };
-	
-	  return (
-	    <Dialog onClose={handleClose} {...props}>
-	      <DialogTitle sx={{ pt: '8px' }}>{formatMessage({ id: 'userDialogDeleteTitle' })}</DialogTitle>
-	      <IconButton
-	        aria-label="close"
-	        onClick={handleClose}
-	        sx={{
-	          position: 'absolute',
-	          right: 10,
-	          top: 16,
-	          color: (theme) => theme.palette.grey[500]
-	        }}
-	      >
-	        <GridCloseIcon />
-	      </IconButton>
-	      <DialogContent dividers sx={{ minWidth: '600px' }}>
-	        <Typography gutterBottom sx={{ my: '12px' }}>
-	          <span
-	            dangerouslySetInnerHTML={{
-	              __html: renderContent()
-	            }}
-	          />
-	        </Typography>
-	      </DialogContent>
-	      <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
-	        <Button variant="text" color="error" onClick={handleClose}>
-	          {formatMessage({ id: 'buttonLabelCancel' })}
-	        </Button>
-	        {isLoading ? (
-	          <LoadingButton loading variant="contained" color="error" type="submit">
-	            {formatMessage({ id: 'userDialogDeleteButtonDelete' })}
-	          </LoadingButton>
-	        ) : (
-	          <Button variant="contained" color="error" type="submit" onClick={handleDelete}>
-	            {formatMessage({ id: 'userDialogDeleteButtonDelete' })}
-	          </Button>
-	        )}
-	      </DialogActions>
-	    </Dialog>
-	  );
-	}
-
-```
-
-src/components/user/dialog/UserChangeStatus.tsx```tsx
-	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
-	import { GridCloseIcon } from '@mui/x-data-grid';
-	import { Button } from '@/components/ui-component/buttons';
-	import { useIntl } from 'react-intl';
-	import { useAsync } from '@/hooks/useAsync';
-	import { success as notifySuccess } from '@/utils/notify';
-	import LoadingButton from '@mui/lab/LoadingButton';
-	import { bulkControlUser } from '@/utils/services/user';
-	import { IUser } from '@/types/resource/user';
-	import { Actions, UserStatus } from '@/utils/enums';
-	interface UserDialogProps extends Omit<DialogProps, 'onClose'> {
-	  users: Partial<IUser>[];
-	  status: string;
-	  onClose?: () => void;
-	  onSuccess?: () => void;
-	}
-	
-	export default function UserChangeStatusDialog({ users, status, onClose, onSuccess, ...props }: UserDialogProps): JSX.Element {
-	  const { formatMessage } = useIntl();
-	  const { isLoading, execute } = useAsync();
-	  const handleClose = () => {
-	    onClose?.();
-	  };
-	
-	  const handleSubmit = async () => {
-	    const ids = users.map((u) => u?.id).filter((i) => Boolean(i)) as string[];
-	    const actionStatus = status === UserStatus.ACTIVE ? Actions.ACTIVATE : Actions.DEACTIVATE;
-	    await execute(bulkControlUser(ids, actionStatus));
-	    handleClose();
-	    onSuccess?.();
-	    notifySuccess(formatMessage({ id: 'userApiUpdated' }));
-	  };
-	
-	  const renderContent = () => {
-	    let msg = formatMessage({ id: 'userDialogChangeStatusContent' }).replace('{status}', status);
-	    let noMsg = '';
-	    if (users.length === 1) {
-	      noMsg = `<strong>${users[0]?.firstName} ${users[0]?.lastName}</strong>`;
-	    } else {
-	      noMsg = `<strong>${users.length}</strong> users`;
-	    }
-	    return msg.replace('{no}', noMsg);
-	  };
-	
-	  return (
-	    <Dialog onClose={handleClose} {...props}>
-	      <DialogTitle sx={{ pt: '8px' }}>
-	        {formatMessage({ id: status === UserStatus.ACTIVE ? 'userDialogActiveTitle' : 'userDialogDeactivatedTitle' })}
-	      </DialogTitle>
-	      <IconButton
-	        aria-label="close"
-	        onClick={handleClose}
-	        sx={{
-	          position: 'absolute',
-	          right: 10,
-	          top: 16,
-	          color: (theme) => theme.palette.grey[500]
-	        }}
-	      >
-	        <GridCloseIcon />
-	      </IconButton>
-	      <DialogContent dividers sx={{ minWidth: '600px' }}>
-	        <Typography gutterBottom sx={{ my: '12px' }}>
-	          <span
-	            dangerouslySetInnerHTML={{
-	              __html: renderContent()
-	            }}
-	          />
-	        </Typography>
-	      </DialogContent>
-	      <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
-	        <Button variant="text" color="error" type="submit" onClick={handleClose}>
-	          {formatMessage({ id: 'buttonLabelCancel' })}
-	        </Button>
-	        {isLoading ? (
-	          <LoadingButton loading variant="contained" color="error" type="submit">
-	            {status}
-	          </LoadingButton>
-	        ) : (
-	          <Button variant="contained" color="error" type="submit" onClick={handleSubmit}>
-	            {status}
-	          </Button>
-	        )}
-	      </DialogActions>
-	    </Dialog>
-	  );
-	}
 
 ```
 
@@ -31056,12 +31321,12 @@ src/components/user/component/ButtonDelete.tsx```tsx
 ```
 
 src/components/user/component/ButtonSelectStatus.tsx```tsx
+	import { USER_STATUS_ACTIVE, USER_STATUS_DEACTIVED } from '@/constant/user';
 	import { Box, Button, ButtonProps, Divider, Popover, PopoverProps, Typography } from '@mui/material';
 	import { useState } from 'react';
 	import { useIntl } from 'react-intl';
 	import { CaretUp, CaretDown } from '@phosphor-icons/react';
 	import styles from './styles.module.scss';
-	import { UserStatus } from '@/utils/enums';
 	
 	interface Props {
 	  buttonProps?: Partial<ButtonProps>;
@@ -31107,12 +31372,12 @@ src/components/user/component/ButtonSelectStatus.tsx```tsx
 	        {...popoverProps}
 	      >
 	        <Box>
-	          <Typography className={styles.status} onClick={() => handleSelect(UserStatus.ACTIVE)}>
-	            {UserStatus.ACTIVE}
+	          <Typography className={styles.status} onClick={() => handleSelect(USER_STATUS_ACTIVE)}>
+	            {USER_STATUS_ACTIVE}
 	          </Typography>
 	          <Divider className={styles.divider} />
-	          <Typography className={styles.status} onClick={() => handleSelect(UserStatus.INACTIVE)}>
-	            {UserStatus.INACTIVE}
+	          <Typography className={styles.status} onClick={() => handleSelect(USER_STATUS_DEACTIVED)}>
+	            {USER_STATUS_DEACTIVED}
 	          </Typography>
 	        </Box>
 	      </Popover>
@@ -31152,7 +31417,6 @@ src/components/user/component/styles.module.scss```scss
 	  font-weight: 500;
 	  padding: 10px 16px;
 	  cursor: pointer;
-	  text-transform: capitalize;
 	}
 	
 	.buttonDelete{
@@ -31174,11 +31438,11 @@ src/components/user/detail/index.tsx```tsx
 	import ProfilePicture from './components/ProfilePicture';
 	import { useEffect, useState } from 'react';
 	import { useAsync } from '@/hooks/useAsync';
+	import { IUser } from '@/app/api/users/list/route';
 	import Loader from '@/components/ui-component/Loader';
 	import { getUserDetail } from '@/utils/services/user';
 	import BasicInformation from './components/BasicInformation';
 	import AdditionalInformation from './components/AdditionalInformation';
-	import { IUser } from '@/types/resource/user';
 	
 	const UserDetail = () => {
 	  const { formatMessage } = useIntl();
@@ -31203,8 +31467,8 @@ src/components/user/detail/index.tsx```tsx
 	  const getData = async () => {
 	    if (params.id) {
 	      const result = await execute(getUserDetail(userId));
-	      if (result.data.data) {
-	        setUser(result.data.data);
+	      if (result.data.user) {
+	        setUser(result.data.user);
 	      } else {
 	        router.push(userUrl);
 	      }
@@ -31253,8 +31517,8 @@ src/components/user/detail/components/BasicInformation/index.tsx```tsx
 	import Card from '@/components/ui-component/Card';
 	import TextField from 'components/ui-component/TextField';
 	import { DATE_FORMAT } from '@/constant';
+	import { IUser } from '@/app/api/users/list/route';
 	import DateCustom from '@/utils/datetime/date.custom';
-	import { IUser } from '@/types/resource/user';
 	
 	interface Props {
 	  user: IUser;
@@ -31291,14 +31555,9 @@ src/components/user/detail/components/BasicInformation/index.tsx```tsx
 	        <Grid item xs={6}>
 	          <TextField
 	            label={formatMessage({ id: 'userDetailStatus' })}
-	            name="status"
-	            value={user.status}
+	            name="completionStatus"
+	            value={user.completionStatus}
 	            {...defaultProps}
-	            sx={{
-	              '& input': {
-	                textTransform: 'capitalize'
-	              }
-	            }}
 	          />
 	        </Grid>
 	        <Grid item xs={6}>
@@ -31332,7 +31591,7 @@ src/components/user/detail/components/AdditionalInformation/index.tsx```tsx
 	
 	import Card from '@/components/ui-component/Card';
 	import TextField from 'components/ui-component/TextField';
-	import { IUser } from '@/types/resource/user';
+	import { IUser } from '@/app/api/users/list/route';
 	
 	interface Props {
 	  user: IUser;
@@ -31404,7 +31663,7 @@ src/components/user/detail/components/ProfilePicture/index.tsx```tsx
 	// store
 	
 	import styles from './styles.module.scss';
-	import { IUser } from '@/types/resource/user';
+	import { IUser } from '@/app/api/users/list/route';
 	
 	export interface IProfilePictureProps {
 	  user: IUser;
@@ -31416,7 +31675,7 @@ src/components/user/detail/components/ProfilePicture/index.tsx```tsx
 	  return (
 	    <Card title={formatMessage({ id: 'userDetailProfilePicture' })}>
 	      <Box className={styles.wrapper}>
-	        <Avatar src={user?.imageUrl || AVATAR_DEFAULT_URL} size="xl" className={styles.avatar} />
+	        <Avatar src={user?.avatarUrl || AVATAR_DEFAULT_URL} size="xl" className={styles.avatar} />
 	      </Box>
 	    </Card>
 	  );
@@ -31645,11 +31904,12 @@ src/components/contractor/index.tsx```tsx
 	  };
 	  const columns: GridColDef[] = [
 	    {
-	      field: 'id',
+	      field: '_id',
 	      headerName: formatMessage({ id: 'tableId' }),
 	      align: 'center',
 	      headerAlign: 'center',
-	      flex: 1
+	      flex: 1,
+	      valueGetter: ({ row }) => row.id
 	    },
 	    {
 	      field: 'contractorName',
@@ -31817,12 +32077,12 @@ src/components/builder/index.tsx```tsx
 	import { GridColDef, GridPaginationModel, GridSortModel } from '@mui/x-data-grid';
 	import Chip from '../ui-component/extended/Chip';
 	import { useIntl } from 'react-intl';
-	import BuilderDeleteDialog from './dialog/BuilderDeleteDialog';
+	import BuilderDeleteDialog from '../dialogs/builder/BuilderDeleteDialog';
 	import { useEffect, useState } from 'react';
 	import { Builder } from '@/utils/dtos/builder.dto';
 	import { getBuilders } from '@/utils/services/builder';
 	import { useAsync } from '@/hooks/useAsync';
-	import BuilderDialog from './dialog/BuilderDialog';
+	import BuilderDialog from '../dialogs/builder/BuilderDialog';
 	import { BUILDER_STATUS_ARCHIVED, BUILDER_STATUS_INACTIVE } from '@/constant/builder';
 	import Avatar from '../ui-component/extended/Avatar';
 	import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT, SORT_FIELD_DEFAULT } from '@/utils/constant';
@@ -31851,7 +32111,7 @@ src/components/builder/index.tsx```tsx
 	    return <Chip chipcolor="success" label={value} sx={{ ':hover': null }} />;
 	  };
 	  const columns: GridColDef[] = [
-	    { field: 'id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
+	    { field: '_id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
 	    {
 	      field: 'builderName',
 	      headerName: formatMessage({ id: 'builderTableBuilderName' }),
@@ -31930,8 +32190,8 @@ src/components/builder/index.tsx```tsx
 	    const field = model?.[0]?.field || SORT_FIELD_DEFAULT;
 	    const dir = model?.[0]?.sort || SORT_DIRECTION_DEFAULT;
 	    await fetchBuilder({
-	      field: field,
-	      sort: dir
+	      sortBy: field,
+	      sortDir: dir
 	    });
 	  };
 	
@@ -32002,345 +32262,6 @@ src/components/builder/index.tsx```tsx
 	};
 	
 	export default Builder;
-
-```
-
-src/components/builder/dialog/style.module.scss```scss
-	.imageLocal{
-	  position: absolute;
-	  inset: 0;
-	  z-index: 0;
-	  width: 100%;
-	  height: 100%;
-	  object-fit: contain;
-	}
-```
-
-src/components/builder/dialog/BuilderDialog.tsx```tsx
-	import {
-	  Box,
-	  Button,
-	  Dialog,
-	  DialogActions,
-	  DialogContent,
-	  DialogProps,
-	  DialogTitle,
-	  Grid,
-	  IconButton,
-	  MenuItem,
-	  Select,
-	  Typography,
-	  FormHelperText
-	} from '@mui/material';
-	import LoadingButton from '@mui/lab/LoadingButton';
-	import TextField from 'components/ui-component/TextField';
-	import styles from '@/styles/dataDialog.module.scss';
-	import { GridCloseIcon } from '@mui/x-data-grid';
-	import { useIntl } from 'react-intl';
-	import AddIcon from '@mui/icons-material/Add';
-	import { Formik } from 'formik';
-	import { object as yupObject } from 'yup';
-	import { useAsync } from '@/hooks/useAsync';
-	import { createBuilder, updateBuilder } from '@/utils/services/builder';
-	import { success as notifySuccess } from '@/utils/notify';
-	import { BUILDER_CATEGORIES, BUILDER_STATUS, BUILDER_STATUS_ACTIVE } from '@/constant/builder';
-	import stylesDialog from './style.module.scss';
-	import useCommonValidates from '@/hooks/useCommonValidates';
-	import { IBuilder } from '@/types/resource/builder';
-	
-	export interface IFormValues {
-	  builderName: string;
-	  category: string;
-	  completionStatus: string;
-	  imageUrl: string;
-	  address: string;
-	  image?: File;
-	}
-	
-	interface BuilderDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
-	  builder: Partial<IBuilder> | null;
-	  onClose: () => void;
-	  onSuccess?: () => void;
-	}
-	
-	export default function BuilderDialog({ onClose, builder, onSuccess, ...props }: BuilderDialogProps): JSX.Element {
-	  const { formatMessage } = useIntl();
-	  const { execute, isLoading } = useAsync();
-	  const validates = useCommonValidates();
-	  const initialValues: IFormValues = {
-	    builderName: builder?.builderName || '',
-	    category: builder?.category || '',
-	    completionStatus: builder?.completionStatus || BUILDER_STATUS_ACTIVE,
-	    address: builder?.address || '',
-	    imageUrl: builder?.imageUrl || ''
-	  };
-	
-	  const validationSchema = yupObject().shape({
-	    builderName: validates.text({ isRequired: true }),
-	    category: validates.text({ isRequired: true }),
-	    address: validates.text({ isRequired: true })
-	  });
-	
-	  const handleCloseDialog = () => {
-	    if (isLoading) {
-	      return;
-	    }
-	    onClose();
-	  };
-	
-	  const handleSubmitForm = async (values: IFormValues) => {
-	    let result;
-	    if (builder) {
-	      result = await execute(updateBuilder(builder.id + '', values));
-	      if (result.data.success) {
-	        notifySuccess(formatMessage({ id: 'builderApiUpdated' }));
-	        handleCloseDialog();
-	        onSuccess?.();
-	      }
-	    } else {
-	      result = await execute(createBuilder(values));
-	      if (result.data.success) {
-	        notifySuccess(formatMessage({ id: 'builderApiCreated' }));
-	        handleCloseDialog();
-	        onSuccess?.();
-	      }
-	    }
-	  };
-	  return (
-	    <Dialog onClose={handleCloseDialog} {...props}>
-	      <DialogTitle sx={{ pt: '8px' }}>{formatMessage({ id: builder ? 'builderDialogEditTitle' : 'builderDialogAddTitle' })}</DialogTitle>
-	      <IconButton
-	        aria-label="close"
-	        onClick={handleCloseDialog}
-	        sx={{
-	          position: 'absolute',
-	          right: 10,
-	          top: 16,
-	          color: (theme) => theme.palette.grey[500]
-	        }}
-	      >
-	        <GridCloseIcon />
-	      </IconButton>
-	      <Formik
-	        validateOnBlur={false}
-	        validateOnChange={false}
-	        initialValues={initialValues}
-	        validationSchema={validationSchema}
-	        onSubmit={handleSubmitForm}
-	      >
-	        {({ errors, handleChange, handleSubmit, values, setFieldValue }) => {
-	          return (
-	            <form noValidate onSubmit={handleSubmit}>
-	              <DialogContent dividers className={styles.content}>
-	                <Grid container spacing={2.5}>
-	                  <Grid item xs={8}>
-	                    <Typography variant="h5" mb="4px">
-	                      {formatMessage({ id: 'builderDialogCreateNameLabel' })}
-	                    </Typography>
-	                    <TextField
-	                      hiddenLabel
-	                      value={values.builderName}
-	                      name="builderName"
-	                      fullWidth
-	                      size="medium"
-	                      placeholder={formatMessage({ id: 'builderDialogCreateNamePlaceholder' })}
-	                      error={!!errors.builderName}
-	                      helperText={errors.builderName}
-	                      onChange={handleChange}
-	                    />
-	                    <Box sx={{ mb: 2 }} />
-	                    <Typography variant="h5" mb="4px">
-	                      {formatMessage({ id: 'builderDialogCreateCategoryLabel' })}
-	                    </Typography>
-	                    <Select
-	                      value={values.category}
-	                      fullWidth
-	                      placeholder={formatMessage({ id: 'builderDialogCreateCategoryPlaceholder' })}
-	                      sx={{ borderRadius: '12px' }}
-	                      error={!!errors.category}
-	                      onChange={handleChange}
-	                      name="category"
-	                    >
-	                      {BUILDER_CATEGORIES.map((item) => (
-	                        <MenuItem value={item} key={item}>
-	                          {item}
-	                        </MenuItem>
-	                      ))}
-	                    </Select>
-	                    {!!errors.category && (
-	                      <FormHelperText error sx={{ mx: '14px' }}>
-	                        {errors.category}
-	                      </FormHelperText>
-	                    )}
-	                  </Grid>
-	                  <Grid item xs={4} display="flex" flexDirection="column">
-	                    <Typography variant="h5" mb="4px">
-	                      {formatMessage({ id: 'builderDialogCreateThumbnailLabel' })}
-	                    </Typography>
-	                    <Box flex="1" display="flex">
-	                      <Button variant="outlined" color="primary" sx={{ width: '100%', position: 'relative' }} component="label">
-	                        <AddIcon />
-	                        {
-	                          // eslint-disable-next-line @next/next/no-img-element
-	                          !!values.image && <img alt="local" src={URL.createObjectURL(values.image)} className={stylesDialog.imageLocal} />
-	                        }
-	                        <input
-	                          type="file"
-	                          hidden
-	                          id="image"
-	                          name="image"
-	                          accept="image/*"
-	                          onChange={(e) => {
-	                            if (e.currentTarget.files?.[0]) {
-	                              setFieldValue('image', e.currentTarget.files?.[0]);
-	                            }
-	                          }}
-	                        />
-	                      </Button>
-	                    </Box>
-	                  </Grid>
-	                </Grid>
-	                <Box sx={{ mb: 2 }} />
-	                <Grid container spacing={3.125} flexDirection="column">
-	                  <Grid item xs={12}>
-	                    <Typography variant="h5" mb="4px">
-	                      {formatMessage({ id: 'builderDialogCreateAddressLabel' })}
-	                    </Typography>
-	                    <TextField
-	                      multiline
-	                      minRows={4}
-	                      hiddenLabel
-	                      fullWidth
-	                      size="medium"
-	                      name="address"
-	                      placeholder={formatMessage({ id: 'builderDialogCreateAddressPlaceholder' })}
-	                      error={!!errors.address}
-	                      helperText={errors.address}
-	                      onChange={handleChange}
-	                      value={values.address}
-	                    />
-	                  </Grid>
-	                  <Grid item xs={12}>
-	                    <Typography variant="h5" mb="4px">
-	                      {formatMessage({ id: 'builderDialogCreateStatusLabel' })}
-	                    </Typography>
-	                    <Select
-	                      value={values.completionStatus}
-	                      fullWidth
-	                      placeholder={formatMessage({ id: 'builderDialogCreateCategoryPlaceholder' })}
-	                      sx={{ borderRadius: '12px' }}
-	                      onChange={handleChange}
-	                      name="completionStatus"
-	                    >
-	                      {BUILDER_STATUS.map((item) => (
-	                        <MenuItem value={item} key={item}>
-	                          {item}
-	                        </MenuItem>
-	                      ))}
-	                    </Select>
-	                  </Grid>
-	                </Grid>
-	              </DialogContent>
-	
-	              <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
-	                <Button variant="text" color="error" onClick={handleCloseDialog}>
-	                  {formatMessage({ id: 'buttonLabelCancel' })}
-	                </Button>
-	                {isLoading ? (
-	                  <LoadingButton loading variant="contained" color="error" type="submit">
-	                    {formatMessage({ id: 'builderDialogCreateButtonSubmit' })}
-	                  </LoadingButton>
-	                ) : (
-	                  <Button variant="contained" color="error" type="submit">
-	                    {formatMessage({ id: 'builderDialogCreateButtonSubmit' })}
-	                  </Button>
-	                )}
-	              </DialogActions>
-	            </form>
-	          );
-	        }}
-	      </Formik>
-	    </Dialog>
-	  );
-	}
-
-```
-
-src/components/builder/dialog/BuilderDeleteDialog.tsx```tsx
-	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
-	import { GridCloseIcon } from '@mui/x-data-grid';
-	import { Button } from '@/components/ui-component/buttons';
-	import { useIntl } from 'react-intl';
-	import { useAsync } from '@/hooks/useAsync';
-	import { deleteBuilder } from '@/utils/services/builder';
-	import * as notify from '@/utils/notify';
-	import LoadingButton from '@mui/lab/LoadingButton';
-	import { IBuilder } from '@/types/resource/builder';
-	interface BuilderDialogProps extends Omit<DialogProps, 'onClose'> {
-	  builder: Partial<IBuilder> | null;
-	  onClose?: () => void;
-	  onSuccess?: () => void;
-	}
-	
-	export default function BuilderDeleteDialog({ builder, onClose, onSuccess, ...props }: BuilderDialogProps): JSX.Element {
-	  const { formatMessage } = useIntl();
-	  const { isLoading, execute } = useAsync();
-	  const handleClose = () => {
-	    onClose?.();
-	  };
-	
-	  const handleDelete = async () => {
-	    if (builder?.id) {
-	      const result = await execute(deleteBuilder(builder.id + ''));
-	      if (result.data.success) {
-	        handleClose();
-	        notify.success(formatMessage({ id: 'builderApiDeleted' }));
-	        onSuccess?.();
-	      }
-	    }
-	  };
-	  const content = formatMessage({ id: 'builderDialogDeleteContent' }).replace('{builderName}', builder?.builderName || '');
-	  return (
-	    <Dialog onClose={handleClose} {...props}>
-	      <DialogTitle sx={{ pt: '8px' }}>{formatMessage({ id: 'builderDialogDeleteTitle' })}</DialogTitle>
-	      <IconButton
-	        aria-label="close"
-	        onClick={handleClose}
-	        sx={{
-	          position: 'absolute',
-	          right: 10,
-	          top: 16,
-	          color: (theme) => theme.palette.grey[500]
-	        }}
-	      >
-	        <GridCloseIcon />
-	      </IconButton>
-	      <DialogContent dividers sx={{ minWidth: '600px' }}>
-	        <Typography gutterBottom sx={{ my: '12px' }}>
-	          <span
-	            dangerouslySetInnerHTML={{
-	              __html: content
-	            }}
-	          />
-	        </Typography>
-	      </DialogContent>
-	      <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
-	        <Button variant="text" color="error" onClick={handleClose}>
-	          {formatMessage({ id: 'buttonLabelCancel' })}
-	        </Button>
-	        {isLoading ? (
-	          <LoadingButton loading variant="contained" color="error" type="submit">
-	            {formatMessage({ id: 'builderDialogDeleteButtonDelete' })}
-	          </LoadingButton>
-	        ) : (
-	          <Button variant="contained" color="error" type="submit" onClick={handleDelete}>
-	            {formatMessage({ id: 'builderDialogDeleteButtonDelete' })}
-	          </Button>
-	        )}
-	      </DialogActions>
-	    </Dialog>
-	  );
-	}
 
 ```
 
@@ -35441,6 +35362,39 @@ lib/swagger/doc/builder/put.ts```ts
 	*         success:
 	*           type: boolean
 	*           description: Builder updated
+	*         builder:
+	*           type: object
+	*           properties:
+	*             _id:
+	*               type: string      
+	*             builderName:
+	*               type: string
+	*             category:
+	*               type: string
+	*             address:
+	*               type: string
+	*             completionStatus:
+	*               type: string
+	*             imageUrl:
+	*               type: string
+	*             date:
+	*               type: string
+	*             dateCreate:
+	*               type: string
+	*             dateModify:
+	*               type: string
+	*             generalContractor:
+	*               type: string
+	*             budgetSeperatorComma:
+	*               type: string
+	*             budgetSeperatorSemiColon:
+	*               type: string
+	*             budgetSeperatorTab:
+	*               type: string
+	*             creatorId:
+	*               type: string
+	*             creatorEmail:
+	*               type: string
 	* @param request
 	* @constructor
 	*/
@@ -35725,29 +35679,29 @@ lib/swagger/doc/builder/get.ts```ts
 	*         required: false
 	*         description: Page size
 	*       - in: query
-	*         name: sort
+	*         name: sortBy
+	*         schema:
+	*           type: string
+	*         required: false
+	*         description: Sort by builder's column
+	*       - in: query
+	*         name: sortDir
 	*         schema:
 	*           type: string
 	*         required: false
 	*         description: Sort direction
 	*       - in: query
-	*         name: field
-	*         schema:
-	*           type: string
-	*         required: false
-	*         description: Sort by this field
-	*       - in: query
-	*         name: fields
-	*         schema:
-	*           type: string
-	*         required: false
-	*         description: Sort by these fields
-	*       - in: query
 	*         name: search
 	*         schema:
 	*           type: string
 	*         required: false
-	*         description: Search builder name
+	*         description: Search by builder name
+	*       - in: query
+	*         name: filterBy
+	*         schema:
+	*           type: string
+	*         required: false
+	*         description: Filter by builder's column
 	*     responses:
 	*       '200':
 	*         description: List Builder
@@ -35762,7 +35716,7 @@ lib/swagger/doc/builder/get.ts```ts
 	*       items:
 	*         type: object
 	*         properties:
-	*           id:
+	*           _id:
 	*             type: string      
 	*           builderName:
 	*             type: string
