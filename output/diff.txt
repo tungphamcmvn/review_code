@@ -1,31 +1,251 @@
-title:	correct the readme content
+title:	Fix not open contractor , role on project detail
 state:	MERGED
-author:	thomasvan
+author:	huyphamnguyen
 labels:	
 assignees:	
 reviewers:	
 projects:	
 milestone:	
-number:	16
-url:	https://github.com/invik-33/j2c-app/pull/16
-additions:	2
-deletions:	2
+number:	15
+url:	https://github.com/invik-33/j2c-app/pull/15
+additions:	23
+deletions:	27
 --
-in-corrected docker command has been fixed 
+Fix not open contractor , role on project detail
 
 
-diff --git a/README.md b/README.md
-index c2a17bf..bba0b60 100644
---- a/README.md
-+++ b/README.md
-@@ -25,8 +25,8 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml stop
- # MongoDB:27017
+diff --git a/lib/swagger/doc/builder/getDetail.ts b/lib/swagger/doc/builder/getDetail.ts
+index 2862e1f..671f2f8 100644
+--- a/lib/swagger/doc/builder/getDetail.ts
++++ b/lib/swagger/doc/builder/getDetail.ts
+@@ -45,7 +45,7 @@
+ *         builder:
+ *           type: object
+ *           properties:
+-*             _id:
++*             id:
+ *               type: string      
+ *             builderName:
+ *               type: string
+diff --git a/lib/swagger/doc/builder/post.ts b/lib/swagger/doc/builder/post.ts
+index f001ab8..03b537d 100644
+--- a/lib/swagger/doc/builder/post.ts
++++ b/lib/swagger/doc/builder/post.ts
+@@ -74,7 +74,7 @@
+ *         builder:
+ *           type: object
+ *           properties:
+-*             _id:
++*             id:
+ *               type: string      
+ *             builderName:
+ *               type: string
+diff --git a/lib/swagger/doc/contractor/get.ts b/lib/swagger/doc/contractor/get.ts
+index 24e1040..37b7c71 100644
+--- a/lib/swagger/doc/contractor/get.ts
++++ b/lib/swagger/doc/contractor/get.ts
+@@ -83,7 +83,7 @@
+  *         creatorId:
+  *           type: object
+  *           properties:
+- *             _id:
++ *             id:
+  *               type: string
+  *               example: 5f4e7b3b8d4b8b1d6f2f7b3b
+  *             name:
+diff --git a/src/app/api/project/[id]/contractors/route.ts b/src/app/api/project/[id]/contractors/route.ts
+index da415df..589018a 100644
+--- a/src/app/api/project/[id]/contractors/route.ts
++++ b/src/app/api/project/[id]/contractors/route.ts
+@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
+ export async function GET() {
+   const contractors = [
+     {
+-      _id: 'U001',
++      id: 'U001',
+       name: 'Thomas Miller',
+       email: 'example@gmail.com',
+       phoneNumber: '+1 4578-420-410',
+@@ -11,7 +11,7 @@ export async function GET() {
+       imageUrl: ''
+     },
+     {
+-      _id: 'U002',
++      id: 'U002',
+       name: 'Jennifer Thompson',
+       email: 'example@gmail.com',
+       phoneNumber: '+1 4578-420-410',
+@@ -19,7 +19,7 @@ export async function GET() {
+       imageUrl: ''
+     },
+     {
+-      _id: 'U003',
++      id: 'U003',
+       name: 'Robert Brown',
+       email: 'example@gmail.com',
+       phoneNumber: '+1 4578-420-410',
+@@ -27,7 +27,7 @@ export async function GET() {
+       imageUrl: ''
+     },
+     {
+-      _id: 'U004',
++      id: 'U004',
+       name: 'John Davis',
+       email: 'example@gmail.com',
+       phoneNumber: '+1 4578-420-410',
+@@ -35,7 +35,7 @@ export async function GET() {
+       imageUrl: ''
+     },
+     {
+-      _id: 'U005',
++      id: 'U005',
+       name: 'Emily Brown',
+       email: 'example@gmail.com',
+       phoneNumber: '+1 4578-420-410',
+diff --git a/src/app/api/project/[id]/roles/route.ts b/src/app/api/project/[id]/roles/route.ts
+index ccaef0b..9a9c72c 100644
+--- a/src/app/api/project/[id]/roles/route.ts
++++ b/src/app/api/project/[id]/roles/route.ts
+@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server';
+ export async function GET() {
+   const roles = [
+     {
+-      _id: 'U001',
++      id: 'U001',
+       name: 'Thomas Miller',
+       email: 'example@gmail.com',
+       phoneNumber: '+1 4578-420-410',
+@@ -12,7 +12,7 @@ export async function GET() {
+       imageUrl: ''
+     },
+     {
+-      _id: 'U002',
++      id: 'U002',
+       name: 'Jennifer Thompson',
+       email: 'example@gmail.com',
+       phoneNumber: '+1 4578-420-410',
+@@ -21,7 +21,7 @@ export async function GET() {
+       imageUrl: ''
+     },
+     {
+-      _id: 'U003',
++      id: 'U003',
+       name: 'Robert Brown',
+       email: 'example@gmail.com',
+       phoneNumber: '+1 4578-420-410',
+@@ -30,7 +30,7 @@ export async function GET() {
+       imageUrl: ''
+     },
+     {
+-      _id: 'U004',
++      id: 'U004',
+       name: 'John Davis',
+       email: 'example@gmail.com',
+       phoneNumber: '+1 4578-420-410',
+@@ -39,7 +39,7 @@ export async function GET() {
+       imageUrl: ''
+     },
+     {
+-      _id: 'U005',
++      id: 'U005',
+       name: 'Emily Brown',
+       email: 'example@gmail.com',
+       phoneNumber: '+1 4578-420-410',
+diff --git a/src/components/projects/Detail/contractors/addContractor/index.tsx b/src/components/projects/Detail/contractors/addContractor/index.tsx
+index 5e74ef9..6ba94a7 100644
+--- a/src/components/projects/Detail/contractors/addContractor/index.tsx
++++ b/src/components/projects/Detail/contractors/addContractor/index.tsx
+@@ -79,7 +79,7 @@ export default function ProjectAddContractorDialog({
+   const handleChangeUsers = (values: any[]) => {
+     setFieldValue(
+       'userIds',
+-      values.map((item) => item._id)
++      values.map((item) => item.id)
+     );
+   };
+   return (
+diff --git a/src/components/projects/Detail/roles/addUser/index.tsx b/src/components/projects/Detail/roles/addUser/index.tsx
+index cb8f0f8..df0120f 100644
+--- a/src/components/projects/Detail/roles/addUser/index.tsx
++++ b/src/components/projects/Detail/roles/addUser/index.tsx
+@@ -80,7 +80,7 @@ export default function ProjectAddUserDialog({
+   const handleChangeUsers = (values: any[]) => {
+     setFieldValue(
+       'userIds',
+-      values.map((item) => item._id)
++      values.map((item) => item.id)
+     );
+   };
+   return (
+diff --git a/src/components/ui-component/autocomplete/Users.tsx b/src/components/ui-component/autocomplete/Users.tsx
+index 82ea6f8..e1b09f9 100644
+--- a/src/components/ui-component/autocomplete/Users.tsx
++++ b/src/components/ui-component/autocomplete/Users.tsx
+@@ -4,18 +4,14 @@ import Autocomplete from '@mui/material/Autocomplete';
+ import CircularProgress from '@mui/material/CircularProgress';
+ import { useAsync } from '@/hooks/useAsync';
+ import { getUsers } from '@/utils/services/user';
+-import { User } from '@/utils/dtos/user.dto';
+ import { Box, Popper, Typography, useTheme } from '@mui/material';
+ import Avatar from '../extended/Avatar';
+ import Chip from '../extended/Chip';
+ import { TextFieldProps } from '../TextField';
+ import { useIntl } from 'react-intl';
+ import { MagnifyingGlass } from '@phosphor-icons/react';
+-interface IUser extends User {
+-  _id: string;
+-  firstName: string;
+-  lastName: string;
+-}
++import { IUser } from '@/types/resource/user';
++
+ interface Props {
+   onChange?: (values: any) => void;
+   inputProps?: TextFieldProps;
+@@ -30,7 +26,7 @@ const UserAutoComplete = ({ onChange, inputProps }: Props) => {
  
- # Start 
--docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
-+docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+   const fetchData = async () => {
+     const result = await execute(getUsers());
+-    setUsers(result?.data?.users || []);
++    setUsers(result?.data?.data || []);
+   };
  
- # Stop
--docker-compose -f docker-compose.yml -f docker-compose.prod.yml --build stop
-+docker-compose -f docker-compose.yml -f docker-compose.prod.yml stop
- ```
+   const handleChange = (_: any, values: IUser[]) => {
+@@ -64,11 +60,11 @@ const UserAutoComplete = ({ onChange, inputProps }: Props) => {
+       }}
+       multiple
+       disableCloseOnSelect
+-      isOptionEqualToValue={(option: IUser, value) => option._id === value._id}
++      isOptionEqualToValue={(option: IUser, value) => option.id === value.id}
+       getOptionLabel={renderName}
+       options={users}
+       renderTags={(tagValue, getTagProps) =>
+-        tagValue.map((option, index) => <Chip {...getTagProps({ index })} key={option._id} label={renderName(option)} />)
++        tagValue.map((option, index) => <Chip {...getTagProps({ index })} key={option.id} label={renderName(option)} />)
+       }
+       renderOption={(props, option) => (
+         <li {...props}>
+diff --git a/src/components/ui-component/table/index.tsx b/src/components/ui-component/table/index.tsx
+index b8f173d..d2e79fd 100644
+--- a/src/components/ui-component/table/index.tsx
++++ b/src/components/ui-component/table/index.tsx
+@@ -6,7 +6,7 @@ import styles from './table.module.scss';
+ import './default.scss';
+ import clsx from 'clsx';
+ import { useIntl } from 'react-intl';
+-import { PAGINATE_PAGE_SIZE } from '@/utils/constant';
++import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT, SORT_FIELD_DEFAULT } from '@/utils/constant';
+ 
+ interface CustomTableProps extends DataGridProps {
+   wrapperBox?: Partial<BoxProps>;
+@@ -41,8 +41,8 @@ export default function Table({ initialState, sx, slots, rows, columns, wrapperB
+           sorting: {
+             sortModel: [
+               {
+-                field: '_id',
+-                sort: 'asc'
++                field: SORT_FIELD_DEFAULT,
++                sort: SORT_DIRECTION_DEFAULT
+               }
+             ]
+           },
