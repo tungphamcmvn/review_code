@@ -5250,8 +5250,6 @@ src/types/user-profile.ts```ts
 	  avatar?: string;
 	  image?: string;
 	  name?: string;
-	  firstName?: string;
-	  lastName?: string;
 	  role?: string;
 	  about?: string;
 	  email?: string;
@@ -11986,12 +11984,11 @@ src/layout/MainLayout/Header/ProfileSection/components/UserInfo/index.tsx```tsx
 	const UserInfo = forwardRef((props: IUserInfoProps, ref) => {
 	  const { onClick } = props;
 	  const { user } = useAccountSelector();
-	  const name = `${user?.lastName} ${user?.firstName}`.trim();
 	
 	  return (
 	    <Box onClick={onClick} ref={ref} className={styles.wrapper}>
 	      <Avatar src={user?.avatar || AVATAR_DEFAULT_URL} alt="user images" />
-	      <Box className={styles.username}>{name || user?.email}</Box>
+	      <Box className={styles.username}>{user?.name || user?.email}</Box>
 	      <Icon className={styles.icon} fontSize="medium">
 	        <MoreVertIcon />
 	      </Icon>
@@ -15561,8 +15558,7 @@ src/store/ProviderWrapper.tsx```tsx
 	        const birthday = profile?.birthDate ? new DateCustom(profile.birthDate) : null;
 	        dispatch(
 	          accountActions.login({
-	            firstName: profile?.firstName || '',
-	            lastName: profile?.lastName || '',
+	            name: profile?.name || '',
 	            email: profile?.email || '',
 	            avatar: profile?.imageUrl || '',
 	            id: profile?.id,
@@ -29328,13 +29324,12 @@ src/components/account/Profile/components/AccountDetail/index.tsx```tsx
 	}
 	
 	export interface IFormValues {
+	  name: string;
 	  email: string;
 	  company: string;
 	  country: string;
 	  phoneNumber: string;
 	  birthDate: string;
-	  firstName: string;
-	  lastName: string;
 	}
 	
 	export default function AccountDetail(props: IAccountDetailProps) {
@@ -29344,19 +29339,17 @@ src/components/account/Profile/components/AccountDetail/index.tsx```tsx
 	  const { user } = useAccountSelector();
 	  const validates = useCommonValidates();
 	  const initialValues: IFormValues = {
+	    name: user?.name || '',
 	    email: user?.email || '',
 	    country: user?.location || '',
 	    phoneNumber: user?.phone || '',
 	    birthDate: user?.birthdayText || '',
-	    company: user?.company || '',
-	    firstName: user?.firstName || '',
-	    lastName: user?.lastName || ''
+	    company: user?.company || ''
 	  };
 	
 	  const validationSchema = Yup.object().shape({
 	    email: validates.email({ isRequired: true }),
-	    lastName: validates.text({ isRequired: true }),
-	    firstName: validates.text({ isRequired: true })
+	    name: validates.text({ isRequired: true })
 	  });
 	
 	  const handleSubmitForm = async (values: IFormValues, { setSubmitting }: FormikHelpers<IFormValues>) => {
@@ -29364,8 +29357,7 @@ src/components/account/Profile/components/AccountDetail/index.tsx```tsx
 	    const result = await request(
 	      updateProfile({
 	        id: user?.id,
-	        firstName: values.firstName,
-	        lastName: values.lastName,
+	        name: values.name,
 	        email: values.email,
 	        company: values.company,
 	        location: values.country,
@@ -29378,8 +29370,7 @@ src/components/account/Profile/components/AccountDetail/index.tsx```tsx
 	      notify.success(formatMessage({ id: 'profileUpdatedSuccessful' }));
 	      dispatch(
 	        accountActions.updateUser({
-	          firstName: values.firstName,
-	          lastName: values.lastName,
+	          name: values.name,
 	          email: values.email,
 	          company: values.company,
 	          location: values.country,
@@ -29398,28 +29389,15 @@ src/components/account/Profile/components/AccountDetail/index.tsx```tsx
 	          return (
 	            <form noValidate onSubmit={handleSubmit}>
 	              <Grid container spacing={3.125}>
-	                <Grid item xs={6}>
+	                <Grid item xs={12}>
 	                  <TextField
-	                    value={values.firstName}
-	                    label={formatMessage({ id: 'firstName' })}
-	                    name="firstName"
+	                    value={values.name}
+	                    label={formatMessage({ id: 'name' })}
+	                    name="name"
 	                    fullWidth
 	                    size="medium"
-	                    error={errorList.firstName?.error}
-	                    helperText={errorList.firstName?.message}
-	                    onBlur={handleBlur}
-	                    onChange={handleChange}
-	                  />
-	                </Grid>
-	                <Grid item xs={6}>
-	                  <TextField
-	                    value={values.lastName}
-	                    label={formatMessage({ id: 'lastName' })}
-	                    name="lastName"
-	                    fullWidth
-	                    size="medium"
-	                    error={errorList.lastName?.error}
-	                    helperText={errorList.lastName?.message}
+	                    error={errorList.name?.error}
+	                    helperText={errorList.name?.message}
 	                    onBlur={handleBlur}
 	                    onChange={handleChange}
 	                  />
