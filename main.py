@@ -19,7 +19,7 @@ def read_files_in_directory(output_file, input_directory, allowed_extensions=[],
                 
                 with open(file_path, 'r') as in_file:
                     rel_file_path = os.path.relpath(file_path, input_directory)
-                    out_file.write(f"{input_directory}/{rel_file_path}```{file_ext.lower()[1:]}\n")
+                    out_file.write(f"{rel_file_path}```{file_ext.lower()[1:]}\n")
                     out_file.write("".join(["\t" + line for line in in_file.readlines()]))
                     out_file.write('\n```\n\n')
 
@@ -51,7 +51,7 @@ input_directory = input("Enter additional directory path: ").strip()
 # Change the output file name here
 output_file = input_directory+'_output.txt'
 # Configure allowed extensions
-allowed_extensions = ['.tsx', '.ts', '.js', '.scss', '.css']  # Add more extensions you want to include here
+allowed_extensions = ['.tsx', '.ts', '.js', '.scss', '.css', '.md', 'Dockerfile']  # Add more extensions you want to include here
 # Configure ignored directories
 ignored_directories = ['node_modules', '.next', '.vscode', '.git']  # Add directory names you want to ignore here
 

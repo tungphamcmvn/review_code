@@ -1,0 +1,38 @@
+Using the provided 'codebase.txt' file, which details the structure of a Next.js, React.js, and MongoDB application, please perform an in-depth analysis. The codebase is organized into various directories and files, each serving distinct roles as preliminarily outlined below. Your task involves scrutinizing the 'codebase.txt' to verify, correct, and potentially expand on this outline, ensuring it accurately reflects the codebase's structure and functionalities:
+
+ - README.md: Provides guidelines for setting up and running the application in development and production environments using Docker Compose.
+ - next.config.js: Next.js configuration file that includes settings for TypeScript, ESLint, Sass, modular imports, image optimization, and environment variables.
+ - src/config.ts: Defines application-wide configuration settings such as layout, font family, locale, and theme.
+ - src/middleware.ts: Defines middleware functions for authentication and authorization checks.
+ - src/routes.ts: Defines route configurations for various pages and components in the application.
+ - src/auth.ts: Configures NextAuth.js authentication options, including providers (credentials and Google), session management, callbacks, and pages.
+ - src/backend/exceptions: Contains custom exception classes for handling specific error scenarios.
+ - src/backend/exceptions/idsnotfound.exception.ts: Defines the IdsNotFoundException class for handling cases where IDs are not found.
+ - src/backend/exceptions/notfound.exception.ts: Defines the NotFoundException class for handling cases where resources are not found.
+ - src/backend/services: Contains service classes that handle business logic and interact with repositories.
+ - src/backend/services/user.service.ts: Defines the UserService class for managing user-related operations such as CRUD operations, profile management, and password reset.
+ - src/backend/services/role.service.ts: Defines the RoleService class for managing role-related operations (content truncated in the provided 'codebase.txt').
+ - lib/swagger/: used for OpenAPI Specifications generation for API endpoints.
+ - types/: used for custom fields for next-auth.
+ - src/app/: used for web page route handlers for server-side rendering.
+ - src/app/(dashboard)/: used for dashboard interface components.
+ - src/app/(minimal)/: used for screens for authentication and user verification.
+ - src/app/api/: used for backend API endpoints categorized by model or functionality.
+ - src/backend/model/: used for MongoDB schema definitions.
+ - src/backend/repositories/: used for database interaction methods.
+ - src/backend/storage/: used for S3 configuration for file storage.
+ - src/backend/observer/: used for notification configuration.
+ - src/backend/structs/: used for common API response formats.
+ - src/backend/validator/: used for input validation classes and rules.
+ - src/components/: used for UI components for views.
+ - src/constant/: used for application-wide constants.
+ - src/contexts/: used for session context management.
+ - src/hook/: used for client-side logic.
+ - src/layout, menu-items scss, store, theme/: used for UI layout components.
+ - src/types/: used for TypeScript object types.
+ - src/utils/: used for utility functions and constants.
+ - src/utils/datetime/: used for UTC time conversion class.
+ - src/utils/dtos/: used for data transfer object conversions.
+ - src/views/: used for client-side rendering components.
+
+Please ensure your analysis is comprehensive, focusing on verifying the accuracy of the outlined structure, correcting any inaccuracies, and adding any missing information. Your findings should be detailed and structured, reflecting the organization and functionalities within the 'codebase.txt' file.
