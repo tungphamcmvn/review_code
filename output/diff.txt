@@ -1,394 +1,1132 @@
-title:	J2C-120 API for User Management - Delete/Archive
+title:	[User]Apply api user for FE 
 state:	MERGED
-author:	MinhT191195
+author:	huyphamnguyen
 labels:	
 assignees:	
-reviewers:	
+reviewers:	MinhT191195 (Requested)
 projects:	
 milestone:	
-number:	7
-url:	https://github.com/invik-33/j2c-app/pull/7
-additions:	267
-deletions:	11
+number:	12
+url:	https://github.com/invik-33/j2c-app/pull/12
+additions:	251
+deletions:	209
 --
+-  Apply appi get/update/delete user
+- Remove _id on builder, user
 
 
-
-diff --git a/lib/swagger/doc/user/archive.ts b/lib/swagger/doc/user/archive.ts
-new file mode 100644
-index 0000000..188c83f
---- /dev/null
-+++ b/lib/swagger/doc/user/archive.ts
-@@ -0,0 +1,63 @@
-+/**
-+ * @swagger
-+ * /user/{id}/archive:
-+ *   patch:
-+ *     summary: Archive a user account which cannot logged-in anymore
-+ *     tags:
-+ *       - User
-+ *     security:
-+ *       - bearerAuth: []
-+ *     parameters:
-+ *       - in: path
-+ *         name: id
-+ *         required: true
-+ *         description: User ID
-+ *     responses:
-+ *       200:
-+ *         content:
-+ *           application/json:
-+ *             schema:
-+ *               $ref: '#/components/schemas/SuccessResponse'
-+ *       400:
-+ *         content:
-+ *           application/json:
-+ *             schema:
-+ *               $ref: '#/components/schemas/ErrorResponse'
-+ *       404:
-+ *         content:
-+ *           application/json:
-+ *             schema:
-+ *               $ref: '#/components/schemas/ErrorResponse'
-+ *       500:
-+ *         content:
-+ *           application/json:
-+ *             schema:
-+ *               $ref: '#/components/schemas/ErrorResponse'
-+ * components:
-+ *   schemas:
-+ *     SuccessResponse:
-+ *       type: object
-+ *       properties:
-+ *         status:
-+ *           type: number
-+ *           example: 200
-+ *         success:
-+ *           type: boolean
-+ *           example: true
-+ *     ErrorResponse:
-+ *       type: object
-+ *       properties:
-+ *         status:
-+ *           type: number
-+ *           example: 400
-+ *           description: Error status code
-+ *         success:
-+ *           type: boolean
-+ *           example: false
-+ *         errors:
-+ *           type: array
-+ *           items:
-+ *             type: string
-+ *             example: User id is required.
-+ */
-+export {};
-diff --git a/lib/swagger/doc/user/bulkControl.ts b/lib/swagger/doc/user/bulkControl.ts
-index 16f4159..beff072 100644
---- a/lib/swagger/doc/user/bulkControl.ts
-+++ b/lib/swagger/doc/user/bulkControl.ts
-@@ -19,7 +19,7 @@
-  *                 required: true
-  *               action:
-  *                 type: string
-- *                 enum: [activate, deactivate, delete]
-+ *                 enum: [activate, deactivate, delete, archive]
-  *                 required: true
-  *     responses:
-  *       200:
-diff --git a/lib/swagger/doc/user/delete.ts b/lib/swagger/doc/user/delete.ts
-new file mode 100644
-index 0000000..b0fd9e6
---- /dev/null
-+++ b/lib/swagger/doc/user/delete.ts
-@@ -0,0 +1,63 @@
-+/**
-+ * @swagger
-+ * /user/{id}/delete:
-+ *   delete:
-+ *     summary: Delete a user
-+ *     tags:
-+ *       - User
-+ *     security:
-+ *       - bearerAuth: []
-+ *     parameters:
-+ *       - in: path
-+ *         name: id
-+ *         required: true
-+ *         description: User ID
-+ *     responses:
-+ *       200:
-+ *         content:
-+ *           application/json:
-+ *             schema:
-+ *               $ref: '#/components/schemas/SuccessResponse'
-+ *       400:
-+ *         content:
-+ *           application/json:
-+ *             schema:
-+ *               $ref: '#/components/schemas/ErrorResponse'
-+ *       404:
-+ *         content:
-+ *           application/json:
-+ *             schema:
-+ *               $ref: '#/components/schemas/ErrorResponse'
-+ *       500:
-+ *         content:
-+ *           application/json:
-+ *             schema:
-+ *               $ref: '#/components/schemas/ErrorResponse'
-+ * components:
-+ *   schemas:
-+ *     SuccessResponse:
-+ *       type: object
-+ *       properties:
-+ *         status:
-+ *           type: number
-+ *           example: 200
-+ *         success:
-+ *           type: boolean
-+ *           example: true
-+ *     ErrorResponse:
-+ *       type: object
-+ *       properties:
-+ *         status:
-+ *           type: number
-+ *           example: 400
-+ *           description: Error status code
-+ *         success:
-+ *           type: boolean
-+ *           example: false
-+ *         errors:
-+ *           type: array
-+ *           items:
-+ *             type: string
-+ *             example: User id is required.
-+ */
-+export {};
-diff --git a/src/app/api/user/[id]/archive/route.ts b/src/app/api/user/[id]/archive/route.ts
-new file mode 100644
-index 0000000..ae50de6
---- /dev/null
-+++ b/src/app/api/user/[id]/archive/route.ts
-@@ -0,0 +1,51 @@
-+import { NextRequest, NextResponse } from 'next/server';
-+import MongoConnect from '@/backend/connection/mongo.connection';
-+import ResponseStruct from '@/backend/structs/response.struct';
-+import UserRepository from '@/backend/repositories/mongodb/user.repository';
-+import UserService from '@/backend/services/user.service';
-+import { Actions } from '@/utils/enums';
-+import NotFoundException from '@/backend/exceptions/notfound.exception';
-+import { headers } from 'next/headers';
-+import { decode, JWT } from 'next-auth/jwt';
-+
-+export async function PATCH(_: NextRequest, { params }: { params: { id: string } }) {
-+  const token = headers().get('authorization')?.split(' ')[1];
-+  const dataDecode: JWT | null = await decode({
-+    token: token as string,
-+    secret: (process.env.NEXTAUTH_SECRET as string) || ''
-+  });
-+  const responseStruct = new ResponseStruct(true);
-+
-+  if (!params.id) {
-+    responseStruct.setStatus(400);
-+    responseStruct.pushError('User id is required.');
-+
-+    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-+  }
-+
-+  if (dataDecode && dataDecode.id === params.id) {
-+    responseStruct.setStatus(400);
-+    responseStruct.pushError('You cannot lock yourself.');
-+
-+    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-+  }
-+
-+  const conn = await MongoConnect();
-+  const userRepository = new UserRepository(conn);
-+  const userService = new UserService(userRepository);
-+  try {
-+    await userService.singleUpdateOrDelete(params.id, Actions.ARCHIVE);
-+
-+    responseStruct.setStatus(200);
-+  } catch (error: NotFoundException | any) {
-+    responseStruct.setStatus(500);
-+
-+    if (error instanceof NotFoundException) {
-+      responseStruct.setStatus(404);
-+    }
-+
-+    responseStruct.pushError(error.message);
-+  }
-+
-+  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-+}
-diff --git a/src/app/api/user/[id]/delete/route.ts b/src/app/api/user/[id]/delete/route.ts
-new file mode 100644
-index 0000000..4831775
---- /dev/null
-+++ b/src/app/api/user/[id]/delete/route.ts
-@@ -0,0 +1,51 @@
-+import { NextRequest, NextResponse } from 'next/server';
-+import MongoConnect from '@/backend/connection/mongo.connection';
-+import ResponseStruct from '@/backend/structs/response.struct';
-+import UserRepository from '@/backend/repositories/mongodb/user.repository';
-+import UserService from '@/backend/services/user.service';
-+import { Actions } from '@/utils/enums';
-+import NotFoundException from '@/backend/exceptions/notfound.exception';
-+import { headers } from 'next/headers';
-+import { decode, JWT}  from 'next-auth/jwt';
-+
-+export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
-+  const token = headers().get('authorization')?.split(' ')[1];
-+  const dataDecode: JWT | null = await decode({
-+    token: token as string,
-+    secret: (process.env.NEXTAUTH_SECRET as string) || ''
-+  });
-+  const responseStruct = new ResponseStruct(true);
-+
-+  if (!params.id) {
-+    responseStruct.setStatus(400);
-+    responseStruct.pushError('User id is required.');
-+
-+    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-+  }
-+
-+  if (dataDecode && dataDecode.id === params.id) {
-+    responseStruct.setStatus(400);
-+    responseStruct.pushError('You cannot delete yourself.');
-+
-+    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-+  }
-+
-+  const conn = await MongoConnect();
-+  const userRepository = new UserRepository(conn);
-+  const userService = new UserService(userRepository);
-+  try {
-+    await userService.singleUpdateOrDelete(params.id, Actions.DELETE);
-+
-+    responseStruct.setStatus(200);
-+  } catch (error: NotFoundException | any) {
-+    responseStruct.setStatus(500);
-+
-+    if (error instanceof NotFoundException) {
-+      responseStruct.setStatus(404);
-+    }
-+
-+    responseStruct.pushError(error.message);
-+  }
-+
-+  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-+}
-diff --git a/src/backend/services/user.service.ts b/src/backend/services/user.service.ts
-index ccdb1dd..df13299 100644
---- a/src/backend/services/user.service.ts
-+++ b/src/backend/services/user.service.ts
-@@ -1,10 +1,11 @@
- import UserRepositoryInterface from '@/backend/repositories/interfaces/user.repository.interface';
- import UserDto from '@/utils/dtos/user.dto';
- import mongoose from 'mongoose';
--import { BulkAction, UserStatus } from '@/utils/enums';
-+import { Actions, UserStatus } from '@/utils/enums';
- import PaginationStruct from '@/backend/structs/pagination.struct';
- import { User as UserType } from '@/utils/dtos/user.dto';
- import IdsNotFoundException from '@/backend/exceptions/idsnotfound.exception';
-+import NotFoundException from "@/backend/exceptions/notfound.exception";
+diff --git a/lib/swagger/doc/builder/get.ts b/lib/swagger/doc/builder/get.ts
+index e72b9a4..5015d88 100644
+--- a/lib/swagger/doc/builder/get.ts
++++ b/lib/swagger/doc/builder/get.ts
+@@ -22,29 +22,29 @@
+ *         required: false
+ *         description: Page size
+ *       - in: query
+-*         name: sortBy
++*         name: sort
+ *         schema:
+ *           type: string
+ *         required: false
+-*         description: Sort by builder's column
++*         description: Sort direction
+ *       - in: query
+-*         name: sortDir
++*         name: field
+ *         schema:
+ *           type: string
+ *         required: false
+-*         description: Sort direction
++*         description: Sort by this field
+ *       - in: query
+-*         name: search
++*         name: fields
+ *         schema:
+ *           type: string
+ *         required: false
+-*         description: Search by builder name
++*         description: Sort by these fields
+ *       - in: query
+-*         name: filterBy
++*         name: search
+ *         schema:
+ *           type: string
+ *         required: false
+-*         description: Filter by builder's column
++*         description: Search builder name
+ *     responses:
+ *       '200':
+ *         description: List Builder
+@@ -59,7 +59,7 @@
+ *       items:
+ *         type: object
+ *         properties:
+-*           _id:
++*           id:
+ *             type: string      
+ *           builderName:
+ *             type: string
+diff --git a/lib/swagger/doc/builder/put.ts b/lib/swagger/doc/builder/put.ts
+index f0cafde..d62f52d 100644
+--- a/lib/swagger/doc/builder/put.ts
++++ b/lib/swagger/doc/builder/put.ts
+@@ -84,39 +84,6 @@
+ *         success:
+ *           type: boolean
+ *           description: Builder updated
+-*         builder:
+-*           type: object
+-*           properties:
+-*             _id:
+-*               type: string      
+-*             builderName:
+-*               type: string
+-*             category:
+-*               type: string
+-*             address:
+-*               type: string
+-*             completionStatus:
+-*               type: string
+-*             imageUrl:
+-*               type: string
+-*             date:
+-*               type: string
+-*             dateCreate:
+-*               type: string
+-*             dateModify:
+-*               type: string
+-*             generalContractor:
+-*               type: string
+-*             budgetSeperatorComma:
+-*               type: string
+-*             budgetSeperatorSemiColon:
+-*               type: string
+-*             budgetSeperatorTab:
+-*               type: string
+-*             creatorId:
+-*               type: string
+-*             creatorEmail:
+-*               type: string
+ * @param request
+ * @constructor
+ */
+diff --git a/src/app/api/builder/[id]/route.ts b/src/app/api/builder/[id]/route.ts
+index b1fda55..9302486 100644
+--- a/src/app/api/builder/[id]/route.ts
++++ b/src/app/api/builder/[id]/route.ts
+@@ -47,8 +47,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
+       return NextResponse.json({ errors: builderValidator.getErrors() }, { status: 400 });
+     }
  
- export default class UserService {
-   protected userRepository: UserRepositoryInterface;
-@@ -134,7 +135,7 @@ export default class UserService {
+-    const result = await builderService.updateBuilder(id, formData);
+-    return NextResponse.json({ success: true, builder: result }, { status: 200 });
++    await builderService.updateBuilder(id, formData);
++    return NextResponse.json({ success: true }, { status: 200 });
+   } catch (error) {
+     return NextResponse.json({ errors: [error] }, { status: 400 });
+   }
+diff --git a/src/app/api/builder/route.ts b/src/app/api/builder/route.ts
+index aa12b75..6606f8a 100644
+--- a/src/app/api/builder/route.ts
++++ b/src/app/api/builder/route.ts
+@@ -1,15 +1,11 @@
+-import BuilderRepository from '@/backend/repositories/mongodb/builder.repository';
+ import MongoConnect from '@/backend/connection/mongo.connection';
+ import BuilderValidator from '@/backend/validator/builder.validator';
+-import { Builder } from '@/utils/dtos/builder.dto';
+ import { NextRequest, NextResponse } from 'next/server';
+ import BuilderService from '@/backend/services/builder.service';
+ import AuthService from '@/backend/services/auth.service';
+-import { PAGINATE_OFFSET, PAGINATE_PAGE_SIZE } from '@/utils/constant';
+-import { SortOrder } from 'mongoose';
+ import { parsePayloadBuilderToCreateData } from '@/utils/helper';
+ import ResponseStruct from '@/backend/structs/response.struct';
+-import PaginationStruct from '@/backend/structs/pagination.struct';
++import { getListingQuery } from '../listing';
+ 
+ export async function POST(request: NextRequest) {
+   const formData = await request.formData();
+@@ -36,36 +32,26 @@ export async function POST(request: NextRequest) {
+     return NextResponse.json({ errors: [error.message] }, { status: 400 });
+   }
+ }
++
+ export async function GET(request: NextRequest) {
+   const conn = await MongoConnect();
+-  const builderRepository = new BuilderRepository(conn);
+-  const builderService = new BuilderService(conn);
+-  const responseStructure = new ResponseStruct(true);
+-  const params = request.nextUrl.searchParams;
+-  const sortBy = (params.get?.('sortBy') || 'dateCreate') as keyof Builder;
+-  const sortDir = (params.get('sortDir') || 'desc') as SortOrder;
+-  const search = (params.get('search') || '') as string;
+-  const page = +(params.get('page') || PAGINATE_OFFSET);
+-  const limit = +(params.get('limit') || PAGINATE_PAGE_SIZE);
+-  const filter = {
+-    page,
+-    sortBy,
+-    limit,
+-    sortDir,
+-    search
+-  };
++  const responseStruct = new ResponseStruct(true);
++
+   try {
+-    const total = await builderRepository.count(filter.search ? { builderName: { $regex: filter.search } } : {});
+-    const builders = (await builderService.findBuilders(filter)) as unknown as Builder[];
+-    const pagination = new PaginationStruct(page, limit, total);
+-    responseStructure.setData({
+-      meta: pagination,
+-      data: builders
++    const { limit: limitValue, page: pageValue, order: orderValue, search } = getListingQuery(request);
++    const builderService = new BuilderService(conn);
++
++    const data = await builderService.listBuilders(limitValue, pageValue, orderValue, search);
++    responseStruct.setData({
++      meta: data.pagination,
++      data: data.collection
      });
+-    return NextResponse.json(responseStructure.getResponse(), { status: 200 });
++    responseStruct.setStatus(200);
+   } catch (error: any) {
+-    responseStructure.pushError(error.message);
+-    responseStructure.setStatus(400);
+-    return NextResponse.json(responseStructure.getResponse(), { status: 400 });
++    responseStruct.pushError(error.message);
++    responseStruct.setStatus(500);
++
++    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
+   }
++  return NextResponse.json(responseStruct.getResponse(), { status: 200 });
+ }
+diff --git a/src/app/api/user/[id]/status/route.ts b/src/app/api/user/[id]/status/route.ts
+index 322385b..98308ff 100644
+--- a/src/app/api/user/[id]/status/route.ts
++++ b/src/app/api/user/[id]/status/route.ts
+@@ -6,7 +6,7 @@ import UserDto from '@/utils/dtos/user.dto';
+ import NotFoundException from '@/backend/exceptions/notfound.exception';
+ import { headers } from 'next/headers';
+ import { decode, JWT } from 'next-auth/jwt';
+-import { Actions } from '@/utils/enums';
++import { Actions, UserStatus } from '@/utils/enums';
+ import DateCustom from '@/utils/datetime/date.custom';
+ 
+ export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+@@ -50,7 +50,7 @@ export async function PATCH(request: NextRequest, { params }: { params: { id: st
+     }
+ 
+     await userRepository.update(params.id, {
+-      status: data.status,
++      status: data.status === Actions.ACTIVATE ? UserStatus.ACTIVE : UserStatus.INACTIVE,
+       dateModify: new DateCustom(),
+       failedLoginAttempts: data.status === Actions.ACTIVATE ? 0 : user.failedLoginAttempts
+     });
+diff --git a/src/backend/services/builder.service.ts b/src/backend/services/builder.service.ts
+index 2e6e55e..2a66c6d 100644
+--- a/src/backend/services/builder.service.ts
++++ b/src/backend/services/builder.service.ts
+@@ -5,14 +5,15 @@ import { BuilderRepositoryInterface } from '@/backend/repositories/interfaces/bu
+ import { getCsvCompanyFieldValue, parsePayloadBuilderToCreateData } from '@/utils/helper';
+ import { CSV_SEP } from '@/utils/constant';
+ import { CSV_COMPANY_ENUM, ROLE_LEVEL_ENUM_BUILDER, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
+-import mongoose, { Mongoose } from 'mongoose';
++import mongoose, { Mongoose, SortOrder } from 'mongoose';
+ import BuilderDto, { Builder, Builder as BuilderType } from '@/utils/dtos/builder.dto';
+ import { Role as RoleType } from '@/utils/dtos/role.dto';
+ import RoleRepositoryInterface from '@/backend/repositories/interfaces/role.repository.interface';
+-import { PaginateQuery } from '@/types/pagination';
+ import RoleRepository from '../repositories/mongodb/role.repository';
+-import UserDto from '@/utils/dtos/user.dto';
++import UserDto, { User } from '@/utils/dtos/user.dto';
+ import { FolderName } from '@/utils/enums';
++import PaginationStruct from '../structs/pagination.struct';
++import NotFoundException from '../exceptions/notfound.exception';
+ 
+ export default class BuilderService {
+   protected builderRepository: BuilderRepositoryInterface;
+@@ -183,7 +184,7 @@ export default class BuilderService {
+     const currentBuilder = await this.getBuilder(builderId);
+ 
+     if (!currentBuilder) {
+-      throw 'Builder not found';
++      throw new NotFoundException('Builder not found');
+     }
+     const data = parsePayloadBuilderToCreateData(formData);
+ 
+@@ -235,24 +236,50 @@ export default class BuilderService {
+     return await this.builderRepository.delete(builderId);
    }
  
--  async bulkUpdateOrDelete(ids: string[], action: BulkAction): Promise<void> {
-+  async bulkUpdateOrDelete(ids: string[], action: Actions): Promise<void> {
-     const existingUsers = await this.userRepository.find({ _id: { $in: ids } });
- 
-     if (existingUsers.length !== ids.length) {
-@@ -144,15 +145,41 @@ export default class UserService {
-     }
- 
-     switch (action) {
--      case BulkAction.DELETE:
-+      case Actions.DELETE:
-         await this.userRepository.deleteMany({ _id: { $in: ids } });
-         break;
--      case BulkAction.ACTIVATE:
-+      case Actions.ACTIVATE:
-         await this.userRepository.updateMany({ _id: { $in: ids } }, { status: UserStatus.ACTIVE });
-         break;
--      case BulkAction.DEACTIVATE:
-+      case Actions.DEACTIVATE:
-         await this.userRepository.updateMany({ _id: { $in: ids } }, { status: UserStatus.INACTIVE });
-         break;
-+      case Actions.ARCHIVE:
-+        await this.userRepository.updateMany({ _id: { $in: ids } }, { status: UserStatus.LOCKED });
-+        break;
-+    }
-+  }
+-  mapBuilder = (data: Builder[]): Builder[] => {
+-    return data.map((item) => {
+-      const newObject = (item as unknown as mongoose.Document<Builder>).toObject();
+-      return {
+-        ...newObject,
+-        creatorId: newObject.creatorId?._id,
+-        creator: newObject.creatorId
+-      };
++  async listBuilders(
++    limit: number,
++    offset: number,
++    order: { [key: string]: SortOrder },
++    search: string
++  ): Promise<{
++    pagination: PaginationStruct;
++    collection: Builder[];
++  }> {
++    const projectDto = new BuilderDto();
 +
-+  async singleUpdateOrDelete(id: string, action: Actions): Promise<void> {
-+    const existingUser = await this.userRepository.findOne({ _id: id });
++    const validOrderFields = Object.keys(projectDto);
 +
-+    if (!existingUser) {
-+      throw new NotFoundException(`User with id ${id} does not exist`);
++    for (const key in order) {
++      if (!validOrderFields.includes(key)) {
++        delete order[key];
++      }
 +    }
 +
-+    switch (action) {
-+      case Actions.DELETE:
-+        await this.userRepository.delete(id);
-+        break;
-+      case Actions.ACTIVATE:
-+        await this.userRepository.update(id, { status: UserStatus.ACTIVE });
-+        break;
-+      case Actions.DEACTIVATE:
-+        await this.userRepository.update(id, { status: UserStatus.INACTIVE });
-+        break;
-+      case Actions.ARCHIVE:
-+        await this.userRepository.update(id, { status: UserStatus.LOCKED });
-+        break;
-     }
++    if (Object.keys(order).length === 0) {
++      order = { builderName: 'asc' };
++    }
++
++    const filterSearch = search !== '' ? { builderName: { $regex: search } } : {};
++    const total = await this.builderRepository.count(filterSearch);
++    const projects = await this.builderRepository.findWithSort(filterSearch, order, limit, offset);
++
++    const collection: Builder[] = [];
++
++    projects.forEach((project: mongoose.Document<Builder>) => {
++      projectDto.setData(project.toJSON());
++      const currentObject = projectDto.toObject() as Builder;
++      const creator = currentObject.creatorId as Partial<User & { id: string }>;
++      collection.push({
++        ...currentObject,
++        creatorId: creator.id || '',
++        creator
++      });
+     });
+-  };
+-  async findBuilders(query: PaginateQuery<Builder>) {
+-    const result = (await this.builderRepository.findWithSort(
+-      !!query.search ? { builderName: { $regex: query.search } } : {},
+-      { [query.sortBy || 'builderName']: query.sortDir || 'desc' },
+-      query.limit,
+-      query.page
+-    )) as unknown as Builder[];
+-
+-    return this.mapBuilder(result);
++
++    const pagination = new PaginationStruct(offset, limit, total);
++    return {
++      pagination,
++      collection
++    };
    }
  }
-diff --git a/src/backend/validator/user-bulk-action.validator.ts b/src/backend/validator/user-bulk-action.validator.ts
-index eeef54f..5ba55dc 100644
---- a/src/backend/validator/user-bulk-action.validator.ts
-+++ b/src/backend/validator/user-bulk-action.validator.ts
-@@ -1,10 +1,10 @@
- import BaseValidator from '@/backend/validator/base.validator';
- import { array, mixed, string } from 'yup';
--import { BulkAction } from '@/utils/enums';
+diff --git a/src/components/dialogs/builder/BuilderDeleteDialog.tsx b/src/components/builder/dialog/BuilderDeleteDialog.tsx
+similarity index 93%
+rename from src/components/dialogs/builder/BuilderDeleteDialog.tsx
+rename to src/components/builder/dialog/BuilderDeleteDialog.tsx
+index b298922..a2c0135 100644
+--- a/src/components/dialogs/builder/BuilderDeleteDialog.tsx
++++ b/src/components/builder/dialog/BuilderDeleteDialog.tsx
+@@ -1,4 +1,3 @@
+-import { Builder } from '@/utils/dtos/builder.dto';
+ import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
+ import { GridCloseIcon } from '@mui/x-data-grid';
+ import { Button } from '@/components/ui-component/buttons';
+@@ -7,8 +6,9 @@ import { useAsync } from '@/hooks/useAsync';
+ import { deleteBuilder } from '@/utils/services/builder';
+ import * as notify from '@/utils/notify';
+ import LoadingButton from '@mui/lab/LoadingButton';
++import { IBuilder } from '@/types/resource/builder';
+ interface BuilderDialogProps extends Omit<DialogProps, 'onClose'> {
+-  builder: Partial<Builder> | null;
++  builder: Partial<IBuilder> | null;
+   onClose?: () => void;
+   onSuccess?: () => void;
+ }
+@@ -21,8 +21,8 @@ export default function BuilderDeleteDialog({ builder, onClose, onSuccess, ...pr
+   };
+ 
+   const handleDelete = async () => {
+-    if (builder?._id) {
+-      const result = await execute(deleteBuilder(builder._id + ''));
++    if (builder?.id) {
++      const result = await execute(deleteBuilder(builder.id + ''));
+       if (result.data.success) {
+         handleClose();
+         notify.success(formatMessage({ id: 'builderApiDeleted' }));
+diff --git a/src/components/dialogs/builder/BuilderDialog.tsx b/src/components/builder/dialog/BuilderDialog.tsx
+similarity index 98%
+rename from src/components/dialogs/builder/BuilderDialog.tsx
+rename to src/components/builder/dialog/BuilderDialog.tsx
+index c13461a..bcb6e71 100644
+--- a/src/components/dialogs/builder/BuilderDialog.tsx
++++ b/src/components/builder/dialog/BuilderDialog.tsx
+@@ -16,7 +16,6 @@ import {
+ import LoadingButton from '@mui/lab/LoadingButton';
+ import TextField from 'components/ui-component/TextField';
+ import styles from '@/styles/dataDialog.module.scss';
+-import { Builder as BuilderType } from '@/utils/dtos/builder.dto';
+ import { GridCloseIcon } from '@mui/x-data-grid';
+ import { useIntl } from 'react-intl';
+ import AddIcon from '@mui/icons-material/Add';
+@@ -28,6 +27,7 @@ import { success as notifySuccess } from '@/utils/notify';
+ import { BUILDER_CATEGORIES, BUILDER_STATUS, BUILDER_STATUS_ACTIVE } from '@/constant/builder';
+ import stylesDialog from './style.module.scss';
+ import useCommonValidates from '@/hooks/useCommonValidates';
++import { IBuilder } from '@/types/resource/builder';
+ 
+ export interface IFormValues {
+   builderName: string;
+@@ -39,7 +39,7 @@ export interface IFormValues {
+ }
+ 
+ interface BuilderDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
+-  builder: Partial<BuilderType> | null;
++  builder: Partial<IBuilder> | null;
+   onClose: () => void;
+   onSuccess?: () => void;
+ }
+@@ -72,7 +72,7 @@ export default function BuilderDialog({ onClose, builder, onSuccess, ...props }:
+   const handleSubmitForm = async (values: IFormValues) => {
+     let result;
+     if (builder) {
+-      result = await execute(updateBuilder(builder._id + '', values));
++      result = await execute(updateBuilder(builder.id + '', values));
+       if (result.data.success) {
+         notifySuccess(formatMessage({ id: 'builderApiUpdated' }));
+         handleCloseDialog();
+diff --git a/src/components/dialogs/builder/style.module.scss b/src/components/builder/dialog/style.module.scss
+similarity index 100%
+rename from src/components/dialogs/builder/style.module.scss
+rename to src/components/builder/dialog/style.module.scss
+diff --git a/src/components/builder/index.tsx b/src/components/builder/index.tsx
+index fbca0fd..b0cd9c7 100644
+--- a/src/components/builder/index.tsx
++++ b/src/components/builder/index.tsx
+@@ -7,12 +7,12 @@ import Table from '@/components/ui-component/table';
+ import { GridColDef, GridPaginationModel, GridSortModel } from '@mui/x-data-grid';
+ import Chip from '../ui-component/extended/Chip';
+ import { useIntl } from 'react-intl';
+-import BuilderDeleteDialog from '../dialogs/builder/BuilderDeleteDialog';
++import BuilderDeleteDialog from './dialog/BuilderDeleteDialog';
+ import { useEffect, useState } from 'react';
+ import { Builder } from '@/utils/dtos/builder.dto';
+ import { getBuilders } from '@/utils/services/builder';
+ import { useAsync } from '@/hooks/useAsync';
+-import BuilderDialog from '../dialogs/builder/BuilderDialog';
++import BuilderDialog from './dialog/BuilderDialog';
+ import { BUILDER_STATUS_ARCHIVED, BUILDER_STATUS_INACTIVE } from '@/constant/builder';
+ import Avatar from '../ui-component/extended/Avatar';
+ import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT, SORT_FIELD_DEFAULT } from '@/utils/constant';
+@@ -41,7 +41,7 @@ const Builder = () => {
+     return <Chip chipcolor="success" label={value} sx={{ ':hover': null }} />;
+   };
+   const columns: GridColDef[] = [
+-    { field: '_id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
++    { field: 'id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
+     {
+       field: 'builderName',
+       headerName: formatMessage({ id: 'builderTableBuilderName' }),
+@@ -120,8 +120,8 @@ const Builder = () => {
+     const field = model?.[0]?.field || SORT_FIELD_DEFAULT;
+     const dir = model?.[0]?.sort || SORT_DIRECTION_DEFAULT;
+     await fetchBuilder({
+-      sortBy: field,
+-      sortDir: dir
++      field: field,
++      sort: dir
+     });
+   };
+ 
+diff --git a/src/components/contractor/index.tsx b/src/components/contractor/index.tsx
+index 8b4b468..d9f721a 100644
+--- a/src/components/contractor/index.tsx
++++ b/src/components/contractor/index.tsx
+@@ -44,12 +44,11 @@ const Contractor = () => {
+   };
+   const columns: GridColDef[] = [
+     {
+-      field: '_id',
++      field: 'id',
+       headerName: formatMessage({ id: 'tableId' }),
+       align: 'center',
+       headerAlign: 'center',
+-      flex: 1,
+-      valueGetter: ({ row }) => row.id
++      flex: 1
+     },
+     {
+       field: 'contractorName',
+diff --git a/src/components/ui-component/table/index.tsx b/src/components/ui-component/table/index.tsx
+index 7646de6..b8f173d 100644
+--- a/src/components/ui-component/table/index.tsx
++++ b/src/components/ui-component/table/index.tsx
+@@ -5,7 +5,6 @@ import { ArrowDropDown, ArrowDropUp } from '@mui/icons-material';
+ import styles from './table.module.scss';
+ import './default.scss';
+ import clsx from 'clsx';
+-import { useMemo } from 'react';
+ import { useIntl } from 'react-intl';
+ import { PAGINATE_PAGE_SIZE } from '@/utils/constant';
+ 
+@@ -22,9 +21,6 @@ const IconSort = ({ dir = 'desc' }: { dir: GridSortDirection }) => (
+ 
+ export default function Table({ initialState, sx, slots, rows, columns, wrapperBox, rowCount, ...props }: CustomTableProps) {
+   const { formatMessage } = useIntl();
+-  const formatRows = useMemo(() => {
+-    return rows.map((item) => ({ ...item, id: item?._id || item?.id }));
+-  }, [rows]);
+ 
+   const renderNoItem = () => (
+     <Box width="100%" height="100%" display="flex" justifyContent="center" alignItems="center">
+@@ -36,7 +32,7 @@ export default function Table({ initialState, sx, slots, rows, columns, wrapperB
+   return (
+     <Box width="100%" sx={{ height: isNoItems ? '150px' : 'unset' }} {...wrapperBox}>
+       <DataGrid
+-        rows={formatRows}
++        rows={rows}
+         columns={columns}
+         initialState={{
+           pagination: {
+diff --git a/src/components/user/component/ButtonSelectStatus.tsx b/src/components/user/component/ButtonSelectStatus.tsx
+index 5e4e9b0..16aac92 100644
+--- a/src/components/user/component/ButtonSelectStatus.tsx
++++ b/src/components/user/component/ButtonSelectStatus.tsx
+@@ -1,9 +1,9 @@
+-import { USER_STATUS_ACTIVE, USER_STATUS_DEACTIVED } from '@/constant/user';
+ import { Box, Button, ButtonProps, Divider, Popover, PopoverProps, Typography } from '@mui/material';
+ import { useState } from 'react';
+ import { useIntl } from 'react-intl';
+ import { CaretUp, CaretDown } from '@phosphor-icons/react';
+ import styles from './styles.module.scss';
++import { UserStatus } from '@/utils/enums';
+ 
+ interface Props {
+   buttonProps?: Partial<ButtonProps>;
+@@ -49,12 +49,12 @@ export const ButtonSelectStatus = ({ onSelect, buttonProps, popoverProps }: Prop
+         {...popoverProps}
+       >
+         <Box>
+-          <Typography className={styles.status} onClick={() => handleSelect(USER_STATUS_ACTIVE)}>
+-            {USER_STATUS_ACTIVE}
++          <Typography className={styles.status} onClick={() => handleSelect(UserStatus.ACTIVE)}>
++            {UserStatus.ACTIVE}
+           </Typography>
+           <Divider className={styles.divider} />
+-          <Typography className={styles.status} onClick={() => handleSelect(USER_STATUS_DEACTIVED)}>
+-            {USER_STATUS_DEACTIVED}
++          <Typography className={styles.status} onClick={() => handleSelect(UserStatus.INACTIVE)}>
++            {UserStatus.INACTIVE}
+           </Typography>
+         </Box>
+       </Popover>
+diff --git a/src/components/user/component/styles.module.scss b/src/components/user/component/styles.module.scss
+index 8a35459..c64d8f8 100644
+--- a/src/components/user/component/styles.module.scss
++++ b/src/components/user/component/styles.module.scss
+@@ -27,6 +27,7 @@
+   font-weight: 500;
+   padding: 10px 16px;
+   cursor: pointer;
++  text-transform: capitalize;
+ }
+ 
+ .buttonDelete{
+diff --git a/src/components/user/detail/components/AdditionalInformation/index.tsx b/src/components/user/detail/components/AdditionalInformation/index.tsx
+index cacdc2c..21e3ba8 100644
+--- a/src/components/user/detail/components/AdditionalInformation/index.tsx
++++ b/src/components/user/detail/components/AdditionalInformation/index.tsx
+@@ -4,7 +4,7 @@ import { useIntl } from 'react-intl';
+ 
+ import Card from '@/components/ui-component/Card';
+ import TextField from 'components/ui-component/TextField';
+-import { IUser } from '@/app/api/users/list/route';
++import { IUser } from '@/types/resource/user';
+ 
+ interface Props {
+   user: IUser;
+diff --git a/src/components/user/detail/components/BasicInformation/index.tsx b/src/components/user/detail/components/BasicInformation/index.tsx
+index 6872e6d..aa8bbab 100644
+--- a/src/components/user/detail/components/BasicInformation/index.tsx
++++ b/src/components/user/detail/components/BasicInformation/index.tsx
+@@ -6,8 +6,8 @@ import { useIntl } from 'react-intl';
+ import Card from '@/components/ui-component/Card';
+ import TextField from 'components/ui-component/TextField';
+ import { DATE_FORMAT } from '@/constant';
+-import { IUser } from '@/app/api/users/list/route';
+ import DateCustom from '@/utils/datetime/date.custom';
++import { IUser } from '@/types/resource/user';
+ 
+ interface Props {
+   user: IUser;
+@@ -44,9 +44,14 @@ export default function BasicInformation({ user }: Props) {
+         <Grid item xs={6}>
+           <TextField
+             label={formatMessage({ id: 'userDetailStatus' })}
+-            name="completionStatus"
+-            value={user.completionStatus}
++            name="status"
++            value={user.status}
+             {...defaultProps}
++            sx={{
++              '& input': {
++                textTransform: 'capitalize'
++              }
++            }}
+           />
+         </Grid>
+         <Grid item xs={6}>
+diff --git a/src/components/user/detail/components/ProfilePicture/index.tsx b/src/components/user/detail/components/ProfilePicture/index.tsx
+index 0a0def2..b6b0d28 100644
+--- a/src/components/user/detail/components/ProfilePicture/index.tsx
++++ b/src/components/user/detail/components/ProfilePicture/index.tsx
+@@ -9,7 +9,7 @@ import { AVATAR_DEFAULT_URL } from '@/constant';
+ // store
+ 
+ import styles from './styles.module.scss';
+-import { IUser } from '@/app/api/users/list/route';
++import { IUser } from '@/types/resource/user';
+ 
+ export interface IProfilePictureProps {
+   user: IUser;
+@@ -21,7 +21,7 @@ export default function ProfilePicture({ user }: IProfilePictureProps) {
+   return (
+     <Card title={formatMessage({ id: 'userDetailProfilePicture' })}>
+       <Box className={styles.wrapper}>
+-        <Avatar src={user?.avatarUrl || AVATAR_DEFAULT_URL} size="xl" className={styles.avatar} />
++        <Avatar src={user?.imageUrl || AVATAR_DEFAULT_URL} size="xl" className={styles.avatar} />
+       </Box>
+     </Card>
+   );
+diff --git a/src/components/user/detail/index.tsx b/src/components/user/detail/index.tsx
+index 82f7763..7c7fa58 100644
+--- a/src/components/user/detail/index.tsx
++++ b/src/components/user/detail/index.tsx
+@@ -8,11 +8,11 @@ import { useIntl } from 'react-intl';
+ import ProfilePicture from './components/ProfilePicture';
+ import { useEffect, useState } from 'react';
+ import { useAsync } from '@/hooks/useAsync';
+-import { IUser } from '@/app/api/users/list/route';
+ import Loader from '@/components/ui-component/Loader';
+ import { getUserDetail } from '@/utils/services/user';
+ import BasicInformation from './components/BasicInformation';
+ import AdditionalInformation from './components/AdditionalInformation';
++import { IUser } from '@/types/resource/user';
+ 
+ const UserDetail = () => {
+   const { formatMessage } = useIntl();
+@@ -37,8 +37,8 @@ const UserDetail = () => {
+   const getData = async () => {
+     if (params.id) {
+       const result = await execute(getUserDetail(userId));
+-      if (result.data.user) {
+-        setUser(result.data.user);
++      if (result.data.data) {
++        setUser(result.data.data);
+       } else {
+         router.push(userUrl);
+       }
+diff --git a/src/components/dialogs/user/UserChangeStatus.tsx b/src/components/user/dialog/UserChangeStatus.tsx
+similarity index 76%
+rename from src/components/dialogs/user/UserChangeStatus.tsx
+rename to src/components/user/dialog/UserChangeStatus.tsx
+index 8c97b15..663b16f 100644
+--- a/src/components/dialogs/user/UserChangeStatus.tsx
++++ b/src/components/user/dialog/UserChangeStatus.tsx
+@@ -5,16 +5,17 @@ import { useIntl } from 'react-intl';
+ import { useAsync } from '@/hooks/useAsync';
+ import { success as notifySuccess } from '@/utils/notify';
+ import LoadingButton from '@mui/lab/LoadingButton';
+-import { IUser } from '@/app/api/users/list/route';
+-import { updateUser } from '@/utils/services/user';
+-import { USER_STATUS_ACTIVE } from '@/constant/user';
++import { bulkControlUser } from '@/utils/services/user';
++import { IUser } from '@/types/resource/user';
++import { Actions, UserStatus } from '@/utils/enums';
+ interface UserDialogProps extends Omit<DialogProps, 'onClose'> {
+   users: Partial<IUser>[];
+   status: string;
+   onClose?: () => void;
++  onSuccess?: () => void;
+ }
+ 
+-export default function UserChangeStatusDialog({ users, status, onClose, ...props }: UserDialogProps): JSX.Element {
++export default function UserChangeStatusDialog({ users, status, onClose, onSuccess, ...props }: UserDialogProps): JSX.Element {
+   const { formatMessage } = useIntl();
+   const { isLoading, execute } = useAsync();
+   const handleClose = () => {
+@@ -22,20 +23,19 @@ export default function UserChangeStatusDialog({ users, status, onClose, ...prop
+   };
+ 
+   const handleSubmit = async () => {
+-    for (let index = 0; index < users.length; index++) {
+-      const item = users[index];
+-      await execute(updateUser(item._id + '', { completionStatus: status }));
+-    }
++    const ids = users.map((u) => u?.id).filter((i) => Boolean(i)) as string[];
++    const actionStatus = status === UserStatus.ACTIVE ? Actions.ACTIVATE : Actions.DEACTIVATE;
++    await execute(bulkControlUser(ids, actionStatus));
+     handleClose();
++    onSuccess?.();
+     notifySuccess(formatMessage({ id: 'userApiUpdated' }));
+   };
+ 
+   const renderContent = () => {
+-    const msgStatus = status === USER_STATUS_ACTIVE ? 'active' : 'deactivate';
+-    let msg = formatMessage({ id: 'userDialogChangeStatusContent' }).replace('{status}', msgStatus);
++    let msg = formatMessage({ id: 'userDialogChangeStatusContent' }).replace('{status}', status);
+     let noMsg = '';
+     if (users.length === 1) {
+-      noMsg = `<strong>${users[0].firstName} ${users[0].lastName}</strong>`;
++      noMsg = `<strong>${users[0]?.firstName} ${users[0]?.lastName}</strong>`;
+     } else {
+       noMsg = `<strong>${users.length}</strong> users`;
+     }
+@@ -45,7 +45,7 @@ export default function UserChangeStatusDialog({ users, status, onClose, ...prop
+   return (
+     <Dialog onClose={handleClose} {...props}>
+       <DialogTitle sx={{ pt: '8px' }}>
+-        {formatMessage({ id: status === USER_STATUS_ACTIVE ? 'userDialogActiveTitle' : 'userDialogDeactiveTitle' })}
++        {formatMessage({ id: status === UserStatus.ACTIVE ? 'userDialogActiveTitle' : 'userDialogDeactivatedTitle' })}
+       </DialogTitle>
+       <IconButton
+         aria-label="close"
+diff --git a/src/components/dialogs/user/UserDeleteDialog.tsx b/src/components/user/dialog/UserDeleteDialog.tsx
+similarity index 85%
+rename from src/components/dialogs/user/UserDeleteDialog.tsx
+rename to src/components/user/dialog/UserDeleteDialog.tsx
+index 5ea462d..1d80651 100644
+--- a/src/components/dialogs/user/UserDeleteDialog.tsx
++++ b/src/components/user/dialog/UserDeleteDialog.tsx
+@@ -5,14 +5,16 @@ import { useIntl } from 'react-intl';
+ import { useAsync } from '@/hooks/useAsync';
+ import { success as notifySuccess } from '@/utils/notify';
+ import LoadingButton from '@mui/lab/LoadingButton';
+-import { IUser } from '@/app/api/users/list/route';
+-import { deleteUser } from '@/utils/services/user';
++import { bulkControlUser } from '@/utils/services/user';
++import { IUser } from '@/types/resource/user';
 +import { Actions } from '@/utils/enums';
- 
- export default class UserBulkActionValidator extends BaseValidator {
-   private readonly objectIdValidatorRegex = /^[0-9a-fA-F]{24}$/;
--  constructor(data: { ids: string[]; action: BulkAction; currentUserId: string }) {
-+  constructor(data: { ids: string[]; action: Actions; currentUserId: string }) {
-     super();
- 
-     this.data = data;
-@@ -19,7 +19,7 @@ export default class UserBulkActionValidator extends BaseValidator {
- 
-     this.rules = [
-       { ids: array().of(eachIdRule).required() },
--      { action: mixed().required().oneOf([BulkAction.ACTIVATE, BulkAction.DEACTIVATE, BulkAction.DELETE]) },
-+      { action: mixed().required().oneOf([Actions.ACTIVATE, Actions.DEACTIVATE, Actions.DELETE, Actions.ARCHIVE]) },
-       { currentUserId: eachIdRule }
-     ];
- 
-diff --git a/src/utils/enums.ts b/src/utils/enums.ts
-index 851565c..dd850eb 100644
---- a/src/utils/enums.ts
-+++ b/src/utils/enums.ts
-@@ -27,8 +27,9 @@ export enum AuthProvider {
-   REGISTER = 'register'
+ interface UserDialogProps extends Omit<DialogProps, 'onClose'> {
+   users: Partial<IUser>[];
+   onClose?: () => void;
++  onSuccess?: () => void;
  }
  
--export enum BulkAction {
-+export enum Actions {
-   DELETE = 'delete',
-   ACTIVATE = 'activate',
--  DEACTIVATE = 'deactivate'
-+  DEACTIVATE = 'deactivate',
-+  ARCHIVE = 'archive'
+-export default function UserDeleteDialog({ users, onClose, ...props }: UserDialogProps): JSX.Element {
++export default function UserDeleteDialog({ users, onClose, onSuccess, ...props }: UserDialogProps): JSX.Element {
+   const { formatMessage } = useIntl();
+   const { isLoading, execute } = useAsync();
+   const handleClose = () => {
+@@ -20,12 +22,12 @@ export default function UserDeleteDialog({ users, onClose, ...props }: UserDialo
+   };
+ 
+   const handleDelete = async () => {
+-    for (let index = 0; index < users.length; index++) {
+-      const item = users[index];
+-      await execute(deleteUser(item._id + ''));
+-    }
++    const ids = users.map((u) => u?.id).filter((i) => Boolean(i)) as string[];
++    await execute(bulkControlUser(ids, Actions.DELETE));
++
+     handleClose();
+     notifySuccess(formatMessage({ id: 'userApiDeleted' }));
++    onSuccess?.();
+   };
+ 
+   const renderContent = () => {
+diff --git a/src/components/user/index.tsx b/src/components/user/index.tsx
+index 24d19bc..b4247a7 100644
+--- a/src/components/user/index.tsx
++++ b/src/components/user/index.tsx
+@@ -5,10 +5,8 @@ import { useIntl } from 'react-intl';
+ import { getUsers } from '@/utils/services/user';
+ import { useAsync } from '@/hooks/useAsync';
+ import { useEffect, useState } from 'react';
+-import { IUser } from '@/app/api/users/list/route';
+-import { USER_STATUS_ACTIVE, USER_STATUS_DEACTIVED } from '@/constant/user';
+ import Chip from '@/components/ui-component/extended/Chip';
+-import { GridColDef, GridRowParams, GridRowSelectionModel } from '@mui/x-data-grid';
++import { GridColDef, GridPaginationModel, GridRowParams, GridRowSelectionModel, GridSortModel } from '@mui/x-data-grid';
+ import Avatar from '@/components/ui-component/extended/Avatar';
+ import { Eye, Users as IconUsers, Buildings, LockKey, Plus } from '@phosphor-icons/react';
+ import { Button } from '@/components/ui-component/buttons';
+@@ -18,10 +16,15 @@ import { DATE_FULL_FORMAT } from '@/constant';
+ import { format } from 'date-fns';
+ import { ButtonSelectStatus } from './component/ButtonSelectStatus';
+ import { ButtonDelete } from './component/ButtonDelete';
+-import UserDeleteDialog from '../dialogs/user/UserDeleteDialog';
+-import UserChagenStatusDialog from '../dialogs/user/UserChangeStatus';
++import UserDeleteDialog from './dialog/UserDeleteDialog';
++import UserChangeStatusDialog from './dialog/UserChangeStatus';
+ import NextLink from 'next/link';
+ import routes from '@/routes';
++import { IUser } from '@/types/resource/user';
++import { IRequestFilter } from '@/types/request';
++import { ResponseMeta } from '@/types/pagination';
++import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT, SORT_FIELD_DEFAULT } from '@/utils/constant';
++import { UserStatus } from '@/utils/enums';
+ 
+ const User = () => {
+   const { formatMessage } = useIntl();
+@@ -31,22 +34,31 @@ const User = () => {
+   const [statusSelected, setStatusSelected] = useState('');
+   const [deleteUsers, setDeleteUsers] = useState<IUser[]>([]);
+   const [changeStatusUsers, setChangeStatusUsers] = useState<IUser[]>([]);
++  const [userFilters, setUserFilters] = useState<IRequestFilter>({});
++  const [userMeta, setUserMeta] = useState<ResponseMeta | null>(null);
+   const renderStatus = (value: string) => {
+     let formatValue = value.toLowerCase();
+-    if (formatValue === USER_STATUS_DEACTIVED.toLowerCase()) {
+-      return <Chip chipcolor="error" variant="outlined" label={value} sx={{ ':hover': null }} />;
++    if (formatValue === UserStatus.ACTIVE.toLocaleLowerCase()) {
++      return <Chip chipcolor="success" label={formatValue} sx={{ ':hover': null, textTransform: 'capitalize' }} />;
+     }
+-    return <Chip chipcolor="success" label={value} sx={{ ':hover': null }} />;
++    return <Chip chipcolor="error" variant="outlined" label={formatValue} sx={{ ':hover': null, textTransform: 'capitalize' }} />;
+   };
+ 
+-  const initData = async () => {
+-    const res = await execute(getUsers());
+-    const data = res.data?.users && res.data?.users.length > 0 ? res.data?.users : [];
++  const fetchUsers = async (filters?: IRequestFilter) => {
++    const newFilter = {
++      ...userFilters,
++      ...filters
++    };
++    const result = await execute(getUsers(newFilter));
++    const data = result.data?.data && result.data?.data.length > 0 ? result.data?.data : [];
++    const meta = result.data.meta || null;
++    setUserMeta(meta);
+     setUsers(data);
++    setUserFilters(newFilter);
+   };
+ 
+   useEffect(() => {
+-    initData();
++    fetchUsers();
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
+ 
+@@ -58,10 +70,8 @@ const User = () => {
+       align: 'center',
+       renderCell: ({ row }) => (
+         <Box display="flex" gap="12px" alignItems="center">
+-          {row?.avatarUrl ? <Avatar alt={`${row.firstName} ${row.lastName}`} src={row.avatarUrl} size="xs" /> : null}
+-          <Typography variant="h4">
+-            {row.firstName} {row.lastName}
+-          </Typography>
++          {row?.imageUrl ? <Avatar alt={`${row.firstName} ${row.lastName}`} src={row.imageUrl} size="xs" /> : null}
++          <Typography variant="h4">{`${row.firstName} ${row.lastName}`}</Typography>
+         </Box>
+       ),
+       flex: 2
+@@ -77,7 +87,7 @@ const User = () => {
+       field: 'status',
+       headerName: formatMessage({ id: 'tableStatus' }),
+       headerAlign: 'center',
+-      renderCell: ({ row }) => <Box fontWeight={500}>{renderStatus(row.completionStatus || USER_STATUS_ACTIVE)}</Box>,
++      renderCell: ({ row }) => <Box fontWeight={500}>{renderStatus(row.status || UserStatus.ACTIVE)}</Box>,
+       flex: 1,
+       align: 'center'
+     },
+@@ -111,7 +121,7 @@ const User = () => {
+   ];
+ 
+   const handleSelectStatus = (value: string) => {
+-    const listUsers = users.filter((item) => rowsSelected.includes(item._id) && item.completionStatus !== value);
++    const listUsers = users.filter((item) => rowsSelected.includes(item.id) && item.status !== value);
+     if (listUsers.length > 0) {
+       setStatusSelected(value);
+       setChangeStatusUsers(listUsers);
+@@ -124,7 +134,7 @@ const User = () => {
+     setChangeStatusUsers([]);
+   };
+   const handleDelete = () => {
+-    const listUsers = users.filter((item) => rowsSelected.includes(item._id));
++    const listUsers = users.filter((item) => rowsSelected.includes(item.id));
+     setDeleteUsers(listUsers);
+   };
+   const handleResetDelete = () => {
+@@ -135,6 +145,36 @@ const User = () => {
+     setRowsSelected(rowSelectionModel);
+   };
+ 
++  const handleSort = async (model: GridSortModel) => {
++    const field = model?.[0]?.field || SORT_FIELD_DEFAULT;
++    const dir = model?.[0]?.sort || SORT_DIRECTION_DEFAULT;
++    await fetchUsers({
++      field: field,
++      sort: dir
++    });
++  };
++
++  const handlePaginationChange = async (model: GridPaginationModel) => {
++    const newPage = (model?.page || 0) + 1;
++    const limit = model?.pageSize || PAGINATE_PAGE_SIZE;
++    await fetchUsers({
++      page: newPage,
++      limit
++    });
++  };
++
++  const handleActionSuccess = async () => {
++    await fetchUsers({});
++  };
++
++  const handleSearch = async (keyword: string) => {
++    if (keyword !== userFilters.search) {
++      await fetchUsers({
++        search: keyword
++      });
++    }
++  };
++
+   const renderHeaderAction = () => (
+     <>
+       <Button
+@@ -159,7 +199,7 @@ const User = () => {
+ 
+   return (
+     <Stack direction="column">
+-      <Breadcrumbs title={formatMessage({ id: 'userTitle' })} onSearch={() => console.log('hello')} actionCom={renderHeaderAction} />
++      <Breadcrumbs title={formatMessage({ id: 'userTitle' })} onSearch={handleSearch} actionCom={renderHeaderAction} />
+       <Table
+         rows={users}
+         columns={columns}
+@@ -167,13 +207,26 @@ const User = () => {
+         checkboxSelection
+         onRowSelectionModelChange={handleSelectRow}
+         rowSelectionModel={rowsSelected}
++        onSortModelChange={handleSort}
++        paginationModel={{
++          page: (userFilters?.page || 1) - 1,
++          pageSize: userFilters.limit || PAGINATE_PAGE_SIZE
++        }}
++        rowCount={userMeta?.total || 0}
++        onPaginationModelChange={handlePaginationChange}
++      />
++      <UserDeleteDialog
++        open={Boolean(deleteUsers?.length > 0)}
++        users={deleteUsers}
++        onClose={handleResetDelete}
++        onSuccess={handleActionSuccess}
+       />
+-      <UserDeleteDialog open={Boolean(deleteUsers?.length > 0)} users={deleteUsers} onClose={handleResetDelete} />
+-      <UserChagenStatusDialog
++      <UserChangeStatusDialog
+         open={Boolean(changeStatusUsers?.length > 0 && statusSelected !== '')}
+         users={changeStatusUsers}
+         status={statusSelected}
+         onClose={handleDeselectStatus}
++        onSuccess={handleActionSuccess}
+       />
+     </Stack>
+   );
+diff --git a/src/constant/user.ts b/src/constant/user.ts
+deleted file mode 100644
+index f4da194..0000000
+--- a/src/constant/user.ts
++++ /dev/null
+@@ -1,4 +0,0 @@
+-export const USER_STATUS_ACTIVE = 'Active';
+-export const USER_STATUS_DEACTIVED = 'Deactivated';
+-
+-export const USER_STATUS = [USER_STATUS_ACTIVE, USER_STATUS_DEACTIVED];
+diff --git a/src/types/pagination.ts b/src/types/pagination.ts
+index 96477ce..dc2e95c 100644
+--- a/src/types/pagination.ts
++++ b/src/types/pagination.ts
+@@ -1,14 +1,3 @@
+-import { SortOrder } from 'mongoose';
+-
+-export type PaginateQuery<T> = {
+-  page: number;
+-  limit?: number;
+-  sortBy?: keyof T;
+-  sortDir?: SortOrder;
+-  search?: string;
+-  filterBy?: string;
+-};
+-
+ export type ResponseMeta = {
+   total: number;
+   page: number;
+diff --git a/src/types/request.ts b/src/types/request.ts
+index 8552d73..2fb418e 100644
+--- a/src/types/request.ts
++++ b/src/types/request.ts
+@@ -1,16 +1,13 @@
+-import { SortOrder } from 'mongoose';
+ import { UserProfile } from './user-profile';
+ import { FolderName } from 'utils/enums';
+ 
+ export interface IRequestFilter {
+   search?: string;
+-  sortBy?: string;
+-  sortDir?: SortOrder;
+   limit?: number;
+   page?: number;
+   filterBy?: string;
+-  sort?: string; // TODO: for contractor - need update
+-  field?: string; // TODO: for contractor - need update
++  sort?: string;
++  field?: string;
  }
+ export interface IRequestRegister {
+   email: string;
+@@ -46,7 +43,7 @@ export interface IRequestCreateUser {
+   lastName: string;
+   email: string;
+   role: string;
+-  completionStatus: string;
++  status: string;
+   company: string;
+   country: string;
+   phoneNumber: string;
+diff --git a/src/types/resource/builder.ts b/src/types/resource/builder.ts
+new file mode 100644
+index 0000000..81412c6
+--- /dev/null
++++ b/src/types/resource/builder.ts
+@@ -0,0 +1,5 @@
++import { Builder as BuilderDto } from '@/utils/dtos/builder.dto';
++
++export interface IBuilder extends BuilderDto {
++  id: string;
++}
+diff --git a/src/types/resource/project.ts b/src/types/resource/project.ts
+index cce0593..6a9c5f2 100644
+--- a/src/types/resource/project.ts
++++ b/src/types/resource/project.ts
+@@ -1,5 +1,5 @@
+ import { Project as ProjectDto } from '@/utils/dtos/project.dto';
+ 
+-export interface IProject extends Omit<ProjectDto, '_id'> {
++export interface IProject extends ProjectDto {
+   id: string;
+ }
+diff --git a/src/types/resource/user.ts b/src/types/resource/user.ts
+new file mode 100644
+index 0000000..5038f3c
+--- /dev/null
++++ b/src/types/resource/user.ts
+@@ -0,0 +1,13 @@
++import { User as UserDto } from '@/utils/dtos/user.dto';
++
++export interface IUser extends UserDto {
++  id: string;
++  contactName?: string;
++  contactEmail?: string;
++  contactPhoneNumber?: string;
++  address?: string;
++  gst?: string;
++  insuranceNumber?: string;
++  workSafeBCNumber?: string;
++  role?: string;
++}
+diff --git a/src/types/response.ts b/src/types/response.ts
+index 5a91d95..48c6168 100644
+--- a/src/types/response.ts
++++ b/src/types/response.ts
+@@ -57,10 +57,12 @@ export interface IResponseCreateUser {
+ 
+ export interface IResponseDeleteUser {
+   status: number;
++  success: true;
+ }
+ 
+ export interface IResponseUpdateUser {
+   status: number;
++  success: true;
+ }
+ 
+ export interface IResponseDeleteContractor {
+diff --git a/src/utils/api.ts b/src/utils/api.ts
+index 5890095..d24a4bc 100644
+--- a/src/utils/api.ts
++++ b/src/utils/api.ts
+@@ -10,8 +10,9 @@ const APIS = {
+   GET_USERS: '/user/list',
+   GET_USER_DETAIL: '/user/:id',
+   CREATE_USER: '/user/create',
+-  UPDATE_USER: '/user/update',
+-  DELETE_USER: '/user/delete',
++  BULK_CONTROL_USER: '/user/bulk-control',
++  UPDATE_USER: '/user/:id/update',
++  DELETE_USER: '/user/:id/delete',
+   UPDATE_PROJECT_ROLES: '/projects/update-project-roles',
+   IMPORT_PROJECT_BUDGET: '/projects/import-project-budget',
+   UPDATE_CONTRACTOR_ROLE: '/contractors/update-contractor-role',
+diff --git a/src/utils/constant.ts b/src/utils/constant.ts
+index c3322cb..18a60f5 100644
+--- a/src/utils/constant.ts
++++ b/src/utils/constant.ts
+@@ -21,11 +21,11 @@ export const ROLE_REGEX_SEPARATOR = /[,;\n\s\t]+/;
+ export const PAGINATE_PAGE_SIZE = 10;
+ export const PAGINATE_OFFSET = 1;
+ export const SORT_DIRECTION_DEFAULT = 'asc';
+-export const SORT_FIELD_DEFAULT = '_id';
++export const SORT_FIELD_DEFAULT = 'id';
+ 
+ export const API_FILTER_DEFAULT: IRequestFilter = {
+-  sortBy: SORT_FIELD_DEFAULT,
+-  sortDir: SORT_DIRECTION_DEFAULT,
++  sort: SORT_DIRECTION_DEFAULT,
++  field: SORT_FIELD_DEFAULT,
+   filterBy: '',
+   limit: PAGINATE_PAGE_SIZE,
+   page: PAGINATE_OFFSET
+diff --git a/src/utils/locales/en/user.json b/src/utils/locales/en/user.json
+index 60f713f..4005084 100644
+--- a/src/utils/locales/en/user.json
++++ b/src/utils/locales/en/user.json
+@@ -8,7 +8,7 @@
+   "userDialogDeleteButtonDelete": "Delete User",
+   "userDialogAddTitle": "Add User",
+   "userDialogEditTitle": "Edit User",
+-  "userDialogDeactiveTitle": "Deactivate User",
++  "userDialogDeactivatedTitle": "Deactivate User",
+   "userDialogActiveTitle": "Active User",
+   "userDialogChangeStatusContent": "Are you sure you want to {status} {no} ?",
+   "userDialogCreateButtonSubmit": "Save User",
+diff --git a/src/utils/services/user.ts b/src/utils/services/user.ts
+index 19eb061..fd96220 100644
+--- a/src/utils/services/user.ts
++++ b/src/utils/services/user.ts
+@@ -1,23 +1,26 @@
+ import axiosServices from '../axios';
+ import endPoints from '../api';
+ import { IResponseCreateUser, IResponseDeleteUser, IResponseListUsers, IResponseUpdateUser } from '@/types/response';
+-import { IRequestCreateUser, IRequestUpdateUser } from '@/types/request';
+-import { IUser } from '@/app/api/users/list/route';
++import { IRequestCreateUser, IRequestFilter } from '@/types/request';
++import { IUser } from '@/types/resource/user';
++import { generateQueryFromFilter } from '../helper';
++import { Actions } from '../enums';
+ 
+-export const getUsers = async () => {
+-  return await axiosServices.get<IResponseListUsers<IUser>>(endPoints.GET_USERS);
++export const getUsers = async (params?: IRequestFilter) => {
++  const query = params ? generateQueryFromFilter(endPoints.GET_USERS, params) : endPoints.GET_USERS;
++  return await axiosServices.get<IResponseListUsers<IUser>>(query);
+ };
+ 
+ export const createUser = async (payload: IRequestCreateUser) => {
+   return await axiosServices.post<IResponseCreateUser>(endPoints.CREATE_USER, payload);
+ };
+ 
+-export const updateUser = async (id: string, payload: IRequestUpdateUser) => {
+-  return await axiosServices.put<IResponseUpdateUser>(`${endPoints.UPDATE_USER}/${id}`, payload);
++export const bulkControlUser = async (ids: string[], action: Actions) => {
++  return await axiosServices.patch<IResponseUpdateUser>(endPoints.BULK_CONTROL_USER, { ids, action });
+ };
+ 
+ export const deleteUser = async (id: string) => {
+-  return await axiosServices.delete<IResponseDeleteUser>(`${endPoints.DELETE_USER}/${id}`);
++  return await axiosServices.delete<IResponseDeleteUser>(endPoints.DELETE_USER.replace(':id', id));
+ };
+ 
+ export const getUserDetail = async (id: string) => {
