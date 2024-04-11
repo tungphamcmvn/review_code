@@ -17663,7 +17663,7 @@ src/app/api/project/[id]/contractors/route.ts```ts
 	export async function GET() {
 	  const contractors = [
 	    {
-	      id: 'U001',
+	      _id: 'U001',
 	      name: 'Thomas Miller',
 	      email: 'example@gmail.com',
 	      phoneNumber: '+1 4578-420-410',
@@ -17671,7 +17671,7 @@ src/app/api/project/[id]/contractors/route.ts```ts
 	      imageUrl: ''
 	    },
 	    {
-	      id: 'U002',
+	      _id: 'U002',
 	      name: 'Jennifer Thompson',
 	      email: 'example@gmail.com',
 	      phoneNumber: '+1 4578-420-410',
@@ -17679,7 +17679,7 @@ src/app/api/project/[id]/contractors/route.ts```ts
 	      imageUrl: ''
 	    },
 	    {
-	      id: 'U003',
+	      _id: 'U003',
 	      name: 'Robert Brown',
 	      email: 'example@gmail.com',
 	      phoneNumber: '+1 4578-420-410',
@@ -17687,7 +17687,7 @@ src/app/api/project/[id]/contractors/route.ts```ts
 	      imageUrl: ''
 	    },
 	    {
-	      id: 'U004',
+	      _id: 'U004',
 	      name: 'John Davis',
 	      email: 'example@gmail.com',
 	      phoneNumber: '+1 4578-420-410',
@@ -17695,7 +17695,7 @@ src/app/api/project/[id]/contractors/route.ts```ts
 	      imageUrl: ''
 	    },
 	    {
-	      id: 'U005',
+	      _id: 'U005',
 	      name: 'Emily Brown',
 	      email: 'example@gmail.com',
 	      phoneNumber: '+1 4578-420-410',
@@ -17918,7 +17918,7 @@ src/app/api/project/[id]/roles/route.ts```ts
 	export async function GET() {
 	  const roles = [
 	    {
-	      id: 'U001',
+	      _id: 'U001',
 	      name: 'Thomas Miller',
 	      email: 'example@gmail.com',
 	      phoneNumber: '+1 4578-420-410',
@@ -17927,7 +17927,7 @@ src/app/api/project/[id]/roles/route.ts```ts
 	      imageUrl: ''
 	    },
 	    {
-	      id: 'U002',
+	      _id: 'U002',
 	      name: 'Jennifer Thompson',
 	      email: 'example@gmail.com',
 	      phoneNumber: '+1 4578-420-410',
@@ -17936,7 +17936,7 @@ src/app/api/project/[id]/roles/route.ts```ts
 	      imageUrl: ''
 	    },
 	    {
-	      id: 'U003',
+	      _id: 'U003',
 	      name: 'Robert Brown',
 	      email: 'example@gmail.com',
 	      phoneNumber: '+1 4578-420-410',
@@ -17945,7 +17945,7 @@ src/app/api/project/[id]/roles/route.ts```ts
 	      imageUrl: ''
 	    },
 	    {
-	      id: 'U004',
+	      _id: 'U004',
 	      name: 'John Davis',
 	      email: 'example@gmail.com',
 	      phoneNumber: '+1 4578-420-410',
@@ -17954,7 +17954,7 @@ src/app/api/project/[id]/roles/route.ts```ts
 	      imageUrl: ''
 	    },
 	    {
-	      id: 'U005',
+	      _id: 'U005',
 	      name: 'Emily Brown',
 	      email: 'example@gmail.com',
 	      phoneNumber: '+1 4578-420-410',
@@ -23185,14 +23185,18 @@ src/components/ui-component/autocomplete/Users.tsx```tsx
 	import CircularProgress from '@mui/material/CircularProgress';
 	import { useAsync } from '@/hooks/useAsync';
 	import { getUsers } from '@/utils/services/user';
+	import { User } from '@/utils/dtos/user.dto';
 	import { Box, Popper, Typography, useTheme } from '@mui/material';
 	import Avatar from '../extended/Avatar';
 	import Chip from '../extended/Chip';
 	import { TextFieldProps } from '../TextField';
 	import { useIntl } from 'react-intl';
 	import { MagnifyingGlass } from '@phosphor-icons/react';
-	import { IUser } from '@/types/resource/user';
-	
+	interface IUser extends User {
+	  _id: string;
+	  firstName: string;
+	  lastName: string;
+	}
 	interface Props {
 	  onChange?: (values: any) => void;
 	  inputProps?: TextFieldProps;
@@ -23207,7 +23211,7 @@ src/components/ui-component/autocomplete/Users.tsx```tsx
 	
 	  const fetchData = async () => {
 	    const result = await execute(getUsers());
-	    setUsers(result?.data?.data || []);
+	    setUsers(result?.data?.users || []);
 	  };
 	
 	  const handleChange = (_: any, values: IUser[]) => {
@@ -23241,11 +23245,11 @@ src/components/ui-component/autocomplete/Users.tsx```tsx
 	      }}
 	      multiple
 	      disableCloseOnSelect
-	      isOptionEqualToValue={(option: IUser, value) => option.id === value.id}
+	      isOptionEqualToValue={(option: IUser, value) => option._id === value._id}
 	      getOptionLabel={renderName}
 	      options={users}
 	      renderTags={(tagValue, getTagProps) =>
-	        tagValue.map((option, index) => <Chip {...getTagProps({ index })} key={option.id} label={renderName(option)} />)
+	        tagValue.map((option, index) => <Chip {...getTagProps({ index })} key={option._id} label={renderName(option)} />)
 	      }
 	      renderOption={(props, option) => (
 	        <li {...props}>
@@ -23618,7 +23622,7 @@ src/components/ui-component/table/index.tsx```tsx
 	import './default.scss';
 	import clsx from 'clsx';
 	import { useIntl } from 'react-intl';
-	import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT, SORT_FIELD_DEFAULT } from '@/utils/constant';
+	import { PAGINATE_PAGE_SIZE } from '@/utils/constant';
 	
 	interface CustomTableProps extends DataGridProps {
 	  wrapperBox?: Partial<BoxProps>;
@@ -23653,8 +23657,8 @@ src/components/ui-component/table/index.tsx```tsx
 	          sorting: {
 	            sortModel: [
 	              {
-	                field: SORT_FIELD_DEFAULT,
-	                sort: SORT_DIRECTION_DEFAULT
+	                field: '_id',
+	                sort: 'asc'
 	              }
 	            ]
 	          },
@@ -26518,7 +26522,7 @@ src/components/projects/Detail/contractors/addContractor/index.tsx```tsx
 	  const handleChangeUsers = (values: any[]) => {
 	    setFieldValue(
 	      'userIds',
-	      values.map((item) => item.id)
+	      values.map((item) => item._id)
 	    );
 	  };
 	  return (
@@ -27017,7 +27021,7 @@ src/components/projects/Detail/roles/addUser/index.tsx```tsx
 	  const handleChangeUsers = (values: any[]) => {
 	    setFieldValue(
 	      'userIds',
-	      values.map((item) => item.id)
+	      values.map((item) => item._id)
 	    );
 	  };
 	  return (
@@ -35342,7 +35346,7 @@ lib/swagger/doc/contractor/get.ts```ts
 	 *         creatorId:
 	 *           type: object
 	 *           properties:
-	 *             id:
+	 *             _id:
 	 *               type: string
 	 *               example: 5f4e7b3b8d4b8b1d6f2f7b3b
 	 *             name:
@@ -35560,7 +35564,7 @@ lib/swagger/doc/builder/post.ts```ts
 	*         builder:
 	*           type: object
 	*           properties:
-	*             id:
+	*             _id:
 	*               type: string      
 	*             builderName:
 	*               type: string
@@ -35698,7 +35702,7 @@ lib/swagger/doc/builder/getDetail.ts```ts
 	*         builder:
 	*           type: object
 	*           properties:
-	*             id:
+	*             _id:
 	*               type: string      
 	*             builderName:
 	*               type: string
