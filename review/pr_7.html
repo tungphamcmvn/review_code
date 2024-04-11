@@ -1,56 +1,39 @@
-<html>
-
-<head>
-  <title>Pull Request Analysis</title>
-</head>
-
-<body>
-  <h1>Pull Request Title</h1>
-  <p>The pull request titled "J2C-120 API for User Management - Delete/Archive" introduces new API endpoints and
-    functionality for deleting and archiving users in the application.</p>
-  <h1>Architecture Alignment</h1>
-  <p style="background-color:green;color:white;">The modifications in 'diff.txt' align well with the described
-    application architecture. The changes are appropriately located in the 'src/app/api/' directory for backend API
-    endpoints, 'src/backend/services/' for business logic, and 'src/utils/enums.ts' for defining enums used across the
-    application.</p>
-  <p style="background-color:green;color:white;">The database schema is not directly impacted by these changes, as the
-    modifications focus on API endpoints and user management functionality.</p>
-  <h1>Best Practices Assessment</h1>
-  <p style="background-color:green;color:white;">The code changes adhere to Next.js and React.js best practices. The API
-    routes are defined using the recommended directory structure and follow the proper naming conventions.</p>
-  <p style="background-color:green;color:white;">The code utilizes TypeScript for type safety and includes appropriate
-    error handling and validation.</p>
-  <p>One suggestion for improvement:</p>
-  <ul>
-    <li style="background-color:red;color:white;">Consider extracting the token decoding logic in the API routes into a
-      separate middleware or utility function to avoid code duplication and improve maintainability.</li>
-  </ul>
-  <h1>Performance and Security</h1>
-  <p style="background-color:green;color:white;">The modifications do not introduce any significant performance
-    concerns. The API endpoints efficiently handle user deletion and archiving operations without unnecessary
-    computations or database queries.</p>
-  <p style="background-color:green;color:white;">The code includes appropriate authorization checks using JWT tokens to
-    ensure only authorized users can perform deletion and archiving actions.</p>
-  <p>One suggestion for enhancement:</p>
-  <ul>
-    <li>Consider implementing rate limiting or throttling for the API endpoints to prevent abuse and protect against
-      potential security threats.</li>
-  </ul>
-  <h1>Code Logic Evaluation</h1>
-  <p style="background-color:green;color:white;">The code logic in the API routes and service methods is clear and easy
-    to follow. The routes handle the necessary validation, error handling, and database operations effectively.</p>
-  <p>A few observations and suggestions:</p>
-  <ul>
-    <li>The code includes appropriate checks to prevent users from deleting or archiving themselves, enhancing the
-      overall user management functionality.</li>
-    <li>The 'UserService' class is updated to include methods for single user deletion and archiving, promoting code
-      reusability and maintainability.</li>
-    <li>Consider adding more detailed error messages or logging statements to assist in debugging and troubleshooting.
-    </li>
-  </ul>
-  <h1>Estimation Time</h1>
-  <p>Based on the scope and complexity of the changes, a senior developer would likely require approximately 4-6 hours
-    to implement this pull request. This estimation includes time for code development, testing, and documentation.</p>
-</body>
-
-</html>
+<h1>Pull Request Analysis</h1>
+<h2>1. Pull Request Title</h2>
+<p style="background-color:green;color:white;">The pull request implements API endpoints for archiving and deleting
+  users. It adds new Swagger documentation, route handlers, and service methods to support these user management
+  actions.</p>
+<p>Suggested Pull Request Title: "Implement User Archive and Delete API Endpoints"</p>
+<h2>2. Architecture Alignment</h2>
+<p style="background-color:green;color:white;">The changes align well with the existing application architecture. New
+  route handlers are added under src/app/api/user/[id]/ for archive and delete actions. The UserService class is
+  extended with corresponding methods. Swagger documentation is updated to include the new endpoints.</p>
+<p>The modifications adhere to the separation of concerns principle, with route handlers in the app/api directory,
+  service methods in backend/services, and Swagger docs in lib/swagger/doc.</p>
+<h2>3. Best Practices Assessment</h2>
+<p style="background-color:green;color:white;">The code follows Next.js and React.js best practices. It uses async/await
+  for handling asynchronous operations, implements error handling with custom exception classes, and utilizes dependency
+  injection for the UserService.</p>
+<p style="background-color:red;color:white;">Consider extracting the repeated code for handling the user's own
+  archive/delete actions into a separate middleware or helper function to improve code reusability.</p>
+<p>Example:
+<pre> async function validateUserAction(userId: string, action: string) { if (dataDecode && dataDecode.id === userId) { responseStruct.setStatus(400); responseStruct.pushError(`You cannot ${action} yourself.`); return NextResponse.json(responseStruct.getResponse(), { status: 400 }); } } </pre>
+</p>
+<h2>4. Performance and Security</h2>
+<p style="background-color:green;color:white;">The changes do not introduce any significant performance or security
+  concerns. The use of MongoDB's updateMany and deleteMany methods ensures efficient database operations.</p>
+<p style="background-color:green;color:white;">The code validates user input by checking for the presence of the user ID
+  parameter and handles potential errors gracefully.</p>
+<h2>5. Code Logic Evaluation</h2>
+<p style="background-color:green;color:white;">The code logic is clear and easy to follow. It validates the user ID,
+  checks if the user is trying to archive/delete themselves, and handles errors appropriately.</p>
+<p>The UserService class is extended with singleUpdateOrDelete and bulkUpdateOrDelete methods to handle individual and
+  bulk user actions respectively. The Actions enum is used to specify the desired action.</p>
+<h2>6. Estimation Time</h2>
+<p>Estimated development time for a senior developer: 2-4 hours</p>
+<p>This includes: - Implementing the new API routes and Swagger documentation - Extending the UserService class with
+  archive and delete methods - Writing unit tests for the new functionality - Performing code review and addressing any
+  feedback </p>
+<p style="background-color:green;color:white;">Overall, the pull request is well-structured, follows best practices, and
+  aligns with the existing architecture. With a few minor improvements, it can be confidently merged into the codebase.
+</p>
