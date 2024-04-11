@@ -233,16 +233,6 @@ src/routes.ts```ts
 	    label: 'Projects',
 	    getUrl: (id?: string | number) => `/projects${!!id ? `/${id}` : ''}`,
 	    key: 'projects'
-	  },
-	  contractorProjects: {
-	    label: 'Projects',
-	    getUrl: () => '/contractor-projects',
-	    key: 'contractorProjects'
-	  },
-	  contractorProjectDetail: {
-	    label: 'Contractor Project Detail',
-	    getUrl: (id?: string) => `/contractor-projects/${id}`,
-	    key: 'contractorProjectDetail'
 	  }
 	};
 	
@@ -300,7 +290,7 @@ src/auth.ts```ts
 	
 	            return {
 	              id: user.get('_id').valueOf(),
-	              name: `${user.get('firstName')} ${user.get('lastName')}` || '',
+	              name: user.get('name') || '',
 	              email: user.get('email') || '',
 	              image: user.get('imageUrl') || null
 	            };
@@ -362,17 +352,6 @@ src/auth.ts```ts
 	          provider: params.account.provider || ''
 	        };
 	      }
-	
-	      if (params.account?.provider === 'google') {
-	        params.token = {
-	          ...params.token,
-	          // @ts-ignore
-	          firstName: params.profile?.given_name || '',
-	          // @ts-ignore
-	          lastName: params.profile?.family_name || ''
-	        };
-	      }
-	
 	      // Persist the OAuth access_token and or the user id to the token right after signin
 	      return params.token;
 	    },
@@ -398,8 +377,7 @@ src/auth.ts```ts
 	
 	          const newUser = await authService.getOrCreateNewUser(
 	            params.token.email as string,
-	            params.token.firstName as string,
-	            params.token.lastName as string,
+	            params.token.name as string,
 	            params.token.image as string
 	          );
 	
@@ -413,14 +391,12 @@ src/auth.ts```ts
 	        params.session.user = {
 	          ...params.session.user,
 	          id: user.get('_id').valueOf() || '',
-	          firstName: user.get('firstName') || '',
-	          lastName: user.get('lastName') || '',
 	          password: user.get('password') || null,
 	          token: await encode({
 	            token: {
 	              id: user.get('_id').valueOf(),
 	              email: user.get('email'),
-	              name: `${user.get('firstName')} ${user.get('lastName')}`
+	              name: user.get('name')
 	            },
 	            secret: (process.env.NEXTAUTH_SECRET as string) || '',
 	            maxAge: 60 * 60 * 4 // 4 hours
@@ -474,7 +450,7 @@ src/backend/services/user.service.ts```ts
 	import PaginationStruct from '@/backend/structs/pagination.struct';
 	import { User as UserType } from '@/utils/dtos/user.dto';
 	import IdsNotFoundException from '@/backend/exceptions/idsnotfound.exception';
-	import NotFoundException from '@/backend/exceptions/notfound.exception';
+	import NotFoundException from "@/backend/exceptions/notfound.exception";
 	import DateCustom from '@/utils/datetime/date.custom';
 	
 	export default class UserService {
@@ -1897,20 +1873,19 @@ src/backend/services/auth.service.ts```ts
 	    this.userRepository = new UserRepository(conn);
 	  }
 	
-	  async getOrCreateNewUser(email: string, firstName: string, lastName: string, imageUrl: string | null = null): Promise<mongoose.Document> {
+	  async getOrCreateNewUser(email: string, name: string, imageUrl: string | null = null): Promise<mongoose.Document> {
 	    const existsUser: mongoose.Document | null = await this.userRepository.findOne({ email });
 	
 	    if (existsUser) {
 	      return existsUser;
 	    } else {
-	      return await this.createNewUser(email, firstName, lastName, true, UserStatus.ACTIVE, null, imageUrl);
+	      return await this.createNewUser(email, name, true, UserStatus.ACTIVE, null, imageUrl);
 	    }
 	  }
 	
 	  async createNewUser(
 	    email: string,
-	    firstName: string,
-	    lastName: string,
+	    name: string,
 	    emailConfirmed: boolean,
 	    status: UserStatus,
 	    password: string | null = null,
@@ -1928,8 +1903,7 @@ src/backend/services/auth.service.ts```ts
 	
 	    userDto.setData({
 	      email,
-	      firstName,
-	      lastName,
+	      name,
 	      imageUrl: imageUrl || '',
 	      password: passwordHash,
 	      isContractor: false,
@@ -2113,14 +2087,15 @@ src/backend/services/builder.service.ts```ts
 	import { getCsvCompanyFieldValue, parsePayloadBuilderToCreateData } from '@/utils/helper';
 	import { CSV_SEP } from '@/utils/constant';
 	import { CSV_COMPANY_ENUM, ROLE_LEVEL_ENUM_BUILDER, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
-	import mongoose, { Mongoose } from 'mongoose';
+	import mongoose, { Mongoose, SortOrder } from 'mongoose';
 	import BuilderDto, { Builder, Builder as BuilderType } from '@/utils/dtos/builder.dto';
 	import { Role as RoleType } from '@/utils/dtos/role.dto';
 	import RoleRepositoryInterface from '@/backend/repositories/interfaces/role.repository.interface';
-	import { PaginateQuery } from '@/types/pagination';
 	import RoleRepository from '../repositories/mongodb/role.repository';
-	import UserDto from '@/utils/dtos/user.dto';
+	import UserDto, { User } from '@/utils/dtos/user.dto';
 	import { FolderName } from '@/utils/enums';
+	import PaginationStruct from '../structs/pagination.struct';
+	import NotFoundException from '../exceptions/notfound.exception';
 	
 	export default class BuilderService {
 	  protected builderRepository: BuilderRepositoryInterface;
@@ -2291,7 +2266,7 @@ src/backend/services/builder.service.ts```ts
 	    const currentBuilder = await this.getBuilder(builderId);
 	
 	    if (!currentBuilder) {
-	      throw 'Builder not found';
+	      throw new NotFoundException('Builder not found');
 	    }
 	    const data = parsePayloadBuilderToCreateData(formData);
 	
@@ -2343,25 +2318,51 @@ src/backend/services/builder.service.ts```ts
 	    return await this.builderRepository.delete(builderId);
 	  }
 	
-	  mapBuilder = (data: Builder[]): Builder[] => {
-	    return data.map((item) => {
-	      const newObject = (item as unknown as mongoose.Document<Builder>).toObject();
-	      return {
-	        ...newObject,
-	        creatorId: newObject.creatorId?._id,
-	        creator: newObject.creatorId
-	      };
-	    });
-	  };
-	  async findBuilders(query: PaginateQuery<Builder>) {
-	    const result = (await this.builderRepository.findWithSort(
-	      !!query.search ? { builderName: { $regex: query.search } } : {},
-	      { [query.sortBy || 'builderName']: query.sortDir || 'desc' },
-	      query.limit,
-	      query.page
-	    )) as unknown as Builder[];
+	  async listBuilders(
+	    limit: number,
+	    offset: number,
+	    order: { [key: string]: SortOrder },
+	    search: string
+	  ): Promise<{
+	    pagination: PaginationStruct;
+	    collection: Builder[];
+	  }> {
+	    const projectDto = new BuilderDto();
 	
-	    return this.mapBuilder(result);
+	    const validOrderFields = Object.keys(projectDto);
+	
+	    for (const key in order) {
+	      if (!validOrderFields.includes(key)) {
+	        delete order[key];
+	      }
+	    }
+	
+	    if (Object.keys(order).length === 0) {
+	      order = { builderName: 'asc' };
+	    }
+	
+	    const filterSearch = search !== '' ? { builderName: { $regex: search } } : {};
+	    const total = await this.builderRepository.count(filterSearch);
+	    const projects = await this.builderRepository.findWithSort(filterSearch, order, limit, offset);
+	
+	    const collection: Builder[] = [];
+	
+	    projects.forEach((project: mongoose.Document<Builder>) => {
+	      projectDto.setData(project.toJSON());
+	      const currentObject = projectDto.toObject() as Builder;
+	      const creator = currentObject.creatorId as Partial<User & { id: string }>;
+	      collection.push({
+	        ...currentObject,
+	        creatorId: creator.id || '',
+	        creator
+	      });
+	    });
+	
+	    const pagination = new PaginationStruct(offset, limit, total);
+	    return {
+	      pagination,
+	      collection
+	    };
 	  }
 	}
 
@@ -2638,7 +2639,7 @@ src/backend/validator/register.validator.ts```ts
 	export default class RegisterValidator extends BaseValidator {
 	  private userRepository: UserRepositoryInterface;
 	
-	  constructor(data: { email: string; password: string; firstName: string; lastName: string }, connection: Mongoose) {
+	  constructor(data: { email: string; password: string; name: string }, connection: Mongoose) {
 	    super();
 	    this.data = data;
 	    this.userRepository = new UserRepository(connection);
@@ -2647,10 +2648,9 @@ src/backend/validator/register.validator.ts```ts
 	  validateRules() {
 	    const mailRule = { email: string().email().required() };
 	    const passRule = { password: string().min(8).required() };
-	    const firstNameRule = { firstName: string().required() };
-	    const lastNameRule = { lastName: string().required() };
+	    const nameRule = { name: string().required() };
 	
-	    this.rules = [mailRule, passRule, firstNameRule, lastNameRule];
+	    this.rules = [mailRule, passRule, nameRule];
 	
 	    return this;
 	  }
@@ -3061,7 +3061,7 @@ src/backend/validator/profile.validator.ts```ts
 	export default class ProfileValidator extends BaseValidator {
 	  private userRepository: UserRepositoryInterface;
 	
-	  constructor(data: { id: string; email: string; password: string; firstName: string; lastName: string }, connection: Mongoose) {
+	  constructor(data: { id: string; email: string; password: string; name: string }, connection: Mongoose) {
 	    super();
 	    this.data = data;
 	
@@ -3093,15 +3093,14 @@ src/backend/validator/profile.validator.ts```ts
 	
 	    const idRule = { id: string().required() };
 	    const mailRule = { email: string().email().required() };
-	    const firstNameRule = { name: string().required() };
-	    const lastNameNameRule = { name: string().required() };
+	    const nameRule = { name: string().required() };
 	    const phoneRule = { phoneNumber: phoneNumberRule };
 	    const companyRule = { company: string().max(255).nullable() };
 	    const countryRule = { country: string().max(20).nullable() };
 	    const birthDateRule = { birthDate: birthDateRulesSchema.nullable() };
 	    const imageRule = { image: string().url().nullable() };
 	
-	    this.rules = [idRule, mailRule, firstNameRule, lastNameNameRule, phoneRule, companyRule, countryRule, birthDateRule, imageRule];
+	    this.rules = [idRule, mailRule, nameRule, phoneRule, companyRule, countryRule, birthDateRule, imageRule];
 	
 	    return this;
 	  }
@@ -3509,11 +3508,7 @@ src/backend/models/user.model.ts```ts
 	      required: true,
 	      unique: true
 	    },
-	    firstName: {
-	      type: String,
-	      required: true
-	    },
-	    lastName: {
+	    name: {
 	      type: String,
 	      required: true
 	    },
@@ -4108,8 +4103,7 @@ src/backend/repositories/mongodb/user.repository.ts```ts
 	    userDto.setData({
 	      id: data[0].get('_id').toString(),
 	      email: data[0].get('email'),
-	      firstName: data[0].get('firstName'),
-	      lastName: data[0].get('lastName'),
+	      name: data[0].get('name'),
 	      imageUrl: data[0].get('imageUrl'),
 	      password: data[0].get('password'),
 	      isContractor: data[0].get('isContractor'),
@@ -4823,13 +4817,6 @@ src/menu-items/pages.tsx```tsx
 	      url: routes.projects.getUrl()
 	    },
 	    {
-	      id: routes.contractorProjects.key,
-	      title: <FormattedMessage id="contractorProjects" />,
-	      icon: Briefcase,
-	      type: 'item',
-	      url: routes.contractorProjects.getUrl()
-	    },
-	    {
 	      id: routes.apiDocs.key,
 	      title: routes.apiDocs.label,
 	      icon: FileText,
@@ -4861,25 +4848,21 @@ src/menu-items/index.tsx```tsx
 ```
 
 src/types/request.ts```ts
-	import { SortOrder } from 'mongoose';
 	import { UserProfile } from './user-profile';
 	import { FolderName } from 'utils/enums';
 	
 	export interface IRequestFilter {
 	  search?: string;
-	  sortBy?: string;
-	  sortDir?: SortOrder;
 	  limit?: number;
 	  page?: number;
 	  filterBy?: string;
-	  sort?: string; // TODO: for contractor - need update
-	  field?: string; // TODO: for contractor - need update
+	  sort?: string;
+	  field?: string;
 	}
 	export interface IRequestRegister {
 	  email: string;
 	  password: string;
-	  firstName: string;
-	  lastName: string;
+	  name: string;
 	}
 	
 	export interface IRequestUpdateProfile extends UserProfile {}
@@ -4982,29 +4965,10 @@ src/types/request.ts```ts
 	}
 	
 	export interface IRequestUpdateProject extends Partial<IRequestCreateProject> {}
-	
-	/* CONTACTTOR PROJECT */
-	export interface IRequestContractorCreateProject {
-	  projectName: string;
-	  startDate: string;
-	  address: string;
-	  imageUrl: string;
-	}
 
 ```
 
 src/types/pagination.ts```ts
-	import { SortOrder } from 'mongoose';
-	
-	export type PaginateQuery<T> = {
-	  page: number;
-	  limit?: number;
-	  sortBy?: keyof T;
-	  sortDir?: SortOrder;
-	  search?: string;
-	  filterBy?: string;
-	};
-	
 	export type ResponseMeta = {
 	  total: number;
 	  page: number;
@@ -5160,10 +5124,6 @@ src/types/response.ts```ts
 	/* AUTH */
 	export interface IResponseVerifyCode {
 	  success: boolean;
-	  status: number;
-	  data: {
-	    linkResetPassword: string;
-	  };
 	}
 	
 	export interface IResponseSendCode {
@@ -5342,15 +5302,6 @@ src/types/route.ts```ts
 	  getUrl: () => string;
 	  label: string;
 	  key: string;
-	}
-
-```
-
-src/types/model.ts```ts
-	import { Project } from '@/utils/dtos/project.dto';
-	
-	export interface IProject extends Project {
-	  id: string;
 	}
 
 ```
@@ -5992,6 +5943,15 @@ src/types/overrides/createTheme.d.ts```ts
 
 ```
 
+src/types/resource/builder.ts```ts
+	import { Builder as BuilderDto } from '@/utils/dtos/builder.dto';
+	
+	export interface IBuilder extends BuilderDto {
+	  id: string;
+	}
+
+```
+
 src/types/resource/invoice.ts```ts
 	import { Invoice as InvoiceDto } from '@/utils/dtos/invoice.dto';
 	
@@ -6017,7 +5977,7 @@ src/types/resource/budget.ts```ts
 src/types/resource/project.ts```ts
 	import { Project as ProjectDto } from '@/utils/dtos/project.dto';
 	
-	export interface IProject extends Omit<ProjectDto, '_id'> {
+	export interface IProject extends ProjectDto {
 	  id: string;
 	}
 
@@ -13495,18 +13455,6 @@ src/views/account/profile.tsx```tsx
 
 ```
 
-src/views/contractorProjects/index.tsx```tsx
-	'use client';
-	import ContactorProjects from '@/components/contractorProjects/List';
-	
-	const ContractorProjectsPage = () => {
-	  return <ContactorProjects />;
-	};
-	
-	export default ContractorProjectsPage;
-
-```
-
 src/views/user/index.tsx```tsx
 	'use client';
 	import User from '@/components/user';
@@ -13528,18 +13476,6 @@ src/views/contractor/index.tsx```tsx
 	};
 	
 	export default ContractorPage;
-
-```
-
-src/views/contractorProjectDetail/index.tsx```tsx
-	'use client';
-	import ContactorProjectDetail from '@/components/contractorProjects/Detail';
-	
-	const ContactorProjectDetailView = () => {
-	  return <ContactorProjectDetail />;
-	};
-	
-	export default ContactorProjectDetailView;
 
 ```
 
@@ -14017,11 +13953,8 @@ src/constant/layout.ts```ts
 	export const DATE_FORMAT = 'dd-MM-yyyy'; // DATE SUBMIT FOR BE
 	export const DATE_FORMAT_DEFAULT = 'MM/dd/yyyy'; // DATE SUBMIT
 	export const DATE_FULL_FORMAT = 'dd MMMM, yyyy h:mm a';
-	export const VISIABLE_DATE_FORMAT = 'MM/dd/yyyy';
+	export const VISIABLE_DATE_FORMAT = 'dd/MM/yyyy';
 	export default LAYOUT;
-	
-	// TEXT
-	export const EMPTY_VALUE = '--';
 
 ```
 
@@ -16365,27 +16298,6 @@ src/app/(dashboard)/my-account/page.tsx```tsx
 
 ```
 
-src/app/(dashboard)/contractor-projects/page.tsx```tsx
-	import ContractorProjectsView from '@/views/contractorProjects';
-	
-	// ==============================|| PAGE ||============================== //
-	
-	export default function ContractorProjects() {
-	  return <ContractorProjectsView />;
-	}
-
-```
-
-src/app/(dashboard)/contractor-projects/[id]/page.tsx```tsx
-	import React from 'react';
-	import ContractorProjectDetail from 'views/contractorProjectDetail';
-	
-	export default async function ContractorProjectDetailPage() {
-	  return <ContractorProjectDetail />;
-	}
-
-```
-
 src/app/(dashboard)/api-docs/page.tsx```tsx
 	import ReactSwagger from '@/views/react-swagger';
 	import { getApiSpecs } from '../../../../lib/swagger';
@@ -16525,369 +16437,6 @@ src/app/api/listing.ts```ts
 
 ```
 
-src/app/api/contractor-project/create/route.ts```ts
-	import { NextRequest, NextResponse } from 'next/server';
-	
-	type RequestType = {
-	  projectName: string;
-	  startDate: string;
-	  address: string;
-	  imageUrl: string;
-	};
-	export async function POST(request: NextRequest) {
-	  const data: RequestType = await request.json();
-	
-	  return NextResponse.json(data, { status: 200 });
-	}
-
-```
-
-src/app/api/contractor-project/list/route.ts```ts
-	import { NextResponse } from 'next/server';
-	
-	export async function GET() {
-	  const projects = [
-	    {
-	      id: 'P001',
-	      projectName: "Stargazer's Nook",
-	      startDate: '2024-02-01T14:42:43.530+00:00',
-	      address: 'Joshua Tree, CA 92252',
-	      amount: 18000,
-	      currentClaimNumber: 90000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P002',
-	      projectName: 'Sunlit Sanctuary',
-	      startDate: '2024-01-10T14:42:43.530+00:00',
-	      address: '123 Main St, Anytown, CA 90210',
-	      amount: 500000,
-	      currentClaimNumber: 250000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P003',
-	      projectName: 'The Zen Garden',
-	      startDate: '2024-01-15T14:42:43.530+00:00',
-	      address: 'Zenbrook, CA 90210',
-	      amount: 250000,
-	      currentClaimNumber: 125000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P004',
-	      projectName: "Writer's Retreat",
-	      startDate: '2024-01-28T14:42:43.530+00:00',
-	      address: 'Carmel-by-the-Sea, CA 93923',
-	      amount: 320000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P005',
-	      projectName: 'The Music Room',
-	      startDate: '2024-01-20T14:42:43.530+00:00',
-	      address: 'New Orleans, LA 70113',
-	      amount: 220000,
-	      currentClaimNumber: 65000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P006',
-	      projectName: 'The Game Room',
-	      startDate: '2024-01-10T14:42:43.530+00:00',
-	      address: '123 Main St, Anytown, CA 90210',
-	      amount: 500000,
-	      currentClaimNumber: 250000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P007',
-	      projectName: "Writer's Retreat",
-	      startDate: '2024-01-28T14:42:43.530+00:00',
-	      address: 'Carmel-by-the-Sea, CA 93923',
-	      amount: 320000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P008',
-	      projectName: 'Hilltop Hideaway',
-	      startDate: '2024-01-10T14:42:43.530+00:00',
-	      address: 'Palm Springs, CA 92262',
-	      amount: 500000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P009',
-	      projectName: 'Project Listing',
-	      startDate: '2024-01-10T14:42:43.530+00:00',
-	      address: 'Palm Springs, CA 92262',
-	      amount: 500000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P010',
-	      projectName: 'The Music Room',
-	      startDate: '2024-01-20T14:42:43.530+00:00',
-	      address: 'Palm Springs, CA 92262',
-	      amount: 500000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P011',
-	      projectName: 'The Game Room',
-	      startDate: '2024-01-20T14:42:43.530+00:00',
-	      address: 'Palm Springs, CA 92262',
-	      amount: 500000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    }
-	  ];
-	
-	  return NextResponse.json({ projects, totalItems: projects.length }, { status: 200 });
-	}
-
-```
-
-src/app/api/contractor-project/[id]/route.ts```ts
-	import { NextRequest, NextResponse } from 'next/server';
-	
-	export async function GET(request: NextRequest) {
-	  const project = {
-	    id: 'P001',
-	    projectName: "Writer's Retreat",
-	    startDate: '2024-01-10T14:42:43.530+00:00',
-	    address: 'Carmel-by-the-Sea, CA 93923',
-	    amount: 320000,
-	    currentClaimNumber: '160000',
-	    builderId: 'B001',
-	    category: 'Commercial',
-	    completionStatus: 'Active',
-	    creatorEmail: 'huypham@gmail.com',
-	    creatorId: '1',
-	    currency: '$',
-	    budgetSeperatorComma: false,
-	    budgetSeperatorSemiColon: false,
-	    budgetSeperatorTab: false,
-	    date: new Date(),
-	    dateCreate: new Date(),
-	    dateModify: new Date(),
-	    imageUrl: '/assets/images/j2c-logo.svg',
-	    items: ''
-	  };
-	
-	  return NextResponse.json(project, { status: 200 });
-	}
-
-```
-
-src/app/api/contractor-project/[id]/invoices/route.ts```ts
-	import { IInvoice } from '@/types/resource/invoice';
-	import DateCustom from '@/utils/datetime/date.custom';
-	import { NextResponse } from 'next/server';
-	
-	export async function GET() {
-	  const invoices: Partial<IInvoice>[] = [
-	    {
-	      id: 'U001',
-	      projectId: 'P001',
-	      budgetId: 'U001',
-	      invoiceIndex: 1,
-	      invoiceContractorId: 'C001',
-	      invoiceNumber: 'A',
-	      invoiceStatus: 0,
-	      invoiceDate: new DateCustom(),
-	      invoiceReceivedDate: new DateCustom().toISOString(),
-	      invoiceSubtotal: 10000,
-	      invoiceGst: 80000,
-	      invoiceGstOverride: true,
-	      invoicePst: '5000',
-	      invoicePstOverride: false,
-	      invoiceHoldback: 300,
-	      invoiceHoldbackEnabled: true,
-	      invoiceTotal: 500000
-	    },
-	    {
-	      id: 'U002',
-	      projectId: 'P002',
-	      budgetId: 'U001',
-	      invoiceIndex: 1,
-	      invoiceContractorId: 'C001',
-	      invoiceNumber: 'A',
-	      invoiceStatus: 1,
-	      invoiceDate: new DateCustom(),
-	      invoiceReceivedDate: new DateCustom().toISOString(),
-	      invoiceSubtotal: 10000,
-	      invoiceGst: 80000,
-	      invoiceGstOverride: true,
-	      invoicePst: '5000',
-	      invoicePstOverride: false,
-	      invoiceHoldback: 300,
-	      invoiceHoldbackEnabled: false,
-	      invoiceTotal: 500000
-	    },
-	    {
-	      id: 'U003',
-	      projectId: 'P003',
-	      budgetId: 'U001',
-	      invoiceIndex: 1,
-	      invoiceContractorId: 'C001',
-	      invoiceNumber: 'A',
-	      invoiceStatus: 2,
-	      invoiceDate: new DateCustom(),
-	      invoiceReceivedDate: new DateCustom().toISOString(),
-	      invoiceSubtotal: 10000,
-	      invoiceGst: 80000,
-	      invoiceGstOverride: true,
-	      invoicePst: '5000',
-	      invoicePstOverride: false,
-	      invoiceHoldback: 300,
-	      invoiceHoldbackEnabled: false,
-	      invoiceTotal: 500000
-	    },
-	    {
-	      id: 'U004',
-	      projectId: 'P004',
-	      budgetId: 'U001',
-	      invoiceIndex: 1,
-	      invoiceContractorId: 'C001',
-	      invoiceNumber: 'A',
-	      invoiceStatus: 1,
-	      invoiceDate: new DateCustom(),
-	      invoiceReceivedDate: new DateCustom().toISOString(),
-	      invoiceSubtotal: 10000,
-	      invoiceGst: 80000,
-	      invoiceGstOverride: true,
-	      invoicePst: '5000',
-	      invoicePstOverride: true,
-	      invoiceHoldback: 300,
-	      invoiceHoldbackEnabled: false,
-	      invoiceTotal: 500000
-	    },
-	    {
-	      id: 'U005',
-	      projectId: 'P005',
-	      budgetId: 'U001',
-	      invoiceIndex: 1,
-	      invoiceContractorId: 'C001',
-	      invoiceNumber: 'A',
-	      invoiceStatus: 0,
-	      invoiceDate: new DateCustom(),
-	      invoiceReceivedDate: new DateCustom().toISOString(),
-	      invoiceSubtotal: 10000,
-	      invoiceGst: 80000,
-	      invoiceGstOverride: true,
-	      invoicePst: '5000',
-	      invoicePstOverride: false,
-	      invoiceHoldback: 300,
-	      invoiceHoldbackEnabled: true
-	    },
-	    {
-	      id: 'U006',
-	      projectId: 'P006',
-	      budgetId: 'U001',
-	      invoiceIndex: 1,
-	      invoiceContractorId: 'C001',
-	      invoiceNumber: 'A',
-	      invoiceStatus: 1,
-	      invoiceDate: new DateCustom(),
-	      invoiceReceivedDate: new DateCustom().toISOString(),
-	      invoiceSubtotal: 10000,
-	      invoiceGst: 80000,
-	      invoiceGstOverride: true,
-	      invoicePst: '5000',
-	      invoicePstOverride: true,
-	      invoiceHoldback: 300,
-	      invoiceHoldbackEnabled: false,
-	      invoiceTotal: 500000
-	    },
-	    {
-	      id: 'U010',
-	      projectId: 'P007',
-	      budgetId: 'U001',
-	      invoiceIndex: 1,
-	      invoiceContractorId: 'C001',
-	      invoiceNumber: 'A',
-	      invoiceStatus: 2,
-	      invoiceDate: new DateCustom(),
-	      invoiceReceivedDate: new DateCustom().toISOString(),
-	      invoiceSubtotal: 10000,
-	      invoiceGst: 80000,
-	      invoiceGstOverride: true,
-	      invoicePst: '5000',
-	      invoicePstOverride: true,
-	      invoiceHoldback: 300,
-	      invoiceHoldbackEnabled: false,
-	      invoiceTotal: 500000
-	    },
-	    {
-	      id: 'U007',
-	      projectId: 'P008',
-	      budgetId: 'U001',
-	      invoiceIndex: 1,
-	      invoiceContractorId: 'C001',
-	      invoiceNumber: 'A',
-	      invoiceStatus: 3,
-	      invoiceDate: new DateCustom(),
-	      invoiceReceivedDate: new DateCustom().toISOString(),
-	      invoiceSubtotal: 10000,
-	      invoiceGst: 80000,
-	      invoiceGstOverride: true,
-	      invoicePst: '5000',
-	      invoicePstOverride: false,
-	      invoiceHoldback: 300,
-	      invoiceHoldbackEnabled: true,
-	      invoiceTotal: 500000
-	    },
-	    {
-	      id: 'U008',
-	      projectId: 'P009',
-	      budgetId: 'U001',
-	      invoiceIndex: 1,
-	      invoiceContractorId: 'C001',
-	      invoiceNumber: 'A',
-	      invoiceStatus: 0,
-	      invoiceDate: new DateCustom(),
-	      invoiceReceivedDate: new DateCustom().toISOString(),
-	      invoiceSubtotal: 10000,
-	      invoiceGst: 80000,
-	      invoiceGstOverride: true,
-	      invoicePst: '5000',
-	      invoicePstOverride: true,
-	      invoiceHoldback: 300,
-	      invoiceHoldbackEnabled: true,
-	      invoiceTotal: 500000
-	    },
-	    {
-	      id: 'U009',
-	      projectId: 'P001',
-	      budgetId: 'U010',
-	      invoiceIndex: 10,
-	      invoiceContractorId: 'C001',
-	      invoiceNumber: 'A',
-	      invoiceStatus: 3,
-	      invoiceDate: new DateCustom(),
-	      invoiceReceivedDate: new DateCustom().toISOString(),
-	      invoiceSubtotal: 10300,
-	      invoiceGst: 40000,
-	      invoiceGstOverride: false,
-	      invoicePst: '3000',
-	      invoicePstOverride: true,
-	      invoiceHoldback: 300,
-	      invoiceHoldbackEnabled: false,
-	      invoiceTotal: 500000
-	    }
-	  ];
-	
-	  return NextResponse.json({ invoices }, { status: 200 });
-	}
-
-```
-
 src/app/api/protected/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
@@ -16913,11 +16462,10 @@ src/app/api/auth/token/[email]/route.ts```ts
 	import { encode } from 'next-auth/jwt';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import UserRepository from '@/backend/repositories/mongodb/user.repository';
-	import ResponseStruct from '@/backend/structs/response.struct';
 	
 	export async function GET(request: NextRequest, { params }: { params: { email: string } }) {
 	  const { email } = params;
-	  const responseStruct = new ResponseStruct(true);
+	
 	  const conn = await MongoConnect();
 	
 	  try {
@@ -16925,10 +16473,7 @@ src/app/api/auth/token/[email]/route.ts```ts
 	    const user = await userRepo.findOne({ email });
 	
 	    if (!user) {
-	      responseStruct.setStatus(404);
-	      responseStruct.pushError('Email not found');
-	
-	      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	      return NextResponse.json({ message: 'Email not found' }, { status: 404 });
 	    }
 	
 	    const token = await encode({
@@ -16939,14 +16484,10 @@ src/app/api/auth/token/[email]/route.ts```ts
 	      maxAge: 60 * 60 * 4 // 4 hours
 	    });
 	
-	    responseStruct.setStatus(200);
-	    responseStruct.setData({ data: { token } });
+	    return NextResponse.json({ token }, { status: 200, statusText: 'OK' });
 	  } catch (error) {
-	    responseStruct.pushError('Unauthorized');
-	    responseStruct.setStatus(401);
+	    return NextResponse.json({ errors: ['Unauthorized'] }, { status: 401 });
 	  }
-	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
 	}
 
 ```
@@ -16957,7 +16498,6 @@ src/app/api/auth/reset-password/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import UserService from '@/backend/services/user.service';
 	import ResetPasswordValidator from '@/backend/validator/reset-password.validator';
-	import ResponseStruct from '@/backend/structs/response.struct';
 	
 	export type RequestType = {
 	  email: string;
@@ -16968,16 +16508,12 @@ src/app/api/auth/reset-password/route.ts```ts
 	
 	export async function POST(request: NextRequest) {
 	  const { email, password, confirmPassword, token } = await request.json();
-	  const responseStruct = new ResponseStruct(true);
 	
 	  const validator = new ResetPasswordValidator({ email, password, confirmPassword, token });
 	  validator.validate();
 	
 	  if (validator.getErrors().length > 0) {
-	    responseStruct.setStatus(400);
-	    responseStruct.setErrors(validator.getErrors());
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	    return NextResponse.json({ success: false, errors: validator.getErrors() }, { status: 400 });
 	  }
 	
 	  try {
@@ -16985,13 +16521,11 @@ src/app/api/auth/reset-password/route.ts```ts
 	    const userRepository = new UserRepository(conn);
 	    const userServices = new UserService(userRepository);
 	    await userServices.changePassword(email, password, token);
-	    responseStruct.setStatus(200);
 	  } catch (err: any) {
-	    responseStruct.pushError(err.message);
-	    responseStruct.setStatus(500);
+	    return NextResponse.json({ success: false, errors: [err.message] }, { status: 500 });
 	  }
 	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	  return NextResponse.json({ success: true }, { status: 200 });
 	}
 
 ```
@@ -17000,7 +16534,6 @@ src/app/api/auth/code/verify/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import AuthService from '@/backend/services/auth.service';
-	import ResponseStruct from '@/backend/structs/response.struct';
 	
 	type RequestType = {
 	  email: string;
@@ -17009,7 +16542,6 @@ src/app/api/auth/code/verify/route.ts```ts
 	
 	export async function POST(request: NextRequest) {
 	  const data: RequestType = await request.json();
-	  const responseStruct = new ResponseStruct(true);
 	
 	  let linkResetPassword = '';
 	  try {
@@ -17019,19 +16551,11 @@ src/app/api/auth/code/verify/route.ts```ts
 	    const userDto = await authService.verifyCode(data.email, data.code);
 	
 	    linkResetPassword = await authService.generatePasswordResetToken(userDto._id.valueOf() as string);
-	
-	    responseStruct.setStatus(200);
-	    responseStruct.setData({
-	      data: {
-	        linkResetPassword
-	      }
-	    });
 	  } catch (error: any) {
-	    responseStruct.pushError(error.message);
-	    responseStruct.setStatus(500);
+	    return NextResponse.json({ success: false, errors: [error.message] }, { status: 500 });
 	  }
 	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	  return NextResponse.json({ success: data?.code?.length === 4, linkResetPassword }, { status: 200 });
 	}
 
 ```
@@ -17041,7 +16565,6 @@ src/app/api/auth/code/send/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ForgotPasswordValidator from '@/backend/validator/forgot-password.validator';
 	import AuthService from '@/backend/services/auth.service';
-	import ResponseStruct from '@/backend/structs/response.struct';
 	
 	export type RequestType = {
 	  email: string;
@@ -17049,7 +16572,7 @@ src/app/api/auth/code/send/route.ts```ts
 	
 	export async function POST(request: NextRequest) {
 	  const { email }: RequestType = await request.json();
-	  const responseStruct = new ResponseStruct(true);
+	
 	  const conn = await MongoConnect();
 	
 	  try {
@@ -17058,21 +16581,16 @@ src/app/api/auth/code/send/route.ts```ts
 	    await validator.validate();
 	
 	    if (validator.getErrors().length > 0) {
-	      responseStruct.setStatus(400);
-	      responseStruct.setErrors(validator.getErrors());
-	
-	      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	      return NextResponse.json({ success: false, errors: validator.getErrors() }, { status: 400 });
 	    }
 	
 	    const authService = new AuthService(conn);
 	    await authService.forgotPassword(email);
-	    responseStruct.setStatus(200);
 	  } catch (err: any) {
-	    responseStruct.pushError(err.message);
-	    responseStruct.setStatus(400);
+	    return NextResponse.json({ success: false, errors: [err.message] }, { status: 500 });
 	  }
 	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	  return NextResponse.json({ success: true }, { status: 200 });
 	}
 
 ```
@@ -17083,20 +16601,17 @@ src/app/api/auth/register/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import AuthService from '@/backend/services/auth.service';
 	import { UserStatus } from '@/utils/enums';
-	import ResponseStruct from '@/backend/structs/response.struct';
 	
 	export async function POST(request: NextRequest) {
-	  const data: { email: string; password: string; firstName: string; lastName: string } = await request.json();
+	  const data: { email: string; password: string; name: string } = await request.json();
 	
 	  const conn = await MongoConnect();
 	  const authService = new AuthService(conn);
-	  const responseStruct = new ResponseStruct(true);
 	
 	  const requestData = {
 	    email: data.email,
 	    password: data.password,
-	    firstName: data.firstName,
-	    lastName: data.lastName
+	    name: data.name
 	  };
 	
 	  const requestValidator = new RegisterValidator(requestData, conn);
@@ -17105,35 +16620,17 @@ src/app/api/auth/register/route.ts```ts
 	    await requestValidator.validate();
 	
 	    if (requestValidator.getErrors().length > 0) {
-	      responseStruct.setStatus(400);
-	      responseStruct.setErrors(requestValidator.getErrors());
-	
-	      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	      return NextResponse.json({ errors: requestValidator.getErrors() }, { status: 400 });
 	    }
 	
-	    const user = await authService.createNewUser(
-	      data.email,
-	      data.firstName,
-	      data.lastName,
-	      false,
-	      UserStatus.INACTIVE,
-	      data.password,
-	      null
-	    );
+	    const user = await authService.createNewUser(data.email, data.name, false, UserStatus.INACTIVE, data.password, null);
 	
-	    await authService.sendEmailConfirmation(user.get('_id').valueOf(), user.get('email'), `${data.firstName} ${data.lastName}`);
-	    responseStruct.setStatus(200);
-	    responseStruct.setData({
-	      data: {
-	        message: 'User created successfully. Please check your email to verify your account.'
-	      }
-	    });
+	    await authService.sendEmailConfirmation(user.get('_id').valueOf(), user.get('email'), user.get('name'));
 	  } catch (error: any) {
-	    responseStruct.pushError(error.message);
-	    responseStruct.setStatus(500);
+	    return NextResponse.json({ errors: [error.message] }, { status: 400 });
 	  }
 	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	  return NextResponse.json({ message: 'success' }, { status: 200 });
 	}
 
 ```
@@ -17276,8 +16773,7 @@ src/app/api/profile/update/[id]/route.ts```ts
 	
 	    await userService.updateProfile(id, {
 	      email: data.email,
-	      firstName: data.firstName,
-	      lastName: data.lastName,
+	      name: data.name,
 	      phoneNumber: data.phoneNumber,
 	      company: data.company,
 	      country: data.country,
@@ -17413,117 +16909,6 @@ src/app/api/project/route.ts```ts
 	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
 	  }
 	  return NextResponse.json(responseStruct.getResponse(), { status: 200 });
-	}
-
-```
-
-src/app/api/project/list/route.ts```ts
-	import { NextResponse } from 'next/server';
-	
-	export async function GET() {
-	  const projects = [
-	    {
-	      id: 'P001',
-	      projectName: "Stargazer's Nook",
-	      startDate: '2024-02-01T14:42:43.530+00:00',
-	      address: 'Joshua Tree, CA 92252',
-	      amount: 18000,
-	      currentClaimNumber: 90000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P002',
-	      projectName: 'Sunlit Sanctuary',
-	      startDate: '2024-01-10T14:42:43.530+00:00',
-	      address: '123 Main St, Anytown, CA 90210',
-	      amount: 500000,
-	      currentClaimNumber: 250000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P003',
-	      projectName: 'The Zen Garden',
-	      startDate: '2024-01-15T14:42:43.530+00:00',
-	      address: 'Zenbrook, CA 90210',
-	      amount: 250000,
-	      currentClaimNumber: 125000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P004',
-	      projectName: "Writer's Retreat",
-	      startDate: '2024-01-28T14:42:43.530+00:00',
-	      address: 'Carmel-by-the-Sea, CA 93923',
-	      amount: 320000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P005',
-	      projectName: 'The Music Room',
-	      startDate: '2024-01-20T14:42:43.530+00:00',
-	      address: 'New Orleans, LA 70113',
-	      amount: 220000,
-	      currentClaimNumber: 65000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P006',
-	      projectName: 'The Game Room',
-	      startDate: '2024-01-10T14:42:43.530+00:00',
-	      address: '123 Main St, Anytown, CA 90210',
-	      amount: 500000,
-	      currentClaimNumber: 250000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P007',
-	      projectName: "Writer's Retreat",
-	      startDate: '2024-01-28T14:42:43.530+00:00',
-	      address: 'Carmel-by-the-Sea, CA 93923',
-	      amount: 320000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P008',
-	      projectName: 'Hilltop Hideaway',
-	      startDate: '2024-01-10T14:42:43.530+00:00',
-	      address: 'Palm Springs, CA 92262',
-	      amount: 500000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P009',
-	      projectName: 'Project Listing',
-	      startDate: '2024-01-10T14:42:43.530+00:00',
-	      address: 'Palm Springs, CA 92262',
-	      amount: 500000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P010',
-	      projectName: 'The Music Room',
-	      startDate: '2024-01-20T14:42:43.530+00:00',
-	      address: 'Palm Springs, CA 92262',
-	      amount: 500000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P011',
-	      projectName: 'The Game Room',
-	      startDate: '2024-01-20T14:42:43.530+00:00',
-	      address: 'Palm Springs, CA 92262',
-	      amount: 500000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    }
-	  ];
-	
-	  return NextResponse.json({ projects, totalItems: projects.length }, { status: 200 });
 	}
 
 ```
@@ -18273,7 +17658,7 @@ src/app/api/user/[id]/delete/route.ts```ts
 	import { Actions } from '@/utils/enums';
 	import NotFoundException from '@/backend/exceptions/notfound.exception';
 	import { headers } from 'next/headers';
-	import { decode, JWT } from 'next-auth/jwt';
+	import { decode, JWT}  from 'next-auth/jwt';
 	
 	export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
 	  const token = headers().get('authorization')?.split(' ')[1];
@@ -18697,18 +18082,14 @@ src/app/api/contractor/update/[id]/route.ts```ts
 ```
 
 src/app/api/builder/route.ts```ts
-	import BuilderRepository from '@/backend/repositories/mongodb/builder.repository';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import BuilderValidator from '@/backend/validator/builder.validator';
-	import { Builder } from '@/utils/dtos/builder.dto';
 	import { NextRequest, NextResponse } from 'next/server';
 	import BuilderService from '@/backend/services/builder.service';
 	import AuthService from '@/backend/services/auth.service';
-	import { PAGINATE_OFFSET, PAGINATE_PAGE_SIZE } from '@/utils/constant';
-	import { SortOrder } from 'mongoose';
 	import { parsePayloadBuilderToCreateData } from '@/utils/helper';
 	import ResponseStruct from '@/backend/structs/response.struct';
-	import PaginationStruct from '@/backend/structs/pagination.struct';
+	import { getListingQuery } from '../listing';
 	
 	export async function POST(request: NextRequest) {
 	  const formData = await request.formData();
@@ -18735,38 +18116,28 @@ src/app/api/builder/route.ts```ts
 	    return NextResponse.json({ errors: [error.message] }, { status: 400 });
 	  }
 	}
+	
 	export async function GET(request: NextRequest) {
 	  const conn = await MongoConnect();
-	  const builderRepository = new BuilderRepository(conn);
-	  const builderService = new BuilderService(conn);
-	  const responseStructure = new ResponseStruct(true);
-	  const params = request.nextUrl.searchParams;
-	  const sortBy = (params.get?.('sortBy') || 'dateCreate') as keyof Builder;
-	  const sortDir = (params.get('sortDir') || 'desc') as SortOrder;
-	  const search = (params.get('search') || '') as string;
-	  const page = +(params.get('page') || PAGINATE_OFFSET);
-	  const limit = +(params.get('limit') || PAGINATE_PAGE_SIZE);
-	  const filter = {
-	    page,
-	    sortBy,
-	    limit,
-	    sortDir,
-	    search
-	  };
+	  const responseStruct = new ResponseStruct(true);
+	
 	  try {
-	    const total = await builderRepository.count(filter.search ? { builderName: { $regex: filter.search } } : {});
-	    const builders = (await builderService.findBuilders(filter)) as unknown as Builder[];
-	    const pagination = new PaginationStruct(page, limit, total);
-	    responseStructure.setData({
-	      meta: pagination,
-	      data: builders
+	    const { limit: limitValue, page: pageValue, order: orderValue, search } = getListingQuery(request);
+	    const builderService = new BuilderService(conn);
+	
+	    const data = await builderService.listBuilders(limitValue, pageValue, orderValue, search);
+	    responseStruct.setData({
+	      meta: data.pagination,
+	      data: data.collection
 	    });
-	    return NextResponse.json(responseStructure.getResponse(), { status: 200 });
+	    responseStruct.setStatus(200);
 	  } catch (error: any) {
-	    responseStructure.pushError(error.message);
-	    responseStructure.setStatus(400);
-	    return NextResponse.json(responseStructure.getResponse(), { status: 400 });
+	    responseStruct.pushError(error.message);
+	    responseStruct.setStatus(500);
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
 	  }
+	  return NextResponse.json(responseStruct.getResponse(), { status: 200 });
 	}
 
 ```
@@ -18821,8 +18192,8 @@ src/app/api/builder/[id]/route.ts```ts
 	      return NextResponse.json({ errors: builderValidator.getErrors() }, { status: 400 });
 	    }
 	
-	    const result = await builderService.updateBuilder(id, formData);
-	    return NextResponse.json({ success: true, builder: result }, { status: 200 });
+	    await builderService.updateBuilder(id, formData);
+	    return NextResponse.json({ success: true }, { status: 200 });
 	  } catch (error) {
 	    return NextResponse.json({ errors: [error] }, { status: 400 });
 	  }
@@ -19394,14 +18765,6 @@ src/utils/api.ts```ts
 	  GET_PROJECT_ROLES: '/project/:id/roles',
 	  GET_PROJECT_CONTRACTORS: '/project/:id/contractors',
 	  GET_PROJECT_BUDGETS: '/project/:id/budgets',
-	  CREATE_PROJECT: '/project/create',
-	  GET_PROJECT: '/project/:id',
-	  UPDATE_PROJECT: '/project/:id',
-	  DELETE_PROJECT: '/project/:id',
-	  GET_CONTRACTOR_PROJECTS: '/contractor-project/list',
-	  CREATE_CONTRACTOR_PROJECT: '/contractor-project/create',
-	  GET_CONTRACTOR_PROJECT: '/contractor-project/:id',
-	  GET_CONTRACTOR_PROJECT_INVOICES: '/contractor-project/:id/invoices',
 	  GET_PROJECT_INVOICES: '/project/:id/invoices'
 	};
 	
@@ -19413,17 +18776,6 @@ src/utils/email.ts```ts
 	export const showPartialEmail = (email: string): string => {
 	  if (!email) return '';
 	  return email.replace(/(\w{3})[\w.-]+@([\w.]+\w)/, '$1***@$2');
-	};
-
-```
-
-src/utils/roles.ts```ts
-	import UserDto from '@/utils/dtos/user.dto';
-	
-	export const isContractor = (user: UserDto) => {
-	  const email = user.email;
-	
-	  return email === 'ngoquangtrung.it@gmail.com';
 	};
 
 ```
@@ -19723,11 +19075,11 @@ src/utils/constant.ts```ts
 	export const PAGINATE_PAGE_SIZE = 10;
 	export const PAGINATE_OFFSET = 1;
 	export const SORT_DIRECTION_DEFAULT = 'asc';
-	export const SORT_FIELD_DEFAULT = '_id';
+	export const SORT_FIELD_DEFAULT = 'id';
 	
 	export const API_FILTER_DEFAULT: IRequestFilter = {
-	  sortBy: SORT_FIELD_DEFAULT,
-	  sortDir: SORT_DIRECTION_DEFAULT,
+	  sort: SORT_DIRECTION_DEFAULT,
+	  field: SORT_FIELD_DEFAULT,
 	  filterBy: '',
 	  limit: PAGINATE_PAGE_SIZE,
 	  page: PAGINATE_OFFSET
@@ -19948,32 +19300,6 @@ src/utils/services/upload.ts```ts
 
 ```
 
-src/utils/services/contractorProject.ts```ts
-	import axios from '../axios';
-	import endPoints from '../api';
-	import { IResponseProjects } from 'types/response';
-	import { IRequestContractorCreateProject } from 'types/request';
-	import { Project } from '@/utils/dtos/project.dto';
-	import { IInvoice } from '@/types/resource/invoice';
-	
-	export const getProjects = async (): Promise<IResponseProjects> => {
-	  return axios.get(endPoints.GET_CONTRACTOR_PROJECTS);
-	};
-	
-	export const createProject = async (params: IRequestContractorCreateProject): Promise<Project> => {
-	  return axios.post(endPoints.CREATE_CONTRACTOR_PROJECT, params);
-	};
-	
-	export const getProject = async (id: string): Promise<Project> => {
-	  return axios.get(endPoints.GET_CONTRACTOR_PROJECT.replace(':id', id));
-	};
-	
-	export const getProjectInvoices = async (id: string): Promise<IInvoice[]> => {
-	  return axios.get(endPoints.GET_PROJECT_INVOICES.replace(':id', id));
-	};
-
-```
-
 src/utils/services/user.ts```ts
 	import axiosServices from '../axios';
 	import endPoints from '../api';
@@ -20020,8 +19346,7 @@ src/utils/services/auth.ts```ts
 	export const register = async (user: IRequestRegister): Promise<IResponseRegister> => {
 	  const res: IResponseRegister = await axios.post(endPoints.REGISTER, {
 	    email: user.email,
-	    firstName: user.firstName,
-	    lastName: user.lastName,
+	    name: user.name,
 	    password: user.password
 	  });
 	
@@ -20505,8 +19830,7 @@ src/utils/dtos/user.dto.ts```ts
 	
 	export type User = {
 	  email: string;
-	  firstName: string;
-	  lastName: string;
+	  name: string;
 	  password: string | null;
 	  emailConfirmed: boolean;
 	  confirmationToken: string | null;
@@ -20529,8 +19853,7 @@ src/utils/dtos/user.dto.ts```ts
 	
 	export default class UserDto extends BaseDto {
 	  email: string = '';
-	  firstName: string = '';
-	  lastName: string = '';
+	  name: string = '';
 	  password: string | null = null;
 	  emailConfirmed: boolean = false;
 	  confirmationToken: string | null = null;
@@ -21026,7 +20349,6 @@ src/utils/locales/en/index.ts```ts
 	import project from './project.json';
 	import user from './user.json';
 	import form from './form.json';
-	import contactorProjects from './contactorProjects.json';
 	import budget from './budget.json';
 	import invoice from './invoice.json';
 	
@@ -21038,7 +20360,6 @@ src/utils/locales/en/index.ts```ts
 	  ...user,
 	  ...project,
 	  ...form,
-	  ...contactorProjects,
 	  ...budget,
 	  ...invoice
 	};
@@ -21597,34 +20918,6 @@ src/components/ui-component/Select/styles.module.scss```scss
 	  border-radius: 12px;
 	  background-color: $grey50;
 	}
-
-```
-
-src/components/ui-component/tabs/index.ts```ts
-	export { default as TabPanel } from './TabPanel';
-
-```
-
-src/components/ui-component/tabs/TabPanel/index.tsx```tsx
-	import React from 'react';
-	import { Box } from '@mui/material';
-	
-	export interface ITabPanel {
-	  value: string;
-	  index: string;
-	  children?: React.ReactElement;
-	}
-	const TabPanel = ({ value, index, children }: ITabPanel) => {
-	  if (value !== index) return null;
-	
-	  return (
-	    <div role="tabpanel" hidden={value !== index} id={`simple-tabpanel-${index}`} aria-labelledby={`simple-tab-${index}`}>
-	      <Box>{children}</Box>
-	    </div>
-	  );
-	};
-	
-	export default TabPanel;
 
 ```
 
@@ -23449,6 +22742,7 @@ src/components/ui-component/DatePicker/index.tsx```tsx
 	import * as React from 'react';
 	import { FormHelperText } from '@mui/material';
 	import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+	import enGB from 'date-fns/locale/en-GB';
 	import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 	import { DatePicker as MUIDatePicker, DatePickerProps } from '@mui/x-date-pickers/DatePicker';
 	
@@ -23460,7 +22754,7 @@ src/components/ui-component/DatePicker/index.tsx```tsx
 	export default function DatePicker(props: IDatePickerProps) {
 	  const { error, helperText, ...rest } = props;
 	  return (
-	    <LocalizationProvider dateAdapter={AdapterDateFns}>
+	    <LocalizationProvider adapterLocale={enGB} dateAdapter={AdapterDateFns}>
 	      <MUIDatePicker {...rest} />
 	      {helperText && <FormHelperText error={error}>{helperText}</FormHelperText>}
 	    </LocalizationProvider>
@@ -23591,7 +22885,6 @@ src/components/ui-component/table/index.tsx```tsx
 	import styles from './table.module.scss';
 	import './default.scss';
 	import clsx from 'clsx';
-	import { useMemo } from 'react';
 	import { useIntl } from 'react-intl';
 	import { PAGINATE_PAGE_SIZE } from '@/utils/constant';
 	
@@ -23608,9 +22901,6 @@ src/components/ui-component/table/index.tsx```tsx
 	
 	export default function Table({ initialState, sx, slots, rows, columns, wrapperBox, rowCount, ...props }: CustomTableProps) {
 	  const { formatMessage } = useIntl();
-	  const formatRows = useMemo(() => {
-	    return rows.map((item) => ({ ...item, id: item?._id || item?.id }));
-	  }, [rows]);
 	
 	  const renderNoItem = () => (
 	    <Box width="100%" height="100%" display="flex" justifyContent="center" alignItems="center">
@@ -23622,7 +22912,7 @@ src/components/ui-component/table/index.tsx```tsx
 	  return (
 	    <Box width="100%" sx={{ height: isNoItems ? '150px' : 'unset' }} {...wrapperBox}>
 	      <DataGrid
-	        rows={formatRows}
+	        rows={rows}
 	        columns={columns}
 	        initialState={{
 	          pagination: {
@@ -25630,345 +24920,6 @@ src/components/dialogs/contractor/ContractorDialog.tsx```tsx
 
 ```
 
-src/components/dialogs/builder/style.module.scss```scss
-	.imageLocal{
-	  position: absolute;
-	  inset: 0;
-	  z-index: 0;
-	  width: 100%;
-	  height: 100%;
-	  object-fit: contain;
-	}
-```
-
-src/components/dialogs/builder/BuilderDialog.tsx```tsx
-	import {
-	  Box,
-	  Button,
-	  Dialog,
-	  DialogActions,
-	  DialogContent,
-	  DialogProps,
-	  DialogTitle,
-	  Grid,
-	  IconButton,
-	  MenuItem,
-	  Select,
-	  Typography,
-	  FormHelperText
-	} from '@mui/material';
-	import LoadingButton from '@mui/lab/LoadingButton';
-	import TextField from 'components/ui-component/TextField';
-	import styles from '@/styles/dataDialog.module.scss';
-	import { Builder as BuilderType } from '@/utils/dtos/builder.dto';
-	import { GridCloseIcon } from '@mui/x-data-grid';
-	import { useIntl } from 'react-intl';
-	import AddIcon from '@mui/icons-material/Add';
-	import { Formik } from 'formik';
-	import { object as yupObject } from 'yup';
-	import { useAsync } from '@/hooks/useAsync';
-	import { createBuilder, updateBuilder } from '@/utils/services/builder';
-	import { success as notifySuccess } from '@/utils/notify';
-	import { BUILDER_CATEGORIES, BUILDER_STATUS, BUILDER_STATUS_ACTIVE } from '@/constant/builder';
-	import stylesDialog from './style.module.scss';
-	import useCommonValidates from '@/hooks/useCommonValidates';
-	
-	export interface IFormValues {
-	  builderName: string;
-	  category: string;
-	  completionStatus: string;
-	  imageUrl: string;
-	  address: string;
-	  image?: File;
-	}
-	
-	interface BuilderDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
-	  builder: Partial<BuilderType> | null;
-	  onClose: () => void;
-	  onSuccess?: () => void;
-	}
-	
-	export default function BuilderDialog({ onClose, builder, onSuccess, ...props }: BuilderDialogProps): JSX.Element {
-	  const { formatMessage } = useIntl();
-	  const { execute, isLoading } = useAsync();
-	  const validates = useCommonValidates();
-	  const initialValues: IFormValues = {
-	    builderName: builder?.builderName || '',
-	    category: builder?.category || '',
-	    completionStatus: builder?.completionStatus || BUILDER_STATUS_ACTIVE,
-	    address: builder?.address || '',
-	    imageUrl: builder?.imageUrl || ''
-	  };
-	
-	  const validationSchema = yupObject().shape({
-	    builderName: validates.text({ isRequired: true }),
-	    category: validates.text({ isRequired: true }),
-	    address: validates.text({ isRequired: true })
-	  });
-	
-	  const handleCloseDialog = () => {
-	    if (isLoading) {
-	      return;
-	    }
-	    onClose();
-	  };
-	
-	  const handleSubmitForm = async (values: IFormValues) => {
-	    let result;
-	    if (builder) {
-	      result = await execute(updateBuilder(builder._id + '', values));
-	      if (result.data.success) {
-	        notifySuccess(formatMessage({ id: 'builderApiUpdated' }));
-	        handleCloseDialog();
-	        onSuccess?.();
-	      }
-	    } else {
-	      result = await execute(createBuilder(values));
-	      if (result.data.success) {
-	        notifySuccess(formatMessage({ id: 'builderApiCreated' }));
-	        handleCloseDialog();
-	        onSuccess?.();
-	      }
-	    }
-	  };
-	  return (
-	    <Dialog onClose={handleCloseDialog} {...props}>
-	      <DialogTitle sx={{ pt: '8px' }}>{formatMessage({ id: builder ? 'builderDialogEditTitle' : 'builderDialogAddTitle' })}</DialogTitle>
-	      <IconButton
-	        aria-label="close"
-	        onClick={handleCloseDialog}
-	        sx={{
-	          position: 'absolute',
-	          right: 10,
-	          top: 16,
-	          color: (theme) => theme.palette.grey[500]
-	        }}
-	      >
-	        <GridCloseIcon />
-	      </IconButton>
-	      <Formik
-	        validateOnBlur={false}
-	        validateOnChange={false}
-	        initialValues={initialValues}
-	        validationSchema={validationSchema}
-	        onSubmit={handleSubmitForm}
-	      >
-	        {({ errors, handleChange, handleSubmit, values, setFieldValue }) => {
-	          return (
-	            <form noValidate onSubmit={handleSubmit}>
-	              <DialogContent dividers className={styles.content}>
-	                <Grid container spacing={2.5}>
-	                  <Grid item xs={8}>
-	                    <Typography variant="h5" mb="4px">
-	                      {formatMessage({ id: 'builderDialogCreateNameLabel' })}
-	                    </Typography>
-	                    <TextField
-	                      hiddenLabel
-	                      value={values.builderName}
-	                      name="builderName"
-	                      fullWidth
-	                      size="medium"
-	                      placeholder={formatMessage({ id: 'builderDialogCreateNamePlaceholder' })}
-	                      error={!!errors.builderName}
-	                      helperText={errors.builderName}
-	                      onChange={handleChange}
-	                    />
-	                    <Box sx={{ mb: 2 }} />
-	                    <Typography variant="h5" mb="4px">
-	                      {formatMessage({ id: 'builderDialogCreateCategoryLabel' })}
-	                    </Typography>
-	                    <Select
-	                      value={values.category}
-	                      fullWidth
-	                      placeholder={formatMessage({ id: 'builderDialogCreateCategoryPlaceholder' })}
-	                      sx={{ borderRadius: '12px' }}
-	                      error={!!errors.category}
-	                      onChange={handleChange}
-	                      name="category"
-	                    >
-	                      {BUILDER_CATEGORIES.map((item) => (
-	                        <MenuItem value={item} key={item}>
-	                          {item}
-	                        </MenuItem>
-	                      ))}
-	                    </Select>
-	                    {!!errors.category && (
-	                      <FormHelperText error sx={{ mx: '14px' }}>
-	                        {errors.category}
-	                      </FormHelperText>
-	                    )}
-	                  </Grid>
-	                  <Grid item xs={4} display="flex" flexDirection="column">
-	                    <Typography variant="h5" mb="4px">
-	                      {formatMessage({ id: 'builderDialogCreateThumbnailLabel' })}
-	                    </Typography>
-	                    <Box flex="1" display="flex">
-	                      <Button variant="outlined" color="primary" sx={{ width: '100%', position: 'relative' }} component="label">
-	                        <AddIcon />
-	                        {
-	                          // eslint-disable-next-line @next/next/no-img-element
-	                          !!values.image && <img alt="local" src={URL.createObjectURL(values.image)} className={stylesDialog.imageLocal} />
-	                        }
-	                        <input
-	                          type="file"
-	                          hidden
-	                          id="image"
-	                          name="image"
-	                          accept="image/*"
-	                          onChange={(e) => {
-	                            if (e.currentTarget.files?.[0]) {
-	                              setFieldValue('image', e.currentTarget.files?.[0]);
-	                            }
-	                          }}
-	                        />
-	                      </Button>
-	                    </Box>
-	                  </Grid>
-	                </Grid>
-	                <Box sx={{ mb: 2 }} />
-	                <Grid container spacing={3.125} flexDirection="column">
-	                  <Grid item xs={12}>
-	                    <Typography variant="h5" mb="4px">
-	                      {formatMessage({ id: 'builderDialogCreateAddressLabel' })}
-	                    </Typography>
-	                    <TextField
-	                      multiline
-	                      minRows={4}
-	                      hiddenLabel
-	                      fullWidth
-	                      size="medium"
-	                      name="address"
-	                      placeholder={formatMessage({ id: 'builderDialogCreateAddressPlaceholder' })}
-	                      error={!!errors.address}
-	                      helperText={errors.address}
-	                      onChange={handleChange}
-	                      value={values.address}
-	                    />
-	                  </Grid>
-	                  <Grid item xs={12}>
-	                    <Typography variant="h5" mb="4px">
-	                      {formatMessage({ id: 'builderDialogCreateStatusLabel' })}
-	                    </Typography>
-	                    <Select
-	                      value={values.completionStatus}
-	                      fullWidth
-	                      placeholder={formatMessage({ id: 'builderDialogCreateCategoryPlaceholder' })}
-	                      sx={{ borderRadius: '12px' }}
-	                      onChange={handleChange}
-	                      name="completionStatus"
-	                    >
-	                      {BUILDER_STATUS.map((item) => (
-	                        <MenuItem value={item} key={item}>
-	                          {item}
-	                        </MenuItem>
-	                      ))}
-	                    </Select>
-	                  </Grid>
-	                </Grid>
-	              </DialogContent>
-	
-	              <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
-	                <Button variant="text" color="error" onClick={handleCloseDialog}>
-	                  {formatMessage({ id: 'buttonLabelCancel' })}
-	                </Button>
-	                {isLoading ? (
-	                  <LoadingButton loading variant="contained" color="error" type="submit">
-	                    {formatMessage({ id: 'builderDialogCreateButtonSubmit' })}
-	                  </LoadingButton>
-	                ) : (
-	                  <Button variant="contained" color="error" type="submit">
-	                    {formatMessage({ id: 'builderDialogCreateButtonSubmit' })}
-	                  </Button>
-	                )}
-	              </DialogActions>
-	            </form>
-	          );
-	        }}
-	      </Formik>
-	    </Dialog>
-	  );
-	}
-
-```
-
-src/components/dialogs/builder/BuilderDeleteDialog.tsx```tsx
-	import { Builder } from '@/utils/dtos/builder.dto';
-	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
-	import { GridCloseIcon } from '@mui/x-data-grid';
-	import { Button } from '@/components/ui-component/buttons';
-	import { useIntl } from 'react-intl';
-	import { useAsync } from '@/hooks/useAsync';
-	import { deleteBuilder } from '@/utils/services/builder';
-	import * as notify from '@/utils/notify';
-	import LoadingButton from '@mui/lab/LoadingButton';
-	interface BuilderDialogProps extends Omit<DialogProps, 'onClose'> {
-	  builder: Partial<Builder> | null;
-	  onClose?: () => void;
-	  onSuccess?: () => void;
-	}
-	
-	export default function BuilderDeleteDialog({ builder, onClose, onSuccess, ...props }: BuilderDialogProps): JSX.Element {
-	  const { formatMessage } = useIntl();
-	  const { isLoading, execute } = useAsync();
-	  const handleClose = () => {
-	    onClose?.();
-	  };
-	
-	  const handleDelete = async () => {
-	    if (builder?._id) {
-	      const result = await execute(deleteBuilder(builder._id + ''));
-	      if (result.data.success) {
-	        handleClose();
-	        notify.success(formatMessage({ id: 'builderApiDeleted' }));
-	        onSuccess?.();
-	      }
-	    }
-	  };
-	  const content = formatMessage({ id: 'builderDialogDeleteContent' }).replace('{builderName}', builder?.builderName || '');
-	  return (
-	    <Dialog onClose={handleClose} {...props}>
-	      <DialogTitle sx={{ pt: '8px' }}>{formatMessage({ id: 'builderDialogDeleteTitle' })}</DialogTitle>
-	      <IconButton
-	        aria-label="close"
-	        onClick={handleClose}
-	        sx={{
-	          position: 'absolute',
-	          right: 10,
-	          top: 16,
-	          color: (theme) => theme.palette.grey[500]
-	        }}
-	      >
-	        <GridCloseIcon />
-	      </IconButton>
-	      <DialogContent dividers sx={{ minWidth: '600px' }}>
-	        <Typography gutterBottom sx={{ my: '12px' }}>
-	          <span
-	            dangerouslySetInnerHTML={{
-	              __html: content
-	            }}
-	          />
-	        </Typography>
-	      </DialogContent>
-	      <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
-	        <Button variant="text" color="error" onClick={handleClose}>
-	          {formatMessage({ id: 'buttonLabelCancel' })}
-	        </Button>
-	        {isLoading ? (
-	          <LoadingButton loading variant="contained" color="error" type="submit">
-	            {formatMessage({ id: 'builderDialogDeleteButtonDelete' })}
-	          </LoadingButton>
-	        ) : (
-	          <Button variant="contained" color="error" type="submit" onClick={handleDelete}>
-	            {formatMessage({ id: 'builderDialogDeleteButtonDelete' })}
-	          </Button>
-	        )}
-	      </DialogActions>
-	    </Dialog>
-	  );
-	}
-
-```
-
 src/components/projects/Add/style.module.scss```scss
 	.imageLocal{
 	  position: absolute;
@@ -25991,7 +24942,6 @@ src/components/projects/Add/index.tsx```tsx
 	
 	// projects import
 	import * as notify from 'utils/notify';
-	import { IMAGE_TYPES } from 'constant';
 	import useCommonValidates from '@/hooks/useCommonValidates';
 	import { useAsync } from 'hooks/useAsync';
 	import DatePicker from 'components/ui-component/DatePicker';
@@ -26153,7 +25103,6 @@ src/components/projects/Add/index.tsx```tsx
 	                    setFieldValue('image', file);
 	                  }}
 	                  imageUrl={project?.imageUrl}
-	                  accept={IMAGE_TYPES.join(',')}
 	                />
 	              </Box>
 	            </Grid>
@@ -26661,12 +25610,12 @@ src/components/projects/List/components/EditBtn/index.tsx```tsx
 
 src/components/projects/List/components/StartDate/index.tsx```tsx
 	import * as React from 'react';
-	import { isValid } from 'date-fns';
+	import { format, isValid } from 'date-fns';
 	import { Typography } from '@mui/material';
 	
 	//projects import
-	import DateCustom, { formatDate } from '@/utils/datetime/date.custom';
-	import { EMPTY_VALUE } from '@/constant';
+	import DateCustom from '@/utils/datetime/date.custom';
+	import { VISIABLE_DATE_FORMAT } from '@/constant';
 	import { IProject } from '@/types/resource/project';
 	
 	export interface IStartDateProps {
@@ -26676,7 +25625,7 @@ src/components/projects/List/components/StartDate/index.tsx```tsx
 	export default function StartDate(props: IStartDateProps) {
 	  const { project } = props;
 	  const startDate = project?.startDate ? new DateCustom(project?.startDate) : null;
-	  return <Typography variant="h6">{isValid(startDate) && startDate ? formatDate(startDate) : EMPTY_VALUE}</Typography>;
+	  return <Typography variant="h6">{isValid(startDate) && startDate ? format(startDate, VISIABLE_DATE_FORMAT) : ''}</Typography>;
 	}
 
 ```
@@ -28667,7 +27616,7 @@ src/components/authentication/auth-forms/VerifyEmailForm/index.tsx```tsx
 	        })
 	      );
 	      setTimeout(() => {
-	        const linkResetPassword = result.data?.data.linkResetPassword;
+	        const linkResetPassword = result.data?.linkResetPassword;
 	        router.push(linkResetPassword || routes.resetPassword.getUrl());
 	      }, 500);
 	    }
@@ -29346,15 +28295,14 @@ src/components/authentication/auth-forms/RegisterForm/index.tsx```tsx
 	      register({
 	        email: values.email,
 	        password: values.password,
-	        firstName: values.firstName,
-	        lastName: values.lastName
+	        name: `${values.firstName} ${values.lastName}`
 	      })
 	    );
 	
 	    if (!result.error) {
 	      setStatus({ success: true });
 	      setSubmitting(false);
-	      notify.success(formatMessage({ id: 'registerSuccessfully' }));
+	      notify.success(formatMessage({ id: 'registerSuccessfull' }));
 	
 	      setTimeout(() => {
 	        router.push(routes.login.getUrl());
@@ -29800,6 +28748,10 @@ src/components/account/Profile/components/AccountDetail/index.tsx```tsx
 	import { Grid } from '@mui/material';
 	import * as Yup from 'yup';
 	import { format, parse, isValid } from 'date-fns';
+	import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
+	import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
+	import enGB from 'date-fns/locale/en-GB';
+	import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 	import { useIntl } from 'react-intl';
 	
 	// projects import
@@ -29809,7 +28761,6 @@ src/components/account/Profile/components/AccountDetail/index.tsx```tsx
 	import { Button } from 'ui-component/buttons';
 	import { useDispatch } from 'store';
 	import { useAccountSelector, accountActions } from 'store/slices/account';
-	import DatePicker from '@/components/ui-component/DatePicker';
 	import { updateProfile } from 'utils/services/auth';
 	import { DATE_FORMAT } from '@/constant';
 	import * as notify from 'utils/notify';
@@ -29849,7 +28800,7 @@ src/components/account/Profile/components/AccountDetail/index.tsx```tsx
 	    name: validates.text({ isRequired: true })
 	  });
 	
-	  const handleSubmitForm = async (values: IFormValues, { setSubmitting }: FormikHelpers<IFormValues>) => {
+	  const handleSubmitForm = async (values: IFormValues, { setErrors, setStatus, setSubmitting }: FormikHelpers<IFormValues>) => {
 	    setSubmitting(true);
 	    const result = await request(
 	      updateProfile({
@@ -29952,29 +28903,31 @@ src/components/account/Profile/components/AccountDetail/index.tsx```tsx
 	                  />
 	                </Grid>
 	                <Grid item xs={6}>
-	                  <DatePicker
-	                    value={parse(values.birthDate, DATE_FORMAT, new Date())}
-	                    slots={{
-	                      textField: TextField
-	                    }}
-	                    onChange={(datetime) => {
-	                      if (isValid(datetime)) {
-	                        const dateStr = format(datetime as Date, DATE_FORMAT);
-	                        setFieldValue('birthDate', dateStr);
-	                      } else {
-	                        setFieldValue('birthDate', '');
-	                      }
-	                    }}
-	                    name="birthDate"
-	                    slotProps={{
-	                      textField: {
-	                        label: formatMessage({ id: 'birthDate' }),
-	                        fullWidth: true,
-	                        size: 'medium',
-	                        error: false
-	                      }
-	                    }}
-	                  />
+	                  <LocalizationProvider adapterLocale={enGB} dateAdapter={AdapterDateFns}>
+	                    <DatePicker
+	                      value={parse(values.birthDate, DATE_FORMAT, new Date())}
+	                      slots={{
+	                        textField: TextField
+	                      }}
+	                      onChange={(datetime) => {
+	                        if (isValid(datetime)) {
+	                          const dateStr = format(datetime as Date, DATE_FORMAT);
+	                          setFieldValue('birthDate', dateStr);
+	                        } else {
+	                          setFieldValue('birthDate', '');
+	                        }
+	                      }}
+	                      name="birthDate"
+	                      slotProps={{
+	                        textField: {
+	                          label: formatMessage({ id: 'birthDate' }),
+	                          fullWidth: true,
+	                          size: 'medium',
+	                          error: false
+	                        }
+	                      }}
+	                    />
+	                  </LocalizationProvider>
 	                </Grid>
 	                <Grid item xs={12}>
 	                  <Button loading={isSubmitting} color="error" disabled={isSubmitting} size="large" type="submit" variant="contained">
@@ -30252,858 +29205,6 @@ src/components/account/Profile/components/ProfilePicture/styles.module.scss```sc
 	  opacity: 0;
 	  cursor: pointer;
 	}
-
-```
-
-src/components/contractorProjects/Add/style.module.scss```scss
-	.imageLocal {
-	  position: absolute;
-	  inset: 0;
-	  z-index: 0;
-	  width: 100%;
-	  height: 100%;
-	  object-fit: contain;
-	}
-
-```
-
-src/components/contractorProjects/Add/index.tsx```tsx
-	import { useEffect } from 'react';
-	import { isEmpty } from 'lodash';
-	import { Box, Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, Grid, IconButton, Typography } from '@mui/material';
-	import { useIntl } from 'react-intl';
-	import { useFormik } from 'formik';
-	import { object as yupObject } from 'yup';
-	import { GridCloseIcon } from '@mui/x-data-grid';
-	import { format } from 'date-fns';
-	
-	// projects import
-	import * as notify from 'utils/notify';
-	import { IMAGE_TYPES } from 'constant';
-	import useCommonValidates from '@/hooks/useCommonValidates';
-	import { useAsync } from 'hooks/useAsync';
-	import useUploadFile from '@/hooks/useUploadFile';
-	import DatePicker from 'components/ui-component/DatePicker';
-	import Upload from 'components/ui-component/Upload';
-	import TextField from 'components/ui-component/TextField';
-	import { Button } from 'ui-component/buttons';
-	import { Project } from 'utils/dtos/project.dto';
-	import { FolderName } from 'utils/enums';
-	import { getFieldErrors } from 'utils/form';
-	import { createProject } from 'utils/services/contractorProject';
-	import { DATE_FORMAT } from '@/constant';
-	import styles from '@/styles/dataDialog.module.scss';
-	
-	export interface IFormValues {
-	  projectName: string;
-	  startDate: Date;
-	  address: string;
-	  file?: File;
-	}
-	
-	interface ContractorProjectDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
-	  project: Partial<Project> | null;
-	  onClose: () => void;
-	  onSuccess?: (project: Project) => void;
-	  loading?: boolean;
-	}
-	
-	export default function ContractorProjectAddDialog({
-	  onClose,
-	  project,
-	  onSuccess,
-	  loading = false,
-	  ...props
-	}: ContractorProjectDialogProps): JSX.Element {
-	  const { formatMessage } = useIntl();
-	  const validates = useCommonValidates();
-	  const { triggerUpload } = useUploadFile();
-	  const { request } = useAsync();
-	  const isEdit = !isEmpty(project);
-	  const { handleSubmit, values, errors, touched, isSubmitting, handleChange, setFieldValue, setValues, resetForm } = useFormik({
-	    initialValues: {
-	      projectName: project?.projectName || '',
-	      startDate: project?.startDate || new Date(),
-	      address: project?.address || ''
-	    },
-	    onSubmit: async (currentValues: IFormValues) => {
-	      console.log('currentValues', currentValues);
-	      let imageUrl = project?.imageUrl;
-	      if (currentValues.file) {
-	        const result = await triggerUpload({
-	          file: currentValues.file,
-	          folder: FolderName.PROJECTS
-	        });
-	        if (!result?.error) {
-	          imageUrl = result?.data.url;
-	        }
-	      }
-	      const params = {
-	        projectName: currentValues.projectName,
-	        startDate: format(currentValues.startDate as Date, DATE_FORMAT),
-	        address: currentValues.address,
-	        imageUrl: imageUrl || ''
-	      };
-	
-	      const result = await request(createProject(params));
-	
-	      if (!result?.error) {
-	        notify.success(formatMessage({ id: 'projectCreatedSuccessful' }));
-	        if (onSuccess) {
-	          onSuccess(result.data);
-	        }
-	        resetForm();
-	      }
-	    },
-	    validationSchema: yupObject().shape({
-	      projectName: validates.text({ isRequired: true }),
-	      startDate: validates.text({ isRequired: true }),
-	      address: validates.text({ isRequired: true })
-	    }),
-	    validateOnBlur: false,
-	    validateOnChange: false
-	  });
-	  const errorList = getFieldErrors({ errors, touched });
-	
-	  const title = isEdit ? formatMessage({ id: 'projectDialogEditTitle' }) : formatMessage({ id: 'projectDialogAddTitle' });
-	  const isDisabledBtn = isSubmitting || loading;
-	
-	  useEffect(() => {
-	    if (!isEmpty(project)) {
-	      setValues({
-	        projectName: project?.projectName || '',
-	        startDate: project?.startDate || new Date(),
-	        address: project?.address || ''
-	      });
-	    }
-	    // eslint-disable-next-line react-hooks/exhaustive-deps
-	  }, [project]);
-	
-	  const handleCloseDialog = () => {
-	    if (isSubmitting) return;
-	    resetForm();
-	    if (onClose) {
-	      onClose();
-	    }
-	  };
-	
-	  return (
-	    <Dialog onClose={handleCloseDialog} {...props}>
-	      <DialogTitle sx={{ pt: '8px' }}>{title}</DialogTitle>
-	      <IconButton
-	        aria-label="close"
-	        onClick={handleCloseDialog}
-	        sx={{
-	          position: 'absolute',
-	          right: 10,
-	          top: 16,
-	          color: (theme) => theme.palette.grey[500]
-	        }}
-	      >
-	        <GridCloseIcon />
-	      </IconButton>
-	      <form noValidate onSubmit={handleSubmit}>
-	        <DialogContent dividers className={styles.content}>
-	          <Grid container spacing={2.5}>
-	            <Grid item xs={8}>
-	              <Typography variant="h5" mb="4px">
-	                {formatMessage({ id: 'projectNameFormLabel' })}
-	              </Typography>
-	              <TextField
-	                hiddenLabel
-	                value={values.projectName}
-	                name="projectName"
-	                fullWidth
-	                size="medium"
-	                placeholder={formatMessage({ id: 'projectNameFormPlaceholder' })}
-	                error={errorList.projectName?.error}
-	                helperText={errorList.projectName?.message}
-	                onChange={handleChange}
-	              />
-	              <Box sx={{ mb: 2 }} />
-	              <Typography variant="h5" mb="4px">
-	                {formatMessage({ id: 'projectStartDateFormLabel' })}
-	              </Typography>
-	              <DatePicker
-	                slots={{
-	                  textField: TextField
-	                }}
-	                name="startDate"
-	                slotProps={{
-	                  textField: {
-	                    fullWidth: true,
-	                    size: 'medium',
-	                    error: false
-	                  }
-	                }}
-	                value={values.startDate}
-	                error={errorList.startDate?.error}
-	                helperText={errorList.startDate?.message}
-	                onChange={(datetime) => {
-	                  setFieldValue('startDate', datetime);
-	                }}
-	              />
-	            </Grid>
-	            <Grid item xs={4} display="flex" flexDirection="column">
-	              <Typography variant="h5" mb="4px">
-	                {formatMessage({ id: 'projectThumbnailFormLabel' })}
-	              </Typography>
-	              <Box flex="1" display="flex">
-	                <Upload
-	                  onChange={(file) => {
-	                    setFieldValue('file', file);
-	                  }}
-	                  imageUrl={project?.imageUrl}
-	                  accept={IMAGE_TYPES.join(',')}
-	                />
-	              </Box>
-	            </Grid>
-	          </Grid>
-	          <Box sx={{ mb: 2 }} />
-	          <Grid container spacing={3.125} flexDirection="column">
-	            <Grid item xs={12}>
-	              <Typography variant="h5" mb="4px">
-	                {formatMessage({ id: 'projectAddressFormLabel' })}
-	              </Typography>
-	              <TextField
-	                multiline
-	                minRows={4}
-	                hiddenLabel
-	                fullWidth
-	                size="medium"
-	                name="address"
-	                placeholder={formatMessage({ id: 'projectAddressFormPlaceholder' })}
-	                error={errorList.address?.error}
-	                helperText={errorList.address?.message}
-	                onChange={handleChange}
-	                value={values.address}
-	              />
-	            </Grid>
-	          </Grid>
-	        </DialogContent>
-	
-	        <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
-	          <Button disabled={isDisabledBtn} variant="text" color="error" type="submit" onClick={handleCloseDialog}>
-	            {formatMessage({ id: 'buttonLabelCancel' })}
-	          </Button>
-	          <Button loading={isSubmitting} color="error" disabled={isDisabledBtn} size="large" type="submit" variant="contained">
-	            {formatMessage({ id: 'projectSaveButton' })}
-	          </Button>
-	        </DialogActions>
-	      </form>
-	    </Dialog>
-	  );
-	}
-
-```
-
-src/components/contractorProjects/List/index.tsx```tsx
-	'use client';
-	import { useEffect, useState } from 'react';
-	import { useIntl } from 'react-intl';
-	import { GridColDef } from '@mui/x-data-grid';
-	import { Box, Stack } from '@mui/material';
-	import { Pencil, Eye } from '@phosphor-icons/react';
-	
-	// projects import
-	import { Button } from '@/components/ui-component/buttons';
-	import Breadcrumbs from 'components/Breadcrumbs';
-	import Table from 'components/ui-component/table';
-	import { getProjects } from '@/utils/services/contractorProject';
-	import { useAsync } from '@/hooks/useAsync';
-	import { IResponseProjects } from 'types/response';
-	import { Project } from '@/utils/dtos/project.dto';
-	import AddDialog from '../Add';
-	
-	import ProjectName from './components/ProjectName';
-	import StartDate from './components/StartDate';
-	
-	import NextLink from 'next/link';
-	import routes from '@/routes';
-	
-	const ProjectList = () => {
-	  const [projects, setProjects] = useState<Project[]>([]);
-	  const [openDialog, setOpenDialog] = useState(false);
-	  const { formatMessage } = useIntl();
-	  const { request, isLoading } = useAsync();
-	
-	  const columns: GridColDef<Project>[] = [
-	    { field: 'id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
-	    {
-	      field: 'name',
-	      headerName: formatMessage({ id: 'projectName' }),
-	      align: 'center',
-	      headerAlign: 'center',
-	      flex: 1,
-	      renderCell: ({ row }) => <ProjectName project={row} />
-	    },
-	    {
-	      field: 'startDate',
-	      headerName: formatMessage({ id: 'startDate' }),
-	      align: 'center',
-	      headerAlign: 'center',
-	      flex: 1,
-	      renderCell: ({ row }) => <StartDate project={row} />
-	    },
-	    {
-	      field: 'address',
-	      headerName: formatMessage({ id: 'address' }),
-	      headerAlign: 'center',
-	      flex: 1
-	    },
-	    {
-	      field: 'other',
-	      headerName: '',
-	      width: 120,
-	      renderCell: (params) => (
-	        <Box display="flex" gap={1}>
-	          <Button
-	            LinkComponent={NextLink}
-	            href={routes.contractorProjectDetail.getUrl(`${params.id}`)}
-	            key="view"
-	            className="tableActionIcon tableActionIconView"
-	          >
-	            <Eye />
-	          </Button>
-	        </Box>
-	      )
-	    }
-	  ];
-	
-	  useEffect(() => {
-	    initData();
-	    // eslint-disable-next-line react-hooks/exhaustive-deps
-	  }, []);
-	
-	  const handleAddNew = () => {
-	    setOpenDialog(true);
-	  };
-	
-	  const renderAddButton = () => (
-	    <Button variant="contained" startIcon={<Pencil size={14} />} color="error" type="submit" onClick={handleAddNew}>
-	      {formatMessage({ id: 'buttonLabelAddNew' })}
-	    </Button>
-	  );
-	
-	  const initData = async () => {
-	    const result = await request(getProjects());
-	
-	    if (!result.error) {
-	      const { data } = result.data as IResponseProjects;
-	      setProjects(data);
-	    }
-	  };
-	
-	  return (
-	    <Stack direction="column">
-	      <Breadcrumbs title={formatMessage({ id: 'projects' })} actionCom={renderAddButton} onSearch={() => console.log('hello')} />
-	      <Table rows={projects} columns={columns} loading={isLoading} />
-	      <AddDialog
-	        open={openDialog}
-	        project={null}
-	        onClose={() => {
-	          setOpenDialog(false);
-	        }}
-	        onSuccess={() => {
-	          setOpenDialog(false);
-	        }}
-	      />
-	    </Stack>
-	  );
-	};
-	
-	export default ProjectList;
-
-```
-
-src/components/contractorProjects/List/components/ProjectName/index.tsx```tsx
-	import * as React from 'react';
-	import { Box, Typography } from '@mui/material';
-	
-	//projects import
-	import Avatar from '@/components/ui-component/extended/Avatar';
-	import { Project } from '@/utils/dtos/project.dto';
-	
-	import styles from './styles.module.scss';
-	
-	export interface IProjectNameProps {
-	  project: Project;
-	}
-	
-	export default function ProjectName(props: IProjectNameProps) {
-	  const { project } = props;
-	  return (
-	    <Box className={styles.wrapper}>
-	      <Avatar src={project.imageUrl} alt={project.projectName} />
-	      <Typography className={styles.text} variant="h4">
-	        {project.projectName}
-	      </Typography>
-	    </Box>
-	  );
-	}
-
-```
-
-src/components/contractorProjects/List/components/ProjectName/styles.module.scss```scss
-	@import 'styles/variables.module';
-	
-	.wrapper {
-	  display: flex;
-	  align-items: center;
-	  padding: 30px 0;
-	}
-	
-	.text {
-	  font-weight: 500;
-	  margin-left: 10px;
-	}
-
-```
-
-src/components/contractorProjects/List/components/StartDate/index.tsx```tsx
-	import * as React from 'react';
-	import { isValid } from 'date-fns';
-	import { Typography } from '@mui/material';
-	
-	//projects import
-	import DateCustom, { formatDate } from '@/utils/datetime/date.custom';
-	import { Project } from '@/utils/dtos/project.dto';
-	import { EMPTY_VALUE } from '@/constant';
-	
-	export interface IStartDateProps {
-	  project: Project;
-	}
-	
-	export default function StartDate(props: IStartDateProps) {
-	  const { project } = props;
-	  const startDate = project?.startDate ? new DateCustom(project?.startDate) : null;
-	  return <Typography variant="h6">{isValid(startDate) && startDate ? formatDate(startDate) : EMPTY_VALUE}</Typography>;
-	}
-
-```
-
-src/components/contractorProjects/Detail/style.module.scss```scss
-	@import 'styles/variables.module';
-	
-	.tab {
-	  min-height: 52px;
-	}
-	
-	.overviewLabel {
-	  color: $grey700;
-	  font-weight: 700;
-	  margin-bottom: 2px;
-	}
-	
-	.overviewValue {
-	  color: #202020;
-	}
-
-```
-
-src/components/contractorProjects/Detail/index.tsx```tsx
-	'use client';
-	
-	import { useEffect, useState } from 'react';
-	import { useParams, useRouter, usePathname, useSearchParams } from 'next/navigation';
-	import { Box, Tabs, Tab } from '@mui/material';
-	import { Receipt, SquaresFour } from '@phosphor-icons/react';
-	import { useIntl } from 'react-intl';
-	
-	// projects import
-	import routes from 'routes';
-	import { useAsync } from 'hooks/useAsync';
-	import Breadcrumbs from 'components/Breadcrumbs';
-	import Loader from 'components/ui-component/Loader';
-	import { TabPanel } from 'components/ui-component/tabs';
-	import { getProject } from 'utils/services/contractorProject';
-	import { Project } from 'utils/dtos/project.dto';
-	
-	import style from './style.module.scss';
-	import ProjectOverview from './overview';
-	import ProjectInvoices from './invoices';
-	
-	const DEFAULT_TAB = 'overview';
-	type CustomProject = Project & { id: string };
-	
-	const ProjectDetail = () => {
-	  const { formatMessage } = useIntl();
-	  const { request } = useAsync();
-	  const pathname = usePathname();
-	  const searchParams = useSearchParams();
-	  const params = useParams();
-	  const router = useRouter();
-	  const projectId = `${params.id}`;
-	  const [project, setProject] = useState<CustomProject | null>(null);
-	  const selectedTab = searchParams.get('tab') || DEFAULT_TAB;
-	  const breadCrumbs = [
-	    {
-	      ...routes.projects,
-	      url: routes.contractorProjects.getUrl()
-	    },
-	    {
-	      ...routes.contractorProjectDetail,
-	      url: '',
-	      label: project?.projectName || ''
-	    }
-	  ];
-	  const isLoading = !project;
-	
-	  useEffect(() => {
-	    fetchData();
-	    // eslint-disable-next-line react-hooks/exhaustive-deps
-	  }, [projectId]);
-	
-	  const handleSelect = (_: any, value: number) => {
-	    router.push(`${pathname}?tab=${value}`);
-	  };
-	
-	  const fetchData = async () => {
-	    if (projectId) {
-	      const result = await request(getProject(projectId));
-	      if (!result?.error && result.data) {
-	        setProject(result.data);
-	      }
-	    }
-	  };
-	
-	  if (isLoading) {
-	    return <Loader />;
-	  }
-	
-	  const tabs = [
-	    {
-	      key: DEFAULT_TAB,
-	      label: formatMessage({ id: 'projectOverview' }),
-	      icon: <SquaresFour size={20} />,
-	      component: <ProjectOverview project={project} />
-	    },
-	    {
-	      key: 'invoices',
-	      label: formatMessage({ id: 'projectInvoices' }),
-	      icon: <Receipt size={20} />,
-	      component: <ProjectInvoices project={project} />
-	    }
-	  ];
-	
-	  return (
-	    <>
-	      <Breadcrumbs title={project.projectName} customRoutes={breadCrumbs} />
-	      <Box mt={4} bgcolor="#fff" borderRadius={2}>
-	        <Tabs value={selectedTab} onChange={handleSelect}>
-	          {tabs?.map((item) => {
-	            return <Tab label={item.label} key={item.key} value={item.key} icon={item.icon} iconPosition="start" className={style.tab} />;
-	          })}
-	        </Tabs>
-	        {tabs?.map((item) => {
-	          return (
-	            <TabPanel value={selectedTab} key={item.key} index={item.key}>
-	              {item.component}
-	            </TabPanel>
-	          );
-	        })}
-	      </Box>
-	    </>
-	  );
-	};
-	
-	export default ProjectDetail;
-
-```
-
-src/components/contractorProjects/Detail/invoices/style.module.scss```scss
-	@import 'styles/variables.module';
-	
-	.headerTitle {
-	  text-overflow: unset;
-	  white-space: pre-wrap;
-	  line-height: 1.3;
-	}
-	
-	.statusSubmitted {
-	  background-color: #e6f4fb;
-	  color: #0084c2;
-	  font-weight: 500;
-	}
-	
-	.statusApprove {
-	  background-color: #fffce8;
-	  color: #e8cc18;
-	  font-weight: 500;
-	}
-	
-	.statusInvoiceApproved {
-	  background-color: #e6faee;
-	  color: #00c853;
-	  font-weight: 500;
-	}
-
-```
-
-src/components/contractorProjects/Detail/invoices/index.tsx```tsx
-	import { useEffect, useState } from 'react';
-	import { useIntl } from 'react-intl';
-	import { Box, Typography, Chip } from '@mui/material';
-	import { GridColDef } from '@mui/x-data-grid';
-	import { Plus } from '@phosphor-icons/react';
-	
-	// projects import
-	import { useAsync } from '@/hooks/useAsync';
-	import { formatPrice } from '@/utils/currency';
-	import { Button } from '@/components/ui-component/buttons';
-	import Table from '@/components/ui-component/table';
-	import { IProject } from '@/types/model';
-	import { getProjectInvoices } from '@/utils/services/contractorProject';
-	import { GST_RATE, HOLDBACK_RATE, PST_RATE } from '@/utils/constant';
-	import { formatDate } from '@/utils/datetime/date.custom';
-	
-	import styles from './style.module.scss';
-	
-	interface IProjectInvoicesProps {
-	  project: IProject;
-	}
-	const ProjectInvoices = ({ project }: IProjectInvoicesProps) => {
-	  const { formatMessage } = useIntl();
-	  const [listInvoices, setListInvoices] = useState([]);
-	  const { request, isLoading } = useAsync();
-	
-	  useEffect(() => {
-	    getData();
-	    // eslint-disable-next-line react-hooks/exhaustive-deps
-	  }, []);
-	
-	  const getData = async () => {
-	    const result = await request(getProjectInvoices(`${project.id}`));
-	    if (!result.error) {
-	      setListInvoices(result?.data?.invoices || []);
-	    }
-	  };
-	
-	  const renderStatus = (status: number) => {
-	    switch (status) {
-	      case 0: {
-	        return <Chip label="Submitted" className={styles.statusSubmitted} />;
-	      }
-	      case 1: {
-	        return <Chip label="Approval 3" className={styles.statusApprove} />;
-	      }
-	      case 2: {
-	        return <Chip label="Approval 0" className={styles.statusApprove} />;
-	      }
-	      case 3: {
-	        return <Chip label="Invoice Approved" className={styles.statusInvoiceApproved} />;
-	      }
-	      default: {
-	        return '';
-	      }
-	    }
-	  };
-	  const columns: GridColDef[] = [
-	    {
-	      field: 'id',
-	      headerName: formatMessage({ id: 'invoiceTableId' }),
-	      width: 150,
-	      align: 'center'
-	    },
-	    {
-	      field: 'budgetId',
-	      headerName: formatMessage({ id: 'budgetTableId' }),
-	      width: 150,
-	      align: 'center'
-	    },
-	    {
-	      field: 'invoiceIndex',
-	      headerName: formatMessage({ id: 'invoiceTableIndex' }),
-	      width: 120,
-	      align: 'center'
-	    },
-	    {
-	      field: 'invoiceContractorId',
-	      headerName: formatMessage({ id: 'invoiceTableContractor' }),
-	      width: 150,
-	      align: 'center'
-	    },
-	    { field: 'invoiceNumber', headerName: formatMessage({ id: 'invoiceTableNumber' }), width: 150, align: 'center' },
-	    {
-	      field: 'invoiceStatus',
-	      headerName: formatMessage({ id: 'invoiceTableStatus' }),
-	      width: 180,
-	      align: 'center',
-	      renderCell: ({ value }) => renderStatus(value)
-	    },
-	    {
-	      field: 'invoiceDate',
-	      headerName: formatMessage({ id: 'invoiceTableInvoiceDate' }),
-	      width: 170,
-	      align: 'center',
-	      renderCell: ({ value }) => <Typography variant="h5">{formatDate(value)}</Typography>
-	    },
-	    {
-	      field: 'invoiceReceivedDate',
-	      headerName: formatMessage({ id: 'invoiceTableReceivedDate' }),
-	      width: 180,
-	      align: 'center',
-	      renderCell: ({ value }) => <Typography variant="h5">{formatDate(value)}</Typography>
-	    },
-	    {
-	      field: 'invoiceSubtotal',
-	      headerName: formatMessage({ id: 'invoiceTableSubtotal' }),
-	      width: 150,
-	      headerClassName: 'alignRight',
-	      align: 'right',
-	      renderCell: ({ value }) => <Typography variant="h5">{formatPrice(value)}</Typography>
-	    },
-	    {
-	      field: 'invoiceGst',
-	      headerName: formatMessage({ id: 'invoiceTableGST' }),
-	      width: 150,
-	      headerClassName: 'alignRight',
-	      align: 'right',
-	      renderCell: ({ value }) => <Typography variant="h5">{formatPrice(value)}</Typography>
-	    },
-	    {
-	      field: 'invoiceGstOverride',
-	      renderHeader: () => (
-	        <div className={styles.headerTitle}>{`${formatMessage({ id: 'invoiceTableGSTOverride' })} (else ${GST_RATE * 100}%)`}</div>
-	      ),
-	      width: 170,
-	      headerClassName: 'alignRight',
-	      align: 'right',
-	      renderCell: ({ row, value }) => <Typography variant="h5">{formatPrice(value ? row.invoiceGst * (GST_RATE * 100) : 0)}</Typography>
-	    },
-	    {
-	      field: 'invoicePst',
-	      headerName: formatMessage({ id: 'invoiceTablePST' }),
-	      width: 130,
-	      headerClassName: 'alignRight',
-	      align: 'right',
-	      renderCell: ({ value }) => <Typography variant="h5">{formatPrice(value)}</Typography>
-	    },
-	    {
-	      field: 'invoicePstOverride',
-	      headerName: formatMessage({ id: 'invoiceDialogPSTOverride' }),
-	      width: 170,
-	      align: 'right',
-	      renderHeader: () => (
-	        <div
-	          className={styles.headerTitle}
-	        >{`${formatMessage({ id: 'invoiceDialogPSTOverride' })} (else ${(PST_RATE * 100).toFixed(0)}%)`}</div>
-	      ),
-	      renderCell: ({ row, value }) => <Typography variant="h5">{formatPrice(value ? row.invoicePst * (PST_RATE * 100) : 0)}</Typography>
-	    },
-	    {
-	      field: 'invoiceHoldback',
-	      headerName: formatMessage({ id: 'invoiceDialogHoldback' }),
-	      width: 150,
-	      headerClassName: 'alignRight',
-	      align: 'right',
-	      renderCell: ({ value }) => <Typography variant="h5">{formatPrice(value)}</Typography>
-	    },
-	    {
-	      field: 'invoiceHoldbackEnabled',
-	      headerName: formatMessage({ id: 'invoiceDialogHoldbackEnabled' }),
-	      width: 200,
-	      headerClassName: 'alignRight',
-	      align: 'right',
-	      renderHeader: () => (
-	        <div
-	          className={styles.headerTitle}
-	        >{`${formatMessage({ id: 'invoiceDialogHoldbackEnabled' })} (else ${(HOLDBACK_RATE * 100).toFixed(0)}%)`}</div>
-	      ),
-	      renderCell: ({ row, value }) => (
-	        <Typography variant="h5">{formatPrice(value ? row.invoicePst * (HOLDBACK_RATE * 100) : 0)}</Typography>
-	      )
-	    },
-	    {
-	      field: 'invoiceTotal',
-	      headerName: formatMessage({ id: 'invoiceDialogTotal' }),
-	      width: 150,
-	      headerClassName: 'alignRight',
-	      align: 'right',
-	      renderCell: ({ value }) => <Typography variant="h5">{formatPrice(value || 0)}</Typography>
-	    }
-	  ];
-	
-	  return (
-	    <Box>
-	      <Box p={3} display="flex" gap={2}>
-	        <Button variant="contained" startIcon={<Plus size={14} />} color="error" sx={{ px: 3 }}>
-	          {formatMessage({ id: 'projectDetailBtnAddBudget' })}
-	        </Button>
-	      </Box>
-	      <Table
-	        rows={listInvoices}
-	        columns={columns}
-	        loading={isLoading}
-	        checkboxSelection
-	        sx={{
-	          '& .MuiDataGrid-main': {
-	            border: 0
-	          },
-	          '& .alignRight .MuiDataGrid-columnHeaderTitleContainer': {
-	            flexDirection: 'row',
-	            justifyContent: 'flex-end'
-	          }
-	        }}
-	      />
-	    </Box>
-	  );
-	};
-	
-	export default ProjectInvoices;
-
-```
-
-src/components/contractorProjects/Detail/overview/index.tsx```tsx
-	import Image from 'next/image';
-	import { useIntl } from 'react-intl';
-	import { Box, Grid, Typography } from '@mui/material';
-	
-	// projects import
-	import { formatDate } from '@/utils/datetime/date.custom';
-	import { Project } from '@/utils/dtos/project.dto';
-	import { EMPTY_VALUE } from 'constant';
-	
-	import styles from '../style.module.scss';
-	
-	interface IProjectOverviewProps {
-	  project: Project;
-	}
-	
-	const ProjectOverview = ({ project }: IProjectOverviewProps) => {
-	  const { formatMessage } = useIntl();
-	
-	  return (
-	    <Box p={3}>
-	      <Box mt={3}>
-	        <Grid container spacing={4}>
-	          {project.imageUrl && (
-	            <Grid item xs="auto">
-	              <Image src={project.imageUrl} alt={project.projectName} width={264} height={264} />
-	            </Grid>
-	          )}
-	          <Grid item xs={7}>
-	            <Grid container spacing={2}>
-	              <Grid item xs={6}>
-	                <Typography className={styles.overviewLabel}>{formatMessage({ id: 'projectName' })}</Typography>
-	                <Typography className={styles.overviewValue}>{project.projectName || EMPTY_VALUE}</Typography>
-	                <Box mt={2} />
-	                <Typography className={styles.overviewLabel}>{formatMessage({ id: 'address' })}</Typography>
-	                <Typography className={styles.overviewValue}>{project.address || EMPTY_VALUE}</Typography>
-	              </Grid>
-	              <Grid item xs={6}>
-	                <Typography className={styles.overviewLabel}>{formatMessage({ id: 'startDate' })}</Typography>
-	                <Typography className={styles.overviewValue}>{project.startDate ? formatDate(project.startDate) : EMPTY_VALUE}</Typography>
-	              </Grid>
-	            </Grid>
-	          </Grid>
-	        </Grid>
-	      </Box>
-	    </Box>
-	  );
-	};
-	
-	export default ProjectOverview;
 
 ```
 
@@ -31904,12 +30005,11 @@ src/components/contractor/index.tsx```tsx
 	  };
 	  const columns: GridColDef[] = [
 	    {
-	      field: '_id',
+	      field: 'id',
 	      headerName: formatMessage({ id: 'tableId' }),
 	      align: 'center',
 	      headerAlign: 'center',
 	      flex: 1,
-	      valueGetter: ({ row }) => row.id
 	    },
 	    {
 	      field: 'contractorName',
@@ -32077,12 +30177,12 @@ src/components/builder/index.tsx```tsx
 	import { GridColDef, GridPaginationModel, GridSortModel } from '@mui/x-data-grid';
 	import Chip from '../ui-component/extended/Chip';
 	import { useIntl } from 'react-intl';
-	import BuilderDeleteDialog from '../dialogs/builder/BuilderDeleteDialog';
+	import BuilderDeleteDialog from './dialog/BuilderDeleteDialog';
 	import { useEffect, useState } from 'react';
 	import { Builder } from '@/utils/dtos/builder.dto';
 	import { getBuilders } from '@/utils/services/builder';
 	import { useAsync } from '@/hooks/useAsync';
-	import BuilderDialog from '../dialogs/builder/BuilderDialog';
+	import BuilderDialog from './dialog/BuilderDialog';
 	import { BUILDER_STATUS_ARCHIVED, BUILDER_STATUS_INACTIVE } from '@/constant/builder';
 	import Avatar from '../ui-component/extended/Avatar';
 	import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT, SORT_FIELD_DEFAULT } from '@/utils/constant';
@@ -32111,7 +30211,7 @@ src/components/builder/index.tsx```tsx
 	    return <Chip chipcolor="success" label={value} sx={{ ':hover': null }} />;
 	  };
 	  const columns: GridColDef[] = [
-	    { field: '_id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
+	    { field: 'id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
 	    {
 	      field: 'builderName',
 	      headerName: formatMessage({ id: 'builderTableBuilderName' }),
@@ -32190,8 +30290,8 @@ src/components/builder/index.tsx```tsx
 	    const field = model?.[0]?.field || SORT_FIELD_DEFAULT;
 	    const dir = model?.[0]?.sort || SORT_DIRECTION_DEFAULT;
 	    await fetchBuilder({
-	      sortBy: field,
-	      sortDir: dir
+	      field: field,
+	      sort: dir
 	    });
 	  };
 	
@@ -32262,6 +30362,345 @@ src/components/builder/index.tsx```tsx
 	};
 	
 	export default Builder;
+
+```
+
+src/components/builder/dialog/style.module.scss```scss
+	.imageLocal{
+	  position: absolute;
+	  inset: 0;
+	  z-index: 0;
+	  width: 100%;
+	  height: 100%;
+	  object-fit: contain;
+	}
+```
+
+src/components/builder/dialog/BuilderDialog.tsx```tsx
+	import {
+	  Box,
+	  Button,
+	  Dialog,
+	  DialogActions,
+	  DialogContent,
+	  DialogProps,
+	  DialogTitle,
+	  Grid,
+	  IconButton,
+	  MenuItem,
+	  Select,
+	  Typography,
+	  FormHelperText
+	} from '@mui/material';
+	import LoadingButton from '@mui/lab/LoadingButton';
+	import TextField from 'components/ui-component/TextField';
+	import styles from '@/styles/dataDialog.module.scss';
+	import { GridCloseIcon } from '@mui/x-data-grid';
+	import { useIntl } from 'react-intl';
+	import AddIcon from '@mui/icons-material/Add';
+	import { Formik } from 'formik';
+	import { object as yupObject } from 'yup';
+	import { useAsync } from '@/hooks/useAsync';
+	import { createBuilder, updateBuilder } from '@/utils/services/builder';
+	import { success as notifySuccess } from '@/utils/notify';
+	import { BUILDER_CATEGORIES, BUILDER_STATUS, BUILDER_STATUS_ACTIVE } from '@/constant/builder';
+	import stylesDialog from './style.module.scss';
+	import useCommonValidates from '@/hooks/useCommonValidates';
+	import { IBuilder } from '@/types/resource/builder';
+	
+	export interface IFormValues {
+	  builderName: string;
+	  category: string;
+	  completionStatus: string;
+	  imageUrl: string;
+	  address: string;
+	  image?: File;
+	}
+	
+	interface BuilderDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
+	  builder: Partial<IBuilder> | null;
+	  onClose: () => void;
+	  onSuccess?: () => void;
+	}
+	
+	export default function BuilderDialog({ onClose, builder, onSuccess, ...props }: BuilderDialogProps): JSX.Element {
+	  const { formatMessage } = useIntl();
+	  const { execute, isLoading } = useAsync();
+	  const validates = useCommonValidates();
+	  const initialValues: IFormValues = {
+	    builderName: builder?.builderName || '',
+	    category: builder?.category || '',
+	    completionStatus: builder?.completionStatus || BUILDER_STATUS_ACTIVE,
+	    address: builder?.address || '',
+	    imageUrl: builder?.imageUrl || ''
+	  };
+	
+	  const validationSchema = yupObject().shape({
+	    builderName: validates.text({ isRequired: true }),
+	    category: validates.text({ isRequired: true }),
+	    address: validates.text({ isRequired: true })
+	  });
+	
+	  const handleCloseDialog = () => {
+	    if (isLoading) {
+	      return;
+	    }
+	    onClose();
+	  };
+	
+	  const handleSubmitForm = async (values: IFormValues) => {
+	    let result;
+	    if (builder) {
+	      result = await execute(updateBuilder(builder.id + '', values));
+	      if (result.data.success) {
+	        notifySuccess(formatMessage({ id: 'builderApiUpdated' }));
+	        handleCloseDialog();
+	        onSuccess?.();
+	      }
+	    } else {
+	      result = await execute(createBuilder(values));
+	      if (result.data.success) {
+	        notifySuccess(formatMessage({ id: 'builderApiCreated' }));
+	        handleCloseDialog();
+	        onSuccess?.();
+	      }
+	    }
+	  };
+	  return (
+	    <Dialog onClose={handleCloseDialog} {...props}>
+	      <DialogTitle sx={{ pt: '8px' }}>{formatMessage({ id: builder ? 'builderDialogEditTitle' : 'builderDialogAddTitle' })}</DialogTitle>
+	      <IconButton
+	        aria-label="close"
+	        onClick={handleCloseDialog}
+	        sx={{
+	          position: 'absolute',
+	          right: 10,
+	          top: 16,
+	          color: (theme) => theme.palette.grey[500]
+	        }}
+	      >
+	        <GridCloseIcon />
+	      </IconButton>
+	      <Formik
+	        validateOnBlur={false}
+	        validateOnChange={false}
+	        initialValues={initialValues}
+	        validationSchema={validationSchema}
+	        onSubmit={handleSubmitForm}
+	      >
+	        {({ errors, handleChange, handleSubmit, values, setFieldValue }) => {
+	          return (
+	            <form noValidate onSubmit={handleSubmit}>
+	              <DialogContent dividers className={styles.content}>
+	                <Grid container spacing={2.5}>
+	                  <Grid item xs={8}>
+	                    <Typography variant="h5" mb="4px">
+	                      {formatMessage({ id: 'builderDialogCreateNameLabel' })}
+	                    </Typography>
+	                    <TextField
+	                      hiddenLabel
+	                      value={values.builderName}
+	                      name="builderName"
+	                      fullWidth
+	                      size="medium"
+	                      placeholder={formatMessage({ id: 'builderDialogCreateNamePlaceholder' })}
+	                      error={!!errors.builderName}
+	                      helperText={errors.builderName}
+	                      onChange={handleChange}
+	                    />
+	                    <Box sx={{ mb: 2 }} />
+	                    <Typography variant="h5" mb="4px">
+	                      {formatMessage({ id: 'builderDialogCreateCategoryLabel' })}
+	                    </Typography>
+	                    <Select
+	                      value={values.category}
+	                      fullWidth
+	                      placeholder={formatMessage({ id: 'builderDialogCreateCategoryPlaceholder' })}
+	                      sx={{ borderRadius: '12px' }}
+	                      error={!!errors.category}
+	                      onChange={handleChange}
+	                      name="category"
+	                    >
+	                      {BUILDER_CATEGORIES.map((item) => (
+	                        <MenuItem value={item} key={item}>
+	                          {item}
+	                        </MenuItem>
+	                      ))}
+	                    </Select>
+	                    {!!errors.category && (
+	                      <FormHelperText error sx={{ mx: '14px' }}>
+	                        {errors.category}
+	                      </FormHelperText>
+	                    )}
+	                  </Grid>
+	                  <Grid item xs={4} display="flex" flexDirection="column">
+	                    <Typography variant="h5" mb="4px">
+	                      {formatMessage({ id: 'builderDialogCreateThumbnailLabel' })}
+	                    </Typography>
+	                    <Box flex="1" display="flex">
+	                      <Button variant="outlined" color="primary" sx={{ width: '100%', position: 'relative' }} component="label">
+	                        <AddIcon />
+	                        {
+	                          // eslint-disable-next-line @next/next/no-img-element
+	                          !!values.image && <img alt="local" src={URL.createObjectURL(values.image)} className={stylesDialog.imageLocal} />
+	                        }
+	                        <input
+	                          type="file"
+	                          hidden
+	                          id="image"
+	                          name="image"
+	                          accept="image/*"
+	                          onChange={(e) => {
+	                            if (e.currentTarget.files?.[0]) {
+	                              setFieldValue('image', e.currentTarget.files?.[0]);
+	                            }
+	                          }}
+	                        />
+	                      </Button>
+	                    </Box>
+	                  </Grid>
+	                </Grid>
+	                <Box sx={{ mb: 2 }} />
+	                <Grid container spacing={3.125} flexDirection="column">
+	                  <Grid item xs={12}>
+	                    <Typography variant="h5" mb="4px">
+	                      {formatMessage({ id: 'builderDialogCreateAddressLabel' })}
+	                    </Typography>
+	                    <TextField
+	                      multiline
+	                      minRows={4}
+	                      hiddenLabel
+	                      fullWidth
+	                      size="medium"
+	                      name="address"
+	                      placeholder={formatMessage({ id: 'builderDialogCreateAddressPlaceholder' })}
+	                      error={!!errors.address}
+	                      helperText={errors.address}
+	                      onChange={handleChange}
+	                      value={values.address}
+	                    />
+	                  </Grid>
+	                  <Grid item xs={12}>
+	                    <Typography variant="h5" mb="4px">
+	                      {formatMessage({ id: 'builderDialogCreateStatusLabel' })}
+	                    </Typography>
+	                    <Select
+	                      value={values.completionStatus}
+	                      fullWidth
+	                      placeholder={formatMessage({ id: 'builderDialogCreateCategoryPlaceholder' })}
+	                      sx={{ borderRadius: '12px' }}
+	                      onChange={handleChange}
+	                      name="completionStatus"
+	                    >
+	                      {BUILDER_STATUS.map((item) => (
+	                        <MenuItem value={item} key={item}>
+	                          {item}
+	                        </MenuItem>
+	                      ))}
+	                    </Select>
+	                  </Grid>
+	                </Grid>
+	              </DialogContent>
+	
+	              <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
+	                <Button variant="text" color="error" onClick={handleCloseDialog}>
+	                  {formatMessage({ id: 'buttonLabelCancel' })}
+	                </Button>
+	                {isLoading ? (
+	                  <LoadingButton loading variant="contained" color="error" type="submit">
+	                    {formatMessage({ id: 'builderDialogCreateButtonSubmit' })}
+	                  </LoadingButton>
+	                ) : (
+	                  <Button variant="contained" color="error" type="submit">
+	                    {formatMessage({ id: 'builderDialogCreateButtonSubmit' })}
+	                  </Button>
+	                )}
+	              </DialogActions>
+	            </form>
+	          );
+	        }}
+	      </Formik>
+	    </Dialog>
+	  );
+	}
+
+```
+
+src/components/builder/dialog/BuilderDeleteDialog.tsx```tsx
+	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
+	import { GridCloseIcon } from '@mui/x-data-grid';
+	import { Button } from '@/components/ui-component/buttons';
+	import { useIntl } from 'react-intl';
+	import { useAsync } from '@/hooks/useAsync';
+	import { deleteBuilder } from '@/utils/services/builder';
+	import * as notify from '@/utils/notify';
+	import LoadingButton from '@mui/lab/LoadingButton';
+	import { IBuilder } from '@/types/resource/builder';
+	interface BuilderDialogProps extends Omit<DialogProps, 'onClose'> {
+	  builder: Partial<IBuilder> | null;
+	  onClose?: () => void;
+	  onSuccess?: () => void;
+	}
+	
+	export default function BuilderDeleteDialog({ builder, onClose, onSuccess, ...props }: BuilderDialogProps): JSX.Element {
+	  const { formatMessage } = useIntl();
+	  const { isLoading, execute } = useAsync();
+	  const handleClose = () => {
+	    onClose?.();
+	  };
+	
+	  const handleDelete = async () => {
+	    if (builder?.id) {
+	      const result = await execute(deleteBuilder(builder.id + ''));
+	      if (result.data.success) {
+	        handleClose();
+	        notify.success(formatMessage({ id: 'builderApiDeleted' }));
+	        onSuccess?.();
+	      }
+	    }
+	  };
+	  const content = formatMessage({ id: 'builderDialogDeleteContent' }).replace('{builderName}', builder?.builderName || '');
+	  return (
+	    <Dialog onClose={handleClose} {...props}>
+	      <DialogTitle sx={{ pt: '8px' }}>{formatMessage({ id: 'builderDialogDeleteTitle' })}</DialogTitle>
+	      <IconButton
+	        aria-label="close"
+	        onClick={handleClose}
+	        sx={{
+	          position: 'absolute',
+	          right: 10,
+	          top: 16,
+	          color: (theme) => theme.palette.grey[500]
+	        }}
+	      >
+	        <GridCloseIcon />
+	      </IconButton>
+	      <DialogContent dividers sx={{ minWidth: '600px' }}>
+	        <Typography gutterBottom sx={{ my: '12px' }}>
+	          <span
+	            dangerouslySetInnerHTML={{
+	              __html: content
+	            }}
+	          />
+	        </Typography>
+	      </DialogContent>
+	      <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
+	        <Button variant="text" color="error" onClick={handleClose}>
+	          {formatMessage({ id: 'buttonLabelCancel' })}
+	        </Button>
+	        {isLoading ? (
+	          <LoadingButton loading variant="contained" color="error" type="submit">
+	            {formatMessage({ id: 'builderDialogDeleteButtonDelete' })}
+	          </LoadingButton>
+	        ) : (
+	          <Button variant="contained" color="error" type="submit" onClick={handleDelete}>
+	            {formatMessage({ id: 'builderDialogDeleteButtonDelete' })}
+	          </Button>
+	        )}
+	      </DialogActions>
+	    </Dialog>
+	  );
+	}
 
 ```
 
@@ -33213,8 +31652,6 @@ types/next-auth.d.ts```ts
 	  interface Session {
 	    user: {
 	      id: string;
-	      firstName: string;
-	      lastName: string;
 	      token: string;
 	      password: string | null;
 	      provider: string;
@@ -33286,10 +31723,6 @@ lib/swagger/doc/auth/sendCode.ts```ts
 	 *             schema:
 	 *               type: object
 	 *               properties:
-	 *                 status:
-	 *                   type: number
-	 *                   description: Status of the request
-	 *                   example: 200
 	 *                 success:
 	 *                   type: boolean
 	 *                   description: Status of the request
@@ -33310,9 +31743,6 @@ lib/swagger/doc/auth/sendCode.ts```ts
 	 *     ForgotPasswordResponseError:
 	 *       type: object
 	 *       properties:
-	 *         status:
-	 *           type: number
-	 *           description: Status of the request
 	 *         success:
 	 *           type: boolean
 	 *           description: Status of the request
@@ -33369,10 +31799,6 @@ lib/swagger/doc/auth/resetPassword.ts```ts
 	 *             schema:
 	 *               type: object
 	 *               properties:
-	 *                 status:
-	 *                   type: number
-	 *                   description: Status code of the request
-	 *                   example: 200
 	 *                 success:
 	 *                   type: boolean
 	 *                   description: Status of the request
@@ -33393,9 +31819,6 @@ lib/swagger/doc/auth/resetPassword.ts```ts
 	 *     ResetPasswordResponseError:
 	 *       type: object
 	 *       properties:
-	 *         status:
-	 *           type: number
-	 *           description: Status code of the request
 	 *         success:
 	 *           type: boolean
 	 *           description: Status of the request
@@ -33444,21 +31867,14 @@ lib/swagger/doc/auth/verifyCode.ts```ts
 	 *             schema:
 	 *               type: object
 	 *               properties:
-	 *                 status:
-	 *                   type: number
-	 *                   description: Status of the request
-	 *                   example: 200
 	 *                 success:
 	 *                   type: boolean
 	 *                   description: Status of the request
 	 *                   example: true
-	 *                 data:
-	 *                   type: object
-	 *                   properties:
-	 *                     linkResetPassword:
-	 *                       type: string
-	 *                       description: The link to reset the password if the code is valid
-	 *                       example: /reset-password?email=example@gmail.com&token=123456
+	 *                 linkResetPassword:
+	 *                   type: string
+	 *                   description: The link to reset the password if the code is valid
+	 *                   example: /reset-password?email=example@gmail.com&token=123456
 	 *       400:
 	 *         description: Bad Request
 	 *         content:
@@ -33476,9 +31892,6 @@ lib/swagger/doc/auth/verifyCode.ts```ts
 	 *     VerifyCodeResponseError:
 	 *       type: object
 	 *       properties:
-	 *         status:
-	 *           type: number
-	 *           description: Status of the request
 	 *         success:
 	 *           type: boolean
 	 *           description: Status of the request
@@ -33570,17 +31983,8 @@ lib/swagger/doc/auth/register.ts```ts
 	 *             schema:
 	 *               type: object
 	 *               properties:
-	 *                 status:
-	 *                   type: number
-	 *                   example: 200
-	 *                 success:
-	 *                   type: boolean
-	 *                   example: true
-	 *                 data:
-	 *                   type: object
-	 *                   properties:
-	 *                     message:
-	 *                       type: string
+	 *                 message:
+	 *                   type: string
 	 *       400:
 	 *         description: Bad request
 	 *         content:
@@ -33588,12 +31992,6 @@ lib/swagger/doc/auth/register.ts```ts
 	 *             schema:
 	 *               type: object
 	 *               properties:
-	 *                 status:
-	 *                   type: number
-	 *                   example: 400
-	 *                 success:
-	 *                   type: boolean
-	 *                   example: false
 	 *                 errors:
 	 *                   type: array
 	 *                   items:
@@ -35362,39 +33760,6 @@ lib/swagger/doc/builder/put.ts```ts
 	*         success:
 	*           type: boolean
 	*           description: Builder updated
-	*         builder:
-	*           type: object
-	*           properties:
-	*             _id:
-	*               type: string      
-	*             builderName:
-	*               type: string
-	*             category:
-	*               type: string
-	*             address:
-	*               type: string
-	*             completionStatus:
-	*               type: string
-	*             imageUrl:
-	*               type: string
-	*             date:
-	*               type: string
-	*             dateCreate:
-	*               type: string
-	*             dateModify:
-	*               type: string
-	*             generalContractor:
-	*               type: string
-	*             budgetSeperatorComma:
-	*               type: string
-	*             budgetSeperatorSemiColon:
-	*               type: string
-	*             budgetSeperatorTab:
-	*               type: string
-	*             creatorId:
-	*               type: string
-	*             creatorEmail:
-	*               type: string
 	* @param request
 	* @constructor
 	*/
@@ -35679,29 +34044,29 @@ lib/swagger/doc/builder/get.ts```ts
 	*         required: false
 	*         description: Page size
 	*       - in: query
-	*         name: sortBy
-	*         schema:
-	*           type: string
-	*         required: false
-	*         description: Sort by builder's column
-	*       - in: query
-	*         name: sortDir
+	*         name: sort
 	*         schema:
 	*           type: string
 	*         required: false
 	*         description: Sort direction
 	*       - in: query
+	*         name: field
+	*         schema:
+	*           type: string
+	*         required: false
+	*         description: Sort by this field
+	*       - in: query
+	*         name: fields
+	*         schema:
+	*           type: string
+	*         required: false
+	*         description: Sort by these fields
+	*       - in: query
 	*         name: search
 	*         schema:
 	*           type: string
 	*         required: false
-	*         description: Search by builder name
-	*       - in: query
-	*         name: filterBy
-	*         schema:
-	*           type: string
-	*         required: false
-	*         description: Filter by builder's column
+	*         description: Search builder name
 	*     responses:
 	*       '200':
 	*         description: List Builder
@@ -35716,7 +34081,7 @@ lib/swagger/doc/builder/get.ts```ts
 	*       items:
 	*         type: object
 	*         properties:
-	*           _id:
+	*           id:
 	*             type: string      
 	*           builderName:
 	*             type: string

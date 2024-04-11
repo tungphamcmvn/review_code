@@ -1,753 +1,2827 @@
-title:	J2C-116 Change name to first name and last name for user & refactor response struct
+title:	[Project] Api for page project 
 state:	MERGED
-author:	MinhT191195
+author:	huyphamnguyen
 labels:	
 assignees:	
-reviewers:	
+reviewers:	MinhT191195 (Commented)
 projects:	
 milestone:	
-number:	11
-url:	https://github.com/invik-33/j2c-app/pull/11
-additions:	181
-deletions:	55
+number:	10
+url:	https://github.com/invik-33/j2c-app/pull/10
+additions:	1010
+deletions:	864
 --
-…esponse struct
+Create/add/edit a project
 
 
-diff --git a/lib/swagger/doc/auth/register.ts b/lib/swagger/doc/auth/register.ts
-index 35c28fc..ddf32b0 100644
---- a/lib/swagger/doc/auth/register.ts
-+++ b/lib/swagger/doc/auth/register.ts
-@@ -18,8 +18,17 @@
-  *             schema:
-  *               type: object
-  *               properties:
-- *                 message:
-- *                   type: string
-+ *                 status:
-+ *                   type: number
-+ *                   example: 200
-+ *                 success:
-+ *                   type: boolean
-+ *                   example: true
-+ *                 data:
-+ *                   type: object
-+ *                   properties:
-+ *                     message:
-+ *                       type: string
-  *       400:
-  *         description: Bad request
-  *         content:
-@@ -27,6 +36,12 @@
-  *             schema:
-  *               type: object
-  *               properties:
-+ *                 status:
-+ *                   type: number
-+ *                   example: 400
-+ *                 success:
-+ *                   type: boolean
-+ *                   example: false
-  *                 errors:
-  *                   type: array
-  *                   items:
-diff --git a/lib/swagger/doc/auth/resetPassword.ts b/lib/swagger/doc/auth/resetPassword.ts
-index 95c0d95..34f3be4 100644
---- a/lib/swagger/doc/auth/resetPassword.ts
-+++ b/lib/swagger/doc/auth/resetPassword.ts
-@@ -37,6 +37,10 @@
-  *             schema:
-  *               type: object
-  *               properties:
-+ *                 status:
-+ *                   type: number
-+ *                   description: Status code of the request
-+ *                   example: 200
-  *                 success:
-  *                   type: boolean
-  *                   description: Status of the request
-@@ -57,6 +61,9 @@
-  *     ResetPasswordResponseError:
-  *       type: object
-  *       properties:
-+ *         status:
-+ *           type: number
-+ *           description: Status code of the request
-  *         success:
-  *           type: boolean
-  *           description: Status of the request
-diff --git a/lib/swagger/doc/auth/sendCode.ts b/lib/swagger/doc/auth/sendCode.ts
-index a58af39..378c4a4 100644
---- a/lib/swagger/doc/auth/sendCode.ts
-+++ b/lib/swagger/doc/auth/sendCode.ts
-@@ -25,6 +25,10 @@
-  *             schema:
-  *               type: object
-  *               properties:
-+ *                 status:
-+ *                   type: number
-+ *                   description: Status of the request
-+ *                   example: 200
-  *                 success:
-  *                   type: boolean
-  *                   description: Status of the request
-@@ -45,6 +49,9 @@
-  *     ForgotPasswordResponseError:
-  *       type: object
-  *       properties:
-+ *         status:
-+ *           type: number
-+ *           description: Status of the request
-  *         success:
-  *           type: boolean
-  *           description: Status of the request
-diff --git a/lib/swagger/doc/auth/verifyCode.ts b/lib/swagger/doc/auth/verifyCode.ts
-index 1615b3e..389c6e0 100644
---- a/lib/swagger/doc/auth/verifyCode.ts
-+++ b/lib/swagger/doc/auth/verifyCode.ts
-@@ -29,14 +29,21 @@
-  *             schema:
-  *               type: object
-  *               properties:
-+ *                 status:
-+ *                   type: number
-+ *                   description: Status of the request
-+ *                   example: 200
-  *                 success:
-  *                   type: boolean
-  *                   description: Status of the request
-  *                   example: true
-- *                 linkResetPassword:
-- *                   type: string
-- *                   description: The link to reset the password if the code is valid
-- *                   example: /reset-password?email=example@gmail.com&token=123456
-+ *                 data:
-+ *                   type: object
-+ *                   properties:
-+ *                     linkResetPassword:
-+ *                       type: string
-+ *                       description: The link to reset the password if the code is valid
-+ *                       example: /reset-password?email=example@gmail.com&token=123456
-  *       400:
-  *         description: Bad Request
-  *         content:
-@@ -54,6 +61,9 @@
-  *     VerifyCodeResponseError:
-  *       type: object
-  *       properties:
-+ *         status:
-+ *           type: number
-+ *           description: Status of the request
-  *         success:
-  *           type: boolean
-  *           description: Status of the request
-diff --git a/src/app/api/auth/code/send/route.ts b/src/app/api/auth/code/send/route.ts
-index 0f0ccde..3c95052 100644
---- a/src/app/api/auth/code/send/route.ts
-+++ b/src/app/api/auth/code/send/route.ts
-@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
- import MongoConnect from '@/backend/connection/mongo.connection';
- import ForgotPasswordValidator from '@/backend/validator/forgot-password.validator';
- import AuthService from '@/backend/services/auth.service';
-+import ResponseStruct from '@/backend/structs/response.struct';
- 
- export type RequestType = {
-   email: string;
-@@ -9,7 +10,7 @@ export type RequestType = {
- 
- export async function POST(request: NextRequest) {
-   const { email }: RequestType = await request.json();
--
-+  const responseStruct = new ResponseStruct(true);
-   const conn = await MongoConnect();
- 
-   try {
-@@ -18,14 +19,19 @@ export async function POST(request: NextRequest) {
-     await validator.validate();
- 
-     if (validator.getErrors().length > 0) {
--      return NextResponse.json({ success: false, errors: validator.getErrors() }, { status: 400 });
-+      responseStruct.setStatus(400);
-+      responseStruct.setErrors(validator.getErrors());
-+
-+      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+diff --git a/lib/swagger/doc/project/delete.ts b/lib/swagger/doc/project/delete.ts
+new file mode 100644
+index 0000000..fe87cf3
+--- /dev/null
++++ b/lib/swagger/doc/project/delete.ts
+@@ -0,0 +1,49 @@
++// @ts-nocheck
++/**
++* @swagger
++ 
++* /api/project/{id}:
++*   delete:
++*     tags:
++*       - Project
++*     description: Delete a project
++*     summary: Delete a project
++*     security:
++*       - bearerAuth: []
++*     parameters:
++*       - in: path
++*         name: id
++*         schema:
++*           type: string
++*         required: true
++*         description: The Project's id
++*     requestBody:
++*       required: false
++*       content:
++*         application/json:
++*     responses:
++*       200:
++*         description: Project deleted
++*         content:
++*           application/json:
++*             schema:
++*               type: object
++*               properties:
++*                 success:
++*                   type: boolean
++*                   description: Project deleted
++*       400:
++*         description: Bad request
++*         content:
++*           application/json:
++*             schema:
++*               type: object
++*               properties:
++*                 errors:
++*                   type: array
++*                   items:
++*                     type: string
++* @param request
++* @constructor
++*/
++export {};
+diff --git a/lib/swagger/doc/project/get.ts b/lib/swagger/doc/project/get.ts
+new file mode 100644
+index 0000000..84e0b0f
+--- /dev/null
++++ b/lib/swagger/doc/project/get.ts
+@@ -0,0 +1,110 @@
++/**
++@swagger
++* /api/project:
++*   get:
++*     summary: Get list projects
++*     description: Get list projects
++*     tags:
++*       - Project
++*     security:
++*       - bearerAuth: []
++*     parameters:
++*       - in: query
++*         name: page
++*         schema:
++*           type: number
++*         required: false
++*         description: Current page
++*       - in: query
++*         name: limit
++*         schema:
++*           type: number
++*         required: false
++*         description: Page size
++*       - in: query
++*         name: sort
++*         schema:
++*           type: string
++*         required: false
++*         description: Sort direction (asc / desc)
++*       - in: query
++*         name: field
++*         schema:
++*           type: string
++*         required: false
++*         description: Sort by this field
++*       - in: query
++*         name: search
++*         schema:
++*           type: string
++*         required: false
++*         description: Search this keyword by project name
++*       - in: query
++*         name: fields
++*         schema:
++*           type: string
++*         required: false
++*         description: Sort by these fields
++*     responses:
++*       '200':
++*         description: List projects
++*         content:
++*           application/json:
++*             schema:
++*               $ref: '#/components/schemas/Project'
++* components:
++*   schemas:
++*     Project:
++*       type: array
++*       items:
++*         type: object
++*         properties:
++*           id:
++*             type: string      
++*           address:
++*             type: string
++*           amount:
++*             type: string
++*           builderId:
++*             type: string
++*           category:
++*             type: string
++*           creatorEmail:
++*             type: string
++*           creatorId:
++*             type: string
++*           currency:
++*             type: string
++*           currentClaimNumber:
++*             type: number
++*           date:
++*             type: string
++*           dateCreate:
++*             type: string
++*           startDate:
++*             type: string
++*           dateModify:
++*             type: string
++*           imageUrl:
++*             type: string
++*           items:
++*             type: string
++*           projectName:
++*             type: string
++*           role0:
++*             type: string
++*           role1:
++*             type: string
++*           role2:
++*             type: string
++*           role3:
++*             type: string
++*           role4:
++*             type: string
++*           roleProjectContractors:
++*             type: string
++* 
++* @param request
++* @constructor
++**/
++export {};
+diff --git a/lib/swagger/doc/project/getDetail.ts b/lib/swagger/doc/project/getDetail.ts
+new file mode 100644
+index 0000000..23ac404
+--- /dev/null
++++ b/lib/swagger/doc/project/getDetail.ts
+@@ -0,0 +1,48 @@
++/**
++* @swagger
++ 
++* /api/project/{id}:
++*   get:
++*     tags:
++*       - Project
++*     description: Get a project
++*     summary: Get a project
++*     security:
++*       - bearerAuth: []
++*     parameters:
++*       - in: path
++*         name: id
++*         schema:
++*           type: string
++*         required: true
++*         description: The Project's id
++*     responses:
++*       200:
++*         description: Project updated
++*         content:
++*           application/json:
++*             schema:
++*               $ref: '#/components/schemas/ProjectResponse'
++*       400:
++*         description: Bad request
++*         content:
++*           application/json:
++*             schema:
++*               type: object
++*               properties:
++*                 errors:
++*                   type: array
++*                   items:
++*                     type: string
++* components:
++*   schemas:
++*     ProjectResponse:
++*       type: object
++*       properties:
++*         success:
++*           type: boolean
++*           description: Project updated
++* @param request
++* @constructor
++*/
++export {};
+diff --git a/lib/swagger/doc/project/post.ts b/lib/swagger/doc/project/post.ts
+new file mode 100644
+index 0000000..17797b5
+--- /dev/null
++++ b/lib/swagger/doc/project/post.ts
+@@ -0,0 +1,77 @@
++/**
++@swagger
++* /api/project:
++*   post:
++*     tags:
++*       - Project
++*     description: Create a project
++*     summary: Create a project
++*     security:
++*       - bearerAuth: []
++*     requestBody:
++*       required: false
++*       content:
++*         multipart/form-data:
++*           schema:
++*             $ref: '#/components/schemas/ProjectCreated'
++*     responses:
++*       200:
++*         description: Project created
++*         content:
++*           application/json:
++*             schema:
++*               $ref: '#/components/schemas/ProjectResponse'
++*       400:
++*         description: Bad request
++*         content:
++*           application/json:
++*             schema:
++*               type: object
++*               properties:
++*                 errors:
++*                   type: array
++*                   items:
++*                     type: string
++* components:
++*   schemas:
++*     ProjectCreated:
++*       type: object
++*       properties:
++*         projectName:
++*           type: string
++*           format: projectName
++*           description: Project's name
++*           example: Project demo
++*           required: true
++*         startDate:
++*           type: string
++*           format: startDate
++*           description: Project's start date
++*           example: 01/01/2024
++*           required: true
++*         address:
++*           type: string
++*           format: address
++*           description: Project's address
++*           example: Anytown, CA 90210
++*           required: true
++*         currentClaimNumber:
++*           type: number
++*           format: currentClaimNumber
++*           description: Project's current claim number
++*           example: 100000
++*           required: true
++*         image:
++*           type: string
++*           format: binary
++*           require: false
++*     ProjectResponse:
++*       type: object
++*       properties:
++*         success:
++*           type: boolean
++*           description: Project created
++@param request
++@constructor
++**/
++export {};
+diff --git a/lib/swagger/doc/project/put.ts b/lib/swagger/doc/project/put.ts
+new file mode 100644
+index 0000000..24650eb
+--- /dev/null
++++ b/lib/swagger/doc/project/put.ts
+@@ -0,0 +1,84 @@
++/**
++* @swagger
++ 
++* /api/project/{id}:
++*   put:
++*     tags:
++*       - Project
++*     description: Edit a project
++*     summary: Edit a project
++*     security:
++*       - bearerAuth: []
++*     parameters:
++*       - in: path
++*         name: id
++*         schema:
++*           type: string
++*         required: true
++*         description: The Project's id
++*     requestBody:
++*       required: false
++*       content:
++*         multipart/form-data:
++*           schema:
++*             $ref: '#/components/schemas/ProjectEdited'
++*     responses:
++*       200:
++*         description: Project updated
++*         content:
++*           application/json:
++*             schema:
++*               $ref: '#/components/schemas/ProjectResponse'
++*       400:
++*         description: Bad request
++*         content:
++*           application/json:
++*             schema:
++*               type: object
++*               properties:
++*                 errors:
++*                   type: array
++*                   items:
++*                     type: string
++* components:
++*   schemas:
++*     ProjectEdited:
++*       type: object
++*       properties:
++*         projectName:
++*           type: string
++*           format: projectName
++*           description: Project's name
++*           example: Horizon Development Group
++*           required: true
++*         startDate:
++*           type: string
++*           format: category
++*           description: Project's start date
++*           example: Residential
++*           required: true
++*         address:
++*           type: string
++*           format: address
++*           description: Project's address
++*           example: Anytown, CA 90210
++*           required: true
++*         currentClaimNumber:
++*           type: string
++*           format: currentClaimNumber
++*           description: Project's current claim number
++*           example: Active
++*           required: true
++*         image:
++*           type: string
++*           format: binary
++*     ProjectResponse:
++*       type: object
++*       properties:
++*         success:
++*           type: boolean
++*           description: Project updated
++* @param request
++* @constructor
++*/
++export {};
+diff --git a/next.config.js b/next.config.js
+index 546f2eb..a923bbd 100644
+--- a/next.config.js
++++ b/next.config.js
+@@ -38,7 +38,12 @@ module.exports = {
      }
- 
-     const authService = new AuthService(conn);
-     await authService.forgotPassword(email);
-+    responseStruct.setStatus(200);
-   } catch (err: any) {
--    return NextResponse.json({ success: false, errors: [err.message] }, { status: 500 });
-+    responseStruct.pushError(err.message);
-+    responseStruct.setStatus(400);
-   }
- 
--  return NextResponse.json({ success: true }, { status: 200 });
-+  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
- }
-diff --git a/src/app/api/auth/code/verify/route.ts b/src/app/api/auth/code/verify/route.ts
-index dc1e97b..35ffcdf 100644
---- a/src/app/api/auth/code/verify/route.ts
-+++ b/src/app/api/auth/code/verify/route.ts
-@@ -1,6 +1,7 @@
+   },
+   images: {
+-    domains: ['flagcdn.com']
++    remotePatterns: [
++      {
++        protocol: 'https',
++        hostname: 'j2ccdn.tnodes.com'
++      }
++    ]
+   },
+   env: {
+     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
+diff --git a/src/app/api/invoice/upsert/route.ts b/src/app/api/invoice/upsert/route.ts
+index 2cfee2d..7ec4ac8 100644
+--- a/src/app/api/invoice/upsert/route.ts
++++ b/src/app/api/invoice/upsert/route.ts
+@@ -1,44 +1,9 @@
  import { NextRequest, NextResponse } from 'next/server';
- import MongoConnect from '@/backend/connection/mongo.connection';
- import AuthService from '@/backend/services/auth.service';
-+import ResponseStruct from '@/backend/structs/response.struct';
- 
- type RequestType = {
-   email: string;
-@@ -9,6 +10,7 @@ type RequestType = {
- 
- export async function POST(request: NextRequest) {
-   const data: RequestType = await request.json();
-+  const responseStruct = new ResponseStruct(true);
- 
-   let linkResetPassword = '';
-   try {
-@@ -18,9 +20,17 @@ export async function POST(request: NextRequest) {
-     const userDto = await authService.verifyCode(data.email, data.code);
- 
-     linkResetPassword = await authService.generatePasswordResetToken(userDto._id.valueOf() as string);
-+
-+    responseStruct.setStatus(200);
-+    responseStruct.setData({
-+      data: {
-+        linkResetPassword
-+      }
-+    });
-   } catch (error: any) {
--    return NextResponse.json({ success: false, errors: [error.message] }, { status: 500 });
-+    responseStruct.pushError(error.message);
-+    responseStruct.setStatus(500);
-   }
- 
--  return NextResponse.json({ success: data?.code?.length === 4, linkResetPassword }, { status: 200 });
-+  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
- }
-diff --git a/src/app/api/auth/register/route.ts b/src/app/api/auth/register/route.ts
-index ba547f9..3ceef6b 100644
---- a/src/app/api/auth/register/route.ts
-+++ b/src/app/api/auth/register/route.ts
-@@ -3,17 +3,20 @@ import RegisterValidator from '@/backend/validator/register.validator';
- import MongoConnect from '@/backend/connection/mongo.connection';
- import AuthService from '@/backend/services/auth.service';
- import { UserStatus } from '@/utils/enums';
-+import ResponseStruct from '@/backend/structs/response.struct';
+-import MongoConnect from '@/backend/connection/mongo.connection';
+-import InvoiceRepository from '@/backend/repositories/mongodb/invoice.repository';
+-import InvoiceService from '@/backend/services/invoice.service';
+-import RoleRepository from '@/backend/repositories/mongodb/role.repository';
+-import ContractorRepository from '@/backend/repositories/mongodb/contractor.repository';
+-import BudgetService from '@/backend/services/budget.service';
+-import BudgetRepository from '@/backend/repositories/mongodb/budget.repository';
+-import ProjectService from '@/backend/services/project.service';
+-import ProjectRepository from '@/backend/repositories/mongodb/project.repository';
  
  export async function POST(request: NextRequest) {
--  const data: { email: string; password: string; name: string } = await request.json();
-+  const data: { email: string; password: string; firstName: string; lastName: string } = await request.json();
- 
-   const conn = await MongoConnect();
-   const authService = new AuthService(conn);
-+  const responseStruct = new ResponseStruct(true);
- 
-   const requestData = {
-     email: data.email,
-     password: data.password,
--    name: data.name
-+    firstName: data.firstName,
-+    lastName: data.lastName
-   };
- 
-   const requestValidator = new RegisterValidator(requestData, conn);
-@@ -22,15 +25,33 @@ export async function POST(request: NextRequest) {
-     await requestValidator.validate();
- 
-     if (requestValidator.getErrors().length > 0) {
--      return NextResponse.json({ errors: requestValidator.getErrors() }, { status: 400 });
--    }
-+      responseStruct.setStatus(400);
-+      responseStruct.setErrors(requestValidator.getErrors());
- 
--    const user = await authService.createNewUser(data.email, data.name, false, UserStatus.INACTIVE, data.password, null);
-+      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-+    }
- 
--    await authService.sendEmailConfirmation(user.get('_id').valueOf(), user.get('email'), user.get('name'));
-+    const user = await authService.createNewUser(
-+      data.email,
-+      data.firstName,
-+      data.lastName,
-+      false,
-+      UserStatus.INACTIVE,
-+      data.password,
-+      null
-+    );
-+
-+    await authService.sendEmailConfirmation(user.get('_id').valueOf(), user.get('email'), `${data.firstName} ${data.lastName}`);
-+    responseStruct.setStatus(200);
-+    responseStruct.setData({
-+      data: {
-+        message: 'User created successfully. Please check your email to verify your account.'
-+      }
-+    });
-   } catch (error: any) {
--    return NextResponse.json({ errors: [error.message] }, { status: 400 });
-+    responseStruct.pushError(error.message);
-+    responseStruct.setStatus(500);
-   }
- 
--  return NextResponse.json({ message: 'success' }, { status: 200 });
-+  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
- }
-diff --git a/src/app/api/auth/reset-password/route.ts b/src/app/api/auth/reset-password/route.ts
-index a300905..83db717 100644
---- a/src/app/api/auth/reset-password/route.ts
-+++ b/src/app/api/auth/reset-password/route.ts
-@@ -3,6 +3,7 @@ import UserRepository from '@/backend/repositories/mongodb/user.repository';
- import MongoConnect from '@/backend/connection/mongo.connection';
- import UserService from '@/backend/services/user.service';
- import ResetPasswordValidator from '@/backend/validator/reset-password.validator';
-+import ResponseStruct from '@/backend/structs/response.struct';
- 
- export type RequestType = {
-   email: string;
-@@ -13,12 +14,16 @@ export type RequestType = {
- 
- export async function POST(request: NextRequest) {
-   const { email, password, confirmPassword, token } = await request.json();
-+  const responseStruct = new ResponseStruct(true);
- 
-   const validator = new ResetPasswordValidator({ email, password, confirmPassword, token });
-   validator.validate();
- 
-   if (validator.getErrors().length > 0) {
--    return NextResponse.json({ success: false, errors: validator.getErrors() }, { status: 400 });
-+    responseStruct.setStatus(400);
-+    responseStruct.setErrors(validator.getErrors());
-+
-+    return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-   }
- 
-   try {
-@@ -26,9 +31,11 @@ export async function POST(request: NextRequest) {
-     const userRepository = new UserRepository(conn);
-     const userServices = new UserService(userRepository);
-     await userServices.changePassword(email, password, token);
-+    responseStruct.setStatus(200);
-   } catch (err: any) {
--    return NextResponse.json({ success: false, errors: [err.message] }, { status: 500 });
-+    responseStruct.pushError(err.message);
-+    responseStruct.setStatus(500);
-   }
- 
--  return NextResponse.json({ success: true }, { status: 200 });
-+  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
- }
-diff --git a/src/app/api/auth/token/[email]/route.ts b/src/app/api/auth/token/[email]/route.ts
-index 7f11af4..1daaee8 100644
---- a/src/app/api/auth/token/[email]/route.ts
-+++ b/src/app/api/auth/token/[email]/route.ts
-@@ -2,10 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
- import { encode } from 'next-auth/jwt';
- import MongoConnect from '@/backend/connection/mongo.connection';
- import UserRepository from '@/backend/repositories/mongodb/user.repository';
-+import ResponseStruct from '@/backend/structs/response.struct';
- 
- export async function GET(request: NextRequest, { params }: { params: { email: string } }) {
-   const { email } = params;
+-  const conn = await MongoConnect();
+-  const budgetRepository = new BudgetRepository(conn);
+-  const contractorRepository = new ContractorRepository(conn);
+-  const invoiceRepository = new InvoiceRepository(conn);
+-  const projectRepository = new ProjectRepository(conn);
+-  const roleRepository = new RoleRepository(conn);
+-  const invoiceService = new InvoiceService(invoiceRepository, roleRepository, contractorRepository);
+-  const budgetService = new BudgetService(budgetRepository);
+-  const projectService = new ProjectService(projectRepository, roleRepository);
+-  const data = await request.json();
 -
-+  const responseStruct = new ResponseStruct(true);
-   const conn = await MongoConnect();
- 
    try {
-@@ -13,7 +14,10 @@ export async function GET(request: NextRequest, { params }: { params: { email: s
-     const user = await userRepo.findOne({ email });
- 
-     if (!user) {
--      return NextResponse.json({ message: 'Email not found' }, { status: 404 });
-+      responseStruct.setStatus(404);
-+      responseStruct.pushError('Email not found');
-+
-+      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-     }
- 
-     const token = await encode({
-@@ -24,8 +28,12 @@ export async function GET(request: NextRequest, { params }: { params: { email: s
-       maxAge: 60 * 60 * 4 // 4 hours
-     });
- 
--    return NextResponse.json({ token }, { status: 200, statusText: 'OK' });
-+    responseStruct.setStatus(200);
-+    responseStruct.setData({ data: { token } });
+-    await invoiceService.upsertInvoice(data.isEdit, data);
+-
+-    await budgetService.updateBudgetTotalClaim(data.budgetId, null, 0);
+-
+-    const project = await projectService.getProject(data.projectId);
+-
+-    if (project) {
+-      const sumTotal =
+-        project.currentClaimNumber === null || project.currentClaimNumber.length > 0
+-          ? await invoiceService.sumInvoiceTotals(data.budgetId, project.currentClaimNumber)
+-          : 0;
+-
+-      await budgetService.updateBudgetTotalClaim(data.budgetId, project.currentClaimNumber, sumTotal);
+-    }
++    return NextResponse.json({ success: true }, { status: 500 });
    } catch (error) {
--    return NextResponse.json({ errors: ['Unauthorized'] }, { status: 401 });
-+    responseStruct.pushError('Unauthorized');
-+    responseStruct.setStatus(401);
+     return NextResponse.json({ message: 'Error upsert invoice' }, { status: 500 });
    }
-+
-+  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+-
+-  return NextResponse.json({ message: 'Upsert invoice successfully' }, { status: 200 });
  }
-diff --git a/src/app/api/profile/update/[id]/route.ts b/src/app/api/profile/update/[id]/route.ts
-index a291bd5..73d63bb 100644
---- a/src/app/api/profile/update/[id]/route.ts
-+++ b/src/app/api/profile/update/[id]/route.ts
-@@ -33,7 +33,8 @@ export async function PUT(request: NextRequest, { params }: { params: { id: stri
+diff --git a/src/app/api/listing.ts b/src/app/api/listing.ts
+index e4cd300..9f12f5d 100644
+--- a/src/app/api/listing.ts
++++ b/src/app/api/listing.ts
+@@ -6,8 +6,9 @@ export const handleListRequest = (
+   page: string | number,
+   sort: string,
+   field: string | null,
+-  fields: string | null
+-): { limit: number; page: number; order: { [key: string]: 'asc' | 'desc' } } => {
++  fields: string | null,
++  search: string
++): { limit: number; page: number; order: { [key: string]: 'asc' | 'desc' }; search: string } => {
+   let order: { [key: string]: 'asc' | 'desc' } = {};
+   if (sort !== 'asc' && sort !== 'desc') {
+     sort = 'asc';
+@@ -42,16 +43,20 @@ export const handleListRequest = (
+   return {
+     limit,
+     page,
+-    order
++    order,
++    search
+   };
+ };
  
-     await userService.updateProfile(id, {
-       email: data.email,
--      name: data.name,
-+      firstName: data.firstName,
-+      lastName: data.lastName,
-       phoneNumber: data.phoneNumber,
-       company: data.company,
-       country: data.country,
-diff --git a/src/app/api/user/[id]/delete/route.ts b/src/app/api/user/[id]/delete/route.ts
-index 4831775..b1238e8 100644
---- a/src/app/api/user/[id]/delete/route.ts
-+++ b/src/app/api/user/[id]/delete/route.ts
-@@ -6,7 +6,7 @@ import UserService from '@/backend/services/user.service';
- import { Actions } from '@/utils/enums';
- import NotFoundException from '@/backend/exceptions/notfound.exception';
- import { headers } from 'next/headers';
--import { decode, JWT}  from 'next-auth/jwt';
-+import { decode, JWT } from 'next-auth/jwt';
+-export const getListingQuery = (request: NextRequest): { limit: number; page: number; order: { [key: string]: 'asc' | 'desc' } } => {
++export const getListingQuery = (
++  request: NextRequest
++): { limit: number; page: number; order: { [key: string]: 'asc' | 'desc' }; search: string } => {
+   let limit = (request.nextUrl.searchParams.get('limit') as string) || PAGINATE_PAGE_SIZE;
+   let page = (request.nextUrl.searchParams.get('page') as string) || PAGINATE_OFFSET;
+   let sort = request.nextUrl.searchParams.get('sort') || 'asc';
+   let field = request.nextUrl.searchParams.get('field');
+   let fields = request.nextUrl.searchParams.get('fields');
++  let search = (request.nextUrl.searchParams.get('search') as string) || '';
  
- export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
-   const token = headers().get('authorization')?.split(' ')[1];
-diff --git a/src/auth.ts b/src/auth.ts
-index a6ca3d7..1e3dc61 100644
---- a/src/auth.ts
-+++ b/src/auth.ts
-@@ -47,7 +47,7 @@ export const authOptions = {
+-  return handleListRequest(limit, page, sort, field, fields);
++  return handleListRequest(limit, page, sort, field, fields, search);
+ };
+diff --git a/src/app/api/project/[id]/route.ts b/src/app/api/project/[id]/route.ts
+index 6a3158c..660dba1 100644
+--- a/src/app/api/project/[id]/route.ts
++++ b/src/app/api/project/[id]/route.ts
+@@ -1,45 +1,87 @@
++import MongoConnect from '@/backend/connection/mongo.connection';
+ import { NextRequest, NextResponse } from 'next/server';
++import { parsePayloadProjectToCreateData } from '@/utils/helper';
++import ObjectIdValidator from '@/backend/validator/objectId.validator';
++import StorageFactory from '@/backend/services/storage/storage.factory';
++import ProjectService from '@/backend/services/project.service';
++import ProjectValidator from '@/backend/validator/project.validator';
  
-             return {
-               id: user.get('_id').valueOf(),
--              name: user.get('name') || '',
-+              name: `${user.get('firstName')} ${user.get('lastName')}` || '',
-               email: user.get('email') || '',
-               image: user.get('imageUrl') || null
-             };
-@@ -109,6 +109,17 @@ export const authOptions = {
-           provider: params.account.provider || ''
-         };
-       }
+-export async function GET(request: NextRequest) {
+-  const project = {
+-    _id: 'P001',
+-    projectName: "Writer's Retreat",
+-    startDate: '2024-01-10T14:42:43.530+00:00',
+-    address: 'Carmel-by-the-Sea, CA 93923',
+-    amount: 320000,
+-    currentClaimNumber: '160000',
+-    builderId: 'B001',
+-    category: 'Commercial',
+-    completionStatus: 'Active',
+-    creatorEmail: 'huypham@gmail.com',
+-    creatorId: '1',
+-    currency: '$',
+-    budgetSeperatorComma: false,
+-    budgetSeperatorSemiColon: false,
+-    budgetSeperatorTab: false,
+-    date: new Date(),
+-    dateCreate: new Date(),
+-    dateModify: new Date(),
+-    imageUrl: '/assets/images/j2c-logo.svg',
+-    items: ''
+-  };
+-
+-  return NextResponse.json(project, { status: 200 });
++export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
++  const { id } = params;
++  if (!id) {
++    return NextResponse.json({ errors: ['Project id not found'] }, { status: 400 });
++  }
++  const conn = await MongoConnect();
++  const projectService = new ProjectService(conn);
++  try {
++    const project = await projectService.getProject(id);
++    if (!project) {
++      return NextResponse.json({ errors: ['Project not found'] }, { status: 400 });
++    }
 +
-+      if (params.account?.provider === 'google') {
-+        params.token = {
-+          ...params.token,
-+          // @ts-ignore
-+          firstName: params.profile?.given_name || '',
-+          // @ts-ignore
-+          lastName: params.profile?.family_name || ''
-+        };
-+      }
++    return NextResponse.json({ success: true, project }, { status: 200 });
++  } catch (error) {
++    return NextResponse.json({ errors: [error] }, { status: 400 });
++  }
+ }
+ 
+-type RequestType = {
+-  projectName: string;
+-  startDate: string;
+-  address: string;
+-  imageUrl: string;
+-  currentClaim: number;
+-};
+-export async function PUT(request: NextRequest) {
+-  const data: RequestType = await request.json();
+-
+-  return NextResponse.json(data, { status: 200 });
++export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
++  const { id } = params;
++  const objectIdValidator = new ObjectIdValidator({ id });
++  await objectIdValidator.validate();
 +
-       // Persist the OAuth access_token and or the user id to the token right after signin
-       return params.token;
-     },
-@@ -134,7 +145,8 @@ export const authOptions = {
++  if (objectIdValidator.getErrors().length > 0) {
++    return NextResponse.json({ errors: ['Invalid project id'] }, { status: 400 });
++  }
++  const formData = await request.formData();
++
++  const conn = await MongoConnect();
++  const projectService = new ProjectService(conn);
++
++  try {
++    const data = parsePayloadProjectToCreateData(formData);
++    const projectValidator = new ProjectValidator(data);
++    await projectValidator.validate();
++
++    if (projectValidator.getErrors().length > 0) {
++      return NextResponse.json({ errors: projectValidator.getErrors() }, { status: 400 });
++    }
++
++    await projectService.updateProject(id, formData);
++    return NextResponse.json({ success: true }, { status: 200 });
++  } catch (error) {
++    return NextResponse.json({ errors: [error] }, { status: 400 });
++  }
+ }
  
-           const newUser = await authService.getOrCreateNewUser(
-             params.token.email as string,
--            params.token.name as string,
-+            params.token.firstName as string,
-+            params.token.lastName as string,
-             params.token.image as string
-           );
+-export async function DELETE(request: NextRequest) {
+-  return NextResponse.json({ success: true }, { status: 200 });
++export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
++  const { id } = params;
++  const objectIdValidator = new ObjectIdValidator({ id });
++  await objectIdValidator.validate();
++
++  if (objectIdValidator.getErrors().length > 0) {
++    return NextResponse.json({ errors: ['Invalid project id'] }, { status: 400 });
++  }
++
++  const conn = await MongoConnect();
++  const projectService = new ProjectService(conn);
++
++  try {
++    const project = await projectService.getProject(id);
++    if (!project) {
++      return NextResponse.json({ errors: ['Project not found'] }, { status: 400 });
++    }
++
++    await projectService.deleteProject(id);
++
++    const imageUrl = project.imageUrl as string;
++    const storageFactory = new StorageFactory('s3');
++
++    if (!!imageUrl.trim()) {
++      await storageFactory.getStorage().removeFile(imageUrl);
++    }
++    return NextResponse.json({ success: true }, { status: 200 });
++  } catch (error) {
++    return NextResponse.json({ errors: [error] }, { status: 400 });
++  }
+ }
+diff --git a/src/app/api/project/create/route.ts b/src/app/api/project/create/route.ts
+deleted file mode 100644
+index 8393086..0000000
+--- a/src/app/api/project/create/route.ts
++++ /dev/null
+@@ -1,14 +0,0 @@
+-import { NextRequest, NextResponse } from 'next/server';
+-
+-type RequestType = {
+-  projectName: string;
+-  startDate: string;
+-  address: string;
+-  imageUrl: string;
+-  currentClaim: number;
+-};
+-export async function POST(request: NextRequest) {
+-  const data: RequestType = await request.json();
+-
+-  return NextResponse.json(data, { status: 200 });
+-}
+diff --git a/src/app/api/project/list/route.ts b/src/app/api/project/list/route.ts
+deleted file mode 100644
+index 94b5e80..0000000
+--- a/src/app/api/project/list/route.ts
++++ /dev/null
+@@ -1,107 +0,0 @@
+-import { NextResponse } from 'next/server';
+-
+-export async function GET() {
+-  const projects = [
+-    {
+-      _id: 'P001',
+-      projectName: "Stargazer's Nook",
+-      startDate: '2024-02-01T14:42:43.530+00:00',
+-      address: 'Joshua Tree, CA 92252',
+-      amount: 18000,
+-      currentClaimNumber: 90000,
+-      imageUrl: ''
+-    },
+-    {
+-      _id: 'P002',
+-      projectName: 'Sunlit Sanctuary',
+-      startDate: '2024-01-10T14:42:43.530+00:00',
+-      address: '123 Main St, Anytown, CA 90210',
+-      amount: 500000,
+-      currentClaimNumber: 250000,
+-      imageUrl: ''
+-    },
+-    {
+-      _id: 'P003',
+-      projectName: 'The Zen Garden',
+-      startDate: '2024-01-15T14:42:43.530+00:00',
+-      address: 'Zenbrook, CA 90210',
+-      amount: 250000,
+-      currentClaimNumber: 125000,
+-      imageUrl: ''
+-    },
+-    {
+-      _id: 'P004',
+-      projectName: "Writer's Retreat",
+-      startDate: '2024-01-28T14:42:43.530+00:00',
+-      address: 'Carmel-by-the-Sea, CA 93923',
+-      amount: 320000,
+-      currentClaimNumber: 160000,
+-      imageUrl: ''
+-    },
+-    {
+-      _id: 'P005',
+-      projectName: 'The Music Room',
+-      startDate: '2024-01-20T14:42:43.530+00:00',
+-      address: 'New Orleans, LA 70113',
+-      amount: 220000,
+-      currentClaimNumber: 65000,
+-      imageUrl: ''
+-    },
+-    {
+-      _id: 'P006',
+-      projectName: 'The Game Room',
+-      startDate: '2024-01-10T14:42:43.530+00:00',
+-      address: '123 Main St, Anytown, CA 90210',
+-      amount: 500000,
+-      currentClaimNumber: 250000,
+-      imageUrl: ''
+-    },
+-    {
+-      _id: 'P007',
+-      projectName: "Writer's Retreat",
+-      startDate: '2024-01-28T14:42:43.530+00:00',
+-      address: 'Carmel-by-the-Sea, CA 93923',
+-      amount: 320000,
+-      currentClaimNumber: 160000,
+-      imageUrl: ''
+-    },
+-    {
+-      _id: 'P008',
+-      projectName: 'Hilltop Hideaway',
+-      startDate: '2024-01-10T14:42:43.530+00:00',
+-      address: 'Palm Springs, CA 92262',
+-      amount: 500000,
+-      currentClaimNumber: 160000,
+-      imageUrl: ''
+-    },
+-    {
+-      _id: 'P009',
+-      projectName: 'Project Listing',
+-      startDate: '2024-01-10T14:42:43.530+00:00',
+-      address: 'Palm Springs, CA 92262',
+-      amount: 500000,
+-      currentClaimNumber: 160000,
+-      imageUrl: ''
+-    },
+-    {
+-      _id: 'P010',
+-      projectName: 'The Music Room',
+-      startDate: '2024-01-20T14:42:43.530+00:00',
+-      address: 'Palm Springs, CA 92262',
+-      amount: 500000,
+-      currentClaimNumber: 160000,
+-      imageUrl: ''
+-    },
+-    {
+-      _id: 'P011',
+-      projectName: 'The Game Room',
+-      startDate: '2024-01-20T14:42:43.530+00:00',
+-      address: 'Palm Springs, CA 92262',
+-      amount: 500000,
+-      currentClaimNumber: 160000,
+-      imageUrl: ''
+-    }
+-  ];
+-
+-  return NextResponse.json({ projects, totalItems: projects.length }, { status: 200 });
+-}
+diff --git a/src/app/api/project/route.ts b/src/app/api/project/route.ts
+new file mode 100644
+index 0000000..ec8e3e5
+--- /dev/null
++++ b/src/app/api/project/route.ts
+@@ -0,0 +1,56 @@
++import MongoConnect from '@/backend/connection/mongo.connection';
++import { NextRequest, NextResponse } from 'next/server';
++import AuthService from '@/backend/services/auth.service';
++import { parsePayloadProjectToCreateData } from '@/utils/helper';
++import ResponseStruct from '@/backend/structs/response.struct';
++import ProjectService from '@/backend/services/project.service';
++import ProjectValidator from '@/backend/validator/project.validator';
++import { getListingQuery } from '../listing';
++
++export async function POST(request: NextRequest) {
++  const formData = await request.formData();
++
++  const data = parsePayloadProjectToCreateData(formData);
++
++  const conn = await MongoConnect();
++  const projectService = new ProjectService(conn);
++  const authService = new AuthService(conn);
++  const projectValidator = new ProjectValidator(data);
++
++  try {
++    await projectValidator.validate();
++
++    if (projectValidator.getErrors().length > 0) {
++      return NextResponse.json({ errors: projectValidator.getErrors() }, { status: 400 });
++    }
++    const currentUser = await authService.getUserByToken(request);
++    if (!!currentUser) {
++      await projectService.addProject(formData, currentUser);
++      return NextResponse.json({ success: true }, { status: 200 });
++    }
++  } catch (error: any) {
++    return NextResponse.json({ errors: [error.message] }, { status: 400 });
++  }
++}
++export async function GET(request: NextRequest) {
++  const conn = await MongoConnect();
++  const responseStruct = new ResponseStruct(true);
++
++  try {
++    const { limit: limitValue, page: pageValue, order: orderValue, search } = getListingQuery(request);
++    const projectService = new ProjectService(conn);
++
++    const data = await projectService.listProjects(limitValue, pageValue, orderValue, search);
++    responseStruct.setData({
++      meta: data.pagination,
++      data: data.collection
++    });
++    responseStruct.setStatus(200);
++  } catch (error: any) {
++    responseStruct.pushError(error.message);
++    responseStruct.setStatus(500);
++
++    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
++  }
++  return NextResponse.json(responseStruct.getResponse(), { status: 200 });
++}
+diff --git a/src/app/api/projects/add-budget/route.ts b/src/app/api/projects/add-budget/route.ts
+deleted file mode 100644
+index 35835ec..0000000
+--- a/src/app/api/projects/add-budget/route.ts
++++ /dev/null
+@@ -1,64 +0,0 @@
+-import { NextRequest, NextResponse } from 'next/server';
+-import MongoConnect from '@/backend/connection/mongo.connection';
+-import BudgetRepository from '@/backend/repositories/mongodb/budget.repository';
+-import BudgetService from '@/backend/services/budget.service';
+-import BudgetDto from '@/utils/dtos/budget.dto';
+-import { ObjectId } from 'bson';
+-
+-type RequestType = {
+-  creatorId: string;
+-  projectId: string;
+-  creatorEmail: string;
+-  budgetAdditionalFields: Array<string>;
+-  budgetCategory: string;
+-  budgetCode: string;
+-  budgetCurrentBudget: number;
+-  budgetCurrentClaim: number;
+-  budgetDescription?: string;
+-  budgetIndex: number;
+-  budgetOriginalBudget: number;
+-  budgetRevision: number;
+-  budgetTotalClaim: number;
+-  budgetTotalClaimBeforeHoldback: number;
+-  budgetTotalClaimPercentage: number;
+-  budgetTotalHoldback: number;
+-};
+-
+-export async function POST(request: NextRequest) {
+-  const conn = await MongoConnect();
+-
+-  const budgetRepository = new BudgetRepository(conn);
+-  const budgetService = new BudgetService(budgetRepository);
+-
+-  const data: RequestType = await request.json();
+-  const budgetDto = new BudgetDto();
+-  budgetDto.setData({
+-    _id: new ObjectId(),
+-    creatorId: data.creatorId,
+-    projectId: data.projectId,
+-    creatorEmail: data.creatorEmail,
+-    budgetAdditionalFields: data.budgetAdditionalFields,
+-    budgetCategory: data.budgetCategory,
+-    budgetCode: data.budgetCode,
+-    budgetCurrentBudget: data.budgetCurrentBudget,
+-    budgetCurrentClaim: data.budgetCurrentClaim,
+-    budgetDescription: data.budgetDescription,
+-    budgetIndex: data.budgetIndex,
+-    budgetOriginalBudget: data.budgetOriginalBudget,
+-    budgetRevision: data.budgetRevision,
+-    budgetTotalClaim: data.budgetTotalClaim,
+-    budgetTotalClaimBeforeHoldback: data.budgetTotalClaimBeforeHoldback,
+-    budgetTotalClaimPercentage: data.budgetTotalClaimPercentage,
+-    budgetTotalHoldback: data.budgetTotalHoldback,
+-    dateCreate: new Date(),
+-    dateModify: new Date()
+-  });
+-
+-  try {
+-    await budgetService.addProjectBudget(budgetDto);
+-  } catch (err) {
+-    return NextResponse.json({ message: 'Error' }, { status: 500 });
+-  }
+-
+-  return NextResponse.json({ message: '' }, { status: 200 });
+-}
+diff --git a/src/app/api/projects/import-project-budget/route.ts b/src/app/api/projects/import-project-budget/route.ts
+deleted file mode 100644
+index 3ecf035..0000000
+--- a/src/app/api/projects/import-project-budget/route.ts
++++ /dev/null
+@@ -1,81 +0,0 @@
+-import { NextRequest, NextResponse } from 'next/server';
+-import MongoConnect from '@/backend/connection/mongo.connection';
+-import ProjectRepository from '@/backend/repositories/mongodb/project.repository';
+-import ProjectService from '@/backend/services/project.service';
+-import RoleRepository from '@/backend/repositories/mongodb/role.repository';
+-import ProjectDto from '@/utils/dtos/project.dto';
+-import BudgetService from '@/backend/services/budget.service';
+-import BudgetRepository from '@/backend/repositories/mongodb/budget.repository';
+-
+-type RequestType = {
+-  id: string;
+-  creatorId: string;
+-  creatorEmail: string;
+-  items: string;
+-  amount: number;
+-  budgetSeperatorTab: boolean;
+-  budgetSeperatorComma: boolean;
+-  budgetSeperatorSemiColon: boolean;
+-  budgetIndexMax: number;
+-};
+-export async function POST(request: NextRequest) {
+-  const conn = await MongoConnect();
+-
+-  const budgetRepository = new BudgetRepository(conn);
+-  const projectRepository = new ProjectRepository(conn);
+-  const roleRepository = new RoleRepository(conn);
+-  const projectService = new ProjectService(projectRepository, roleRepository);
+-  const budgetService = new BudgetService(budgetRepository);
+-
+-  const data: RequestType = await request.json();
+-
+-  if (!data.items) {
+-    data.items = ' ';
+-  }
+-  if (!data.amount) {
+-    data.amount = 0;
+-  }
+-
+-  if (!data.budgetSeperatorTab) {
+-    data.budgetSeperatorTab = true;
+-  }
+-
+-  if (!data.budgetSeperatorComma) {
+-    data.budgetSeperatorComma = true;
+-  }
+-
+-  if (!data.budgetSeperatorSemiColon) {
+-    data.budgetSeperatorSemiColon = true;
+-  }
+-
+-  const project = await projectService.getProject(data.id);
+-
+-  if (!project) {
+-    return NextResponse.json({ message: 'Project not found' }, { status: 500 });
+-  }
+-
+-  const projectDto = new ProjectDto();
+-  projectDto.setData({
+-    ...project,
+-    items: data.items,
+-    amount: data.amount,
+-    budgetSeperatorTab: data.budgetSeperatorTab,
+-    budgetSeperatorComma: data.budgetSeperatorComma,
+-    budgetSeperatorSemiColon: data.budgetSeperatorSemiColon,
+-    dateModify: new Date()
+-  });
+-
+-  try {
+-    await projectService.upsertProject(true, projectDto);
+-
+-    await budgetService.importBudgets(data.id, data.creatorId, data.creatorEmail, data.items, data.budgetIndexMax, [
+-      data.budgetSeperatorTab,
+-      data.budgetSeperatorComma,
+-      data.budgetSeperatorSemiColon
+-    ]);
+-  } catch (err) {
+-    return NextResponse.json({ message: 'Import product budget error' }, { status: 500 });
+-  }
+-
+-  return NextResponse.json({ message: 'Import product budget successfully' }, { status: 200 });
+-}
+diff --git a/src/app/api/projects/route.ts b/src/app/api/projects/route.ts
+deleted file mode 100644
+index 772e5a5..0000000
+--- a/src/app/api/projects/route.ts
++++ /dev/null
+@@ -1,55 +0,0 @@
+-import { NextRequest, NextResponse } from 'next/server';
+-import UserService from '@/backend/services/user.service';
+-import UserRepository from '@/backend/repositories/mongodb/user.repository';
+-import MongoConnection from '@/backend/connection/mongo.connection';
+-import RoleRepository from '@/backend/repositories/mongodb/role.repository';
+-import ProjectRepository from '@/backend/repositories/mongodb/project.repository';
+-import BuilderService from '@/backend/services/builder.service';
+-import ProjectService from '@/backend/services/project.service';
+-import { Project as ProjectType } from '@/utils/dtos/project.dto';
+-import { getCsvCompanyFieldValue } from '@/utils/helper';
+-import { CSV_COMPANY_ENUM, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
+-import RoleService from '@/backend/services/role.service';
+-import ContractorRepository from '@/backend/repositories/mongodb/contractor.repository';
+-
+-type RequestType = {
+-  userId: string;
+-  selectedCsvBuilder: string;
+-};
+-
+-export async function POST(request: NextRequest) {
+-  const postData: RequestType = await request.json();
+-
+-  if (!postData.userId) {
+-    return NextResponse.json({}, { status: 500 });
+-  }
+-
+-  const conn = await MongoConnection();
+-  const roleRepository = new RoleRepository(conn);
+-  const userRepository = new UserRepository(conn);
+-  const projectRepository = new ProjectRepository(conn);
+-  const contractorRepository = new ContractorRepository(conn);
+-
+-  const builderService = new BuilderService(conn);
+-  const userService = new UserService(userRepository);
+-  const projectService = new ProjectService(projectRepository, roleRepository);
+-  const roleService = new RoleService(roleRepository, contractorRepository);
+-
+-  const data: any = await builderService.getInitBuildersByUser(postData.userId);
+-
+-  const builderResult = await builderService.getCsvBuildersByUser(data, postData.selectedCsvBuilder);
+-
+-  if (builderResult.builderId) {
+-    await userService.upsertUserSelectedCompanyId(postData.userId, builderResult.builderId, false);
+-  }
+-
+-  const projects: ProjectType[] = await projectService.getBuilderProjects(
+-    postData.userId,
+-    Number(builderResult.highestRole),
+-    getCsvCompanyFieldValue(builderResult.csvBuilder, CSV_COMPANY_ENUM.companyId)
+-  );
+-
+-  const roles = await roleService.getRolesByTargetId(builderResult.builderId || '', ROLE_TARGET_TYPE_ENUM.builderEmail);
+-
+-  return NextResponse.json({ projects, roles }, { status: 200 });
+-}
+diff --git a/src/app/api/projects/update-project-contractors/route.ts b/src/app/api/projects/update-project-contractors/route.ts
+deleted file mode 100644
+index 0f68ffa..0000000
+--- a/src/app/api/projects/update-project-contractors/route.ts
++++ /dev/null
+@@ -1,42 +0,0 @@
+-import { NextRequest, NextResponse } from 'next/server';
+-import MongoConnect from '@/backend/connection/mongo.connection';
+-import ProjectRepository from '@/backend/repositories/mongodb/project.repository';
+-import RoleRepository from '@/backend/repositories/mongodb/role.repository';
+-import RoleService from '@/backend/services/role.service';
+-import ContractorRepository from '@/backend/repositories/mongodb/contractor.repository';
+-import { ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
+-
+-export async function POST(request: NextRequest) {
+-  const conn = await MongoConnect();
+-
+-  const contractorRepository = new ContractorRepository(conn);
+-  const projectRepository = new ProjectRepository(conn);
+-  const roleRepository = new RoleRepository(conn);
+-  const roleService = new RoleService(roleRepository, contractorRepository);
+-
+-  try {
+-    const data = await request.json();
+-
+-    if (data.roleProjectContractors === undefined) {
+-      data.roleProjectContractors = '';
+-    }
+-
+-    await projectRepository.update(data.projectId, {
+-      roleProjectContractors: data.roleProjectContractors,
+-      dateModify: new Date()
+-    });
+-
+-    await roleService.updateRoles(
+-      data.projectId,
+-      ROLE_TARGET_TYPE_ENUM.projectContractor,
+-      data.creatorId,
+-      data.creatorEmail,
+-      data.builderId,
+-      [data.roleProjectContractors]
+-    );
+-  } catch (error) {
+-    return NextResponse.json({ message: 'Error upsert project' }, { status: 500 });
+-  }
+-
+-  return NextResponse.json({ message: '' }, { status: 200 });
+-}
+diff --git a/src/app/api/projects/update-project-roles/route.ts b/src/app/api/projects/update-project-roles/route.ts
+deleted file mode 100644
+index 4967f62..0000000
+--- a/src/app/api/projects/update-project-roles/route.ts
++++ /dev/null
+@@ -1,44 +0,0 @@
+-import { NextRequest, NextResponse } from 'next/server';
+-import MongoConnect from '@/backend/connection/mongo.connection';
+-import ProjectRepository from '@/backend/repositories/mongodb/project.repository';
+-import RoleRepository from '@/backend/repositories/mongodb/role.repository';
+-import ProjectService from '@/backend/services/project.service';
+-import ContractorRepository from '@/backend/repositories/mongodb/contractor.repository';
+-import RoleService from '@/backend/services/role.service';
+-import { ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
+-
+-type RequestType = {
+-  projectId: string;
+-  creatorId: string;
+-  creatorEmail: string;
+-  parentId: string;
+-  roles: any;
+-};
+-
+-export async function PUT(request: NextRequest) {
+-  const conn = await MongoConnect();
+-  const contractorRepository = new ContractorRepository(conn);
+-  const projectRepository = new ProjectRepository(conn);
+-  const roleRepository = new RoleRepository(conn);
+-  const projectService = new ProjectService(projectRepository, roleRepository);
+-  const roleService = new RoleService(roleRepository, contractorRepository);
+-
+-  const data: RequestType = await request.json();
+-
+-  try {
+-    const roleData = await projectService.updateProjectRoles(data.projectId, data.roles);
+-
+-    await roleService.updateRoles(
+-      data.projectId,
+-      ROLE_TARGET_TYPE_ENUM.projectEmail,
+-      data.creatorId,
+-      data.creatorEmail,
+-      data.parentId,
+-      roleData
+-    );
+-  } catch (error) {
+-    return NextResponse.json({ message: 'Error updating project role' }, { status: 500 });
+-  }
+-
+-  return NextResponse.json({ message: 'Update project role successfully' }, { status: 200 });
+-}
+diff --git a/src/app/api/projects/upsert/route.ts b/src/app/api/projects/upsert/route.ts
+deleted file mode 100644
+index c834e82..0000000
+--- a/src/app/api/projects/upsert/route.ts
++++ /dev/null
+@@ -1,133 +0,0 @@
+-import { NextRequest, NextResponse } from 'next/server';
+-import { ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
+-import MongoConnect from '@/backend/connection/mongo.connection';
+-import ProjectService from '@/backend/services/project.service';
+-import ProjectRepository from '@/backend/repositories/mongodb/project.repository';
+-import RoleRepository from '@/backend/repositories/mongodb/role.repository';
+-import ProjectDto, { Project as ProjectType } from '@/utils/dtos/project.dto';
+-import { ObjectId } from 'bson';
+-import RoleService from '@/backend/services/role.service';
+-import ContractorRepository from '@/backend/repositories/mongodb/contractor.repository';
+-import BudgetService from '@/backend/services/budget.service';
+-import BudgetRepository from '@/backend/repositories/mongodb/budget.repository';
+-
+-type RequestType = {
+-  isEdit: boolean;
+-  file: any;
+-  id: string;
+-  builderId: string | null | undefined;
+-  creatorEmail: string;
+-  creatorId: string;
+-  date: any;
+-  projectName: any;
+-  address: any;
+-  currentClaimNumber: string | undefined;
+-  category: string | undefined;
+-  completionStatus: string | undefined;
+-  currency: string | undefined;
+-};
+-export async function POST(request: NextRequest) {
+-  const data: RequestType = await request.json();
+-  const conn = await MongoConnect();
+-  const budgetRepository = new BudgetRepository(conn);
+-  const contractorRepository = new ContractorRepository(conn);
+-  const projectRepository = new ProjectRepository(conn);
+-  const roleRepository = new RoleRepository(conn);
+-  const projectService = new ProjectService(projectRepository, roleRepository);
+-  const roleService = new RoleService(roleRepository, contractorRepository);
+-  const budgetService = new BudgetService(budgetRepository);
+-
+-  let currentProjectId: string | object = data.isEdit ? data.id : new ObjectId();
+-  let isCurrentClaimNumberUpdated = true;
+-
+-  let imageBucket = '';
+-
+-  if (data.file) {
+-    // Store image into Storage (use await for addDoc instead of .then so 'file' could be passed along)
+-    imageBucket = data.file;
+-  }
+-
+-  if (data.isEdit) {
+-    if (data.currentClaimNumber === undefined) {
+-      data.currentClaimNumber = '';
+-    }
+-    if (data.category === undefined) {
+-      data.category = '';
+-    }
+-    if (data.completionStatus === undefined) {
+-      data.completionStatus = '';
+-    }
+-    if (data.currency === undefined) {
+-      data.currency = '';
+-    }
+-
+-    const previousProject: ProjectType | null = await projectService.getProject(data.id);
+-
+-    if (!previousProject) {
+-      return NextResponse.json({ message: 'Project not found' }, { status: 404 });
+-    }
+-
+-    isCurrentClaimNumberUpdated = data.currentClaimNumber !== previousProject.currentClaimNumber;
+-
+-    if (!imageBucket) {
+-      imageBucket = previousProject.imageUrl || '';
+-    }
+-
+-    const updateProject = new ProjectDto();
+-    updateProject.setData({
+-      ...previousProject,
+-      creatorEmail: data.creatorEmail,
+-      creatorId: data.creatorId,
+-      date: data.date,
+-      projectName: data.projectName,
+-      address: data.address,
+-      currentClaimNumber: data.currentClaimNumber,
+-      category: data.category,
+-      completionStatus: data.completionStatus,
+-      currency: data.currency,
+-      dateModify: new Date(),
+-      imageBucket
+-    });
+-    await projectService.upsertProject(true, updateProject);
+-  } else {
+-    const newProject = new ProjectDto();
+-    newProject.setData({
+-      _id: currentProjectId,
+-      builderId: data.builderId ? data.builderId : ' ',
+-      creatorEmail: data.creatorEmail,
+-      creatorId: data.creatorId,
+-      date: data.date,
+-      projectName: data.projectName,
+-      address: data.address,
+-      items: ' ',
+-      currentClaimNumber: data.currentClaimNumber ? data.currentClaimNumber : ' ',
+-      category: data.category ? data.category : ' ',
+-      completionStatus: data.completionStatus ? data.completionStatus : ' ',
+-      currency: data.currency ? data.currency : ' ',
+-      budgetSeperatorTab: true,
+-      budgetSeperatorComma: false,
+-      budgetSeperatorSemiColon: true,
+-      dateCreate: new Date(),
+-      dateModify: new Date(),
+-      imageBucket,
+-      startDate: null
+-    });
+-    await projectService.upsertProject(false, newProject);
+-
+-    // Add builderId project role
+-    await roleService.updateRoles(
+-      currentProjectId as string,
+-      ROLE_TARGET_TYPE_ENUM.projectBuilder,
+-      data.creatorId,
+-      data.creatorEmail,
+-      data.builderId,
+-      [data.builderId ? data.builderId : ' ']
+-    );
+-  }
+-
+-  if (isCurrentClaimNumberUpdated) {
+-    await budgetService.updateBudgetCurrentClaims(currentProjectId as string, Number(data.currentClaimNumber) || 0);
+-  }
+-
+-  return NextResponse.json({ message: 'Upsert project successfully' }, { status: 200 });
+-}
+diff --git a/src/backend/models/project.model.ts b/src/backend/models/project.model.ts
+index 26bc645..ad4cf36 100644
+--- a/src/backend/models/project.model.ts
++++ b/src/backend/models/project.model.ts
+@@ -1,3 +1,4 @@
++import DateUTC from '@/utils/datetime/date.custom';
+ import mongoose from 'mongoose';
+ import { Project as ProjectType } from '@/utils/dtos/project.dto';
  
-@@ -148,12 +160,14 @@ export const authOptions = {
-         params.session.user = {
-           ...params.session.user,
-           id: user.get('_id').valueOf() || '',
-+          firstName: user.get('firstName') || '',
-+          lastName: user.get('lastName') || '',
-           password: user.get('password') || null,
-           token: await encode({
-             token: {
-               id: user.get('_id').valueOf(),
-               email: user.get('email'),
--              name: user.get('name')
-+              name: `${user.get('firstName')} ${user.get('lastName')}`
-             },
-             secret: (process.env.NEXTAUTH_SECRET as string) || '',
-             maxAge: 60 * 60 * 4 // 4 hours
-diff --git a/src/backend/models/user.model.ts b/src/backend/models/user.model.ts
-index 5b7f0b5..8a2aa92 100644
---- a/src/backend/models/user.model.ts
-+++ b/src/backend/models/user.model.ts
-@@ -9,7 +9,11 @@ export const UserSchema: mongoose.Schema<UserType> = new mongoose.Schema(
-       required: true,
-       unique: true
+@@ -10,88 +11,100 @@ const ProjectSchema: mongoose.Schema<ProjectType> = new mongoose.Schema(
      },
--    name: {
-+    firstName: {
-+      type: String,
-+      required: true
-+    },
-+    lastName: {
+     address: {
+       type: String,
+-      required: true
++      required: false,
++      default: ''
+     },
+     amount: {
+-      type: Number
++      type: Number,
++      required: false,
++      default: 0
+     },
+     builderId: {
+       type: String,
+-      required: true
++      required: false,
++      default: ''
+     },
+     category: {
+       type: String,
+-      required: true
+-    },
+-    completionStatus: {
+-      type: String,
+-      required: true
++      required: false,
++      default: ''
+     },
+     creatorEmail: {
        type: String,
        required: true
      },
-diff --git a/src/backend/repositories/mongodb/user.repository.ts b/src/backend/repositories/mongodb/user.repository.ts
-index ee9223b..a132a78 100644
---- a/src/backend/repositories/mongodb/user.repository.ts
-+++ b/src/backend/repositories/mongodb/user.repository.ts
-@@ -35,7 +35,8 @@ export default class UserRepository extends BaseRepositoryAbstract implements Us
-     userDto.setData({
-       id: data[0].get('_id').toString(),
-       email: data[0].get('email'),
--      name: data[0].get('name'),
-+      firstName: data[0].get('firstName'),
-+      lastName: data[0].get('lastName'),
-       imageUrl: data[0].get('imageUrl'),
-       password: data[0].get('password'),
-       isContractor: data[0].get('isContractor'),
-diff --git a/src/backend/services/auth.service.ts b/src/backend/services/auth.service.ts
-index 8e601fc..e5dbff3 100644
---- a/src/backend/services/auth.service.ts
-+++ b/src/backend/services/auth.service.ts
-@@ -19,19 +19,20 @@ export default class AuthService {
-     this.userRepository = new UserRepository(conn);
-   }
- 
--  async getOrCreateNewUser(email: string, name: string, imageUrl: string | null = null): Promise<mongoose.Document> {
-+  async getOrCreateNewUser(email: string, firstName: string, lastName: string, imageUrl: string | null = null): Promise<mongoose.Document> {
-     const existsUser: mongoose.Document | null = await this.userRepository.findOne({ email });
- 
-     if (existsUser) {
-       return existsUser;
-     } else {
--      return await this.createNewUser(email, name, true, UserStatus.ACTIVE, null, imageUrl);
-+      return await this.createNewUser(email, firstName, lastName, true, UserStatus.ACTIVE, null, imageUrl);
+     creatorId: {
+-      type: String,
+-      required: true
++      type: mongoose.Schema.Types.ObjectId,
++      required: true,
++      ref: 'User'
+     },
+     currency: {
+       type: String,
+       required: true
+     },
+     currentClaimNumber: {
+-      type: String,
+-      required: true
+-    },
+-    budgetSeperatorComma: {
+-      type: Boolean,
+-      required: true
+-    },
+-    budgetSeperatorSemiColon: {
+-      type: Boolean,
+-      required: true
+-    },
+-    budgetSeperatorTab: {
+-      type: Boolean,
+-      required: true
++      type: Number,
++      required: false,
++      default: 0
+     },
+     date: {
+       type: Date,
+-      required: true
++      required: false,
++      default: new DateUTC()
+     },
+     dateCreate: {
+       type: Date,
+-      required: true
++      required: false,
++      default: new DateUTC()
+     },
+     dateModify: {
+       type: Date,
+-      required: true
++      required: false,
++      default: null
+     },
+-    imageBucket: {
+-      type: String,
+-      required: true
++    startDate: {
++      type: Date,
++      required: false,
++      default: new DateUTC()
+     },
+     items: {
+       type: String,
+-      required: true
++      required: false,
++      default: ''
++    },
++    imageUrl: {
++      type: String,
++      required: false,
++      default: ''
+     },
+     role0: {
+-      type: String
++      type: String,
++      required: false
+     },
+     role1: {
+-      type: String
++      type: String,
++      required: false,
++      default: ''
+     },
+     role2: {
+-      type: String
++      type: String,
++      required: false,
++      default: ''
+     },
+     role3: {
+-      type: String
++      type: String,
++      required: false,
++      default: ''
+     },
+     role4: {
+-      type: String
++      type: String,
++      required: false,
++      default: ''
+     },
+     roleProjectContractors: {
+-      type: String
++      type: String,
++      required: false,
++      default: ''
      }
+   },
+   { _id: true }
+diff --git a/src/backend/repositories/interfaces/project.repository.interface.ts b/src/backend/repositories/interfaces/project.repository.interface.ts
+index 3db3b7a..a3c0b76 100644
+--- a/src/backend/repositories/interfaces/project.repository.interface.ts
++++ b/src/backend/repositories/interfaces/project.repository.interface.ts
+@@ -1,3 +1,6 @@
+ import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
++import mongoose from 'mongoose';
+ 
+-export default interface ProjectRepositoryInterface extends BaseRepositoryInterface {}
++export default interface ProjectRepositoryInterface extends BaseRepositoryInterface {
++  findProjectId(id: string): Promise<mongoose.Document | null>;
++}
+diff --git a/src/backend/repositories/mongodb/project.repository.ts b/src/backend/repositories/mongodb/project.repository.ts
+index 31f5d25..4fc905b 100644
+--- a/src/backend/repositories/mongodb/project.repository.ts
++++ b/src/backend/repositories/mongodb/project.repository.ts
+@@ -1,7 +1,8 @@
+ import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
+ import ProjectRepositoryInterface from '@/backend/repositories/interfaces/project.repository.interface';
+-import mongoose, { Mongoose } from 'mongoose';
++import mongoose, { Mongoose, SortOrder } from 'mongoose';
+ import Project from '@/backend/models/project.model';
++import { PAGINATE_PAGE_SIZE } from '@/utils/constant';
+ 
+ export default class ProjectRepository extends BaseRepositoryAbstract implements ProjectRepositoryInterface {
+   constructor(connection: Mongoose) {
+@@ -11,4 +12,33 @@ export default class ProjectRepository extends BaseRepositoryAbstract implements
+   getModel(): mongoose.Model<mongoose.Document> {
+     return Project;
+   }
++
++  async findWithSort(
++    filter: object,
++    sort: { [key: string]: SortOrder },
++    limit = PAGINATE_PAGE_SIZE,
++    currentPage = 1
++  ): Promise<mongoose.Document[]> {
++    return this._model
++      .find(filter)
++      .populate({
++        path: 'creatorId',
++        select: { name: 1, email: 1, imageUrl: 1, _id: 1 }
++      })
++      .limit(limit)
++      .skip(limit * (currentPage - 1))
++      .sort(sort)
++      .exec();
++  }
++  async findProjectId(id: string): Promise<mongoose.Document | null> {
++    return this._model
++      .findOne({
++        _id: id
++      })
++      .populate({
++        path: 'creatorId',
++        select: { name: 1, email: 1, imageUrl: 1, _id: 1 }
++      })
++      .exec();
++  }
+ }
+diff --git a/src/backend/services/project.service.ts b/src/backend/services/project.service.ts
+index c6f7bef..36e101b 100644
+--- a/src/backend/services/project.service.ts
++++ b/src/backend/services/project.service.ts
+@@ -1,16 +1,27 @@
+ import ProjectRepositoryInterface from '@/backend/repositories/interfaces/project.repository.interface';
+ import RoleRepositoryInterface from '@/backend/repositories/interfaces/role.repository.interface';
+ import { ROLE_LEVEL_ENUM_BUILDER, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
+-import mongoose from 'mongoose';
+-import ProjectDto, { Project as ProjectType } from '@/utils/dtos/project.dto';
++import mongoose, { Mongoose } from 'mongoose';
++import ProjectDto, { Project, Project as ProjectType } from '@/utils/dtos/project.dto';
+ import { Role as RoleType } from '@/utils/dtos/role.dto';
++import ProjectRepository from '../repositories/mongodb/project.repository';
++import RoleRepository from '../repositories/mongodb/role.repository';
++import StorageFactory from './storage/storage.factory';
++import { parsePayloadProjectToCreateData } from '@/utils/helper';
++import { FolderName } from '@/utils/enums';
++import UserDto, { User } from '@/utils/dtos/user.dto';
++import PaginationStruct from '../structs/pagination.struct';
++import NotFoundException from '../exceptions/notfound.exception';
+ 
+ export default class ProjectService {
+   protected projectRepository: ProjectRepositoryInterface;
+   protected roleRepository: RoleRepositoryInterface;
+-  constructor(projectRepository: ProjectRepositoryInterface, roleRepository: RoleRepositoryInterface) {
+-    this.projectRepository = projectRepository;
+-    this.roleRepository = roleRepository;
++  protected storageFactory: StorageFactory;
++
++  constructor(conn: Mongoose) {
++    this.projectRepository = new ProjectRepository(conn);
++    this.roleRepository = new RoleRepository(conn);
++    this.storageFactory = new StorageFactory('s3');
    }
  
-   async createNewUser(
-     email: string,
--    name: string,
-+    firstName: string,
-+    lastName: string,
-     emailConfirmed: boolean,
-     status: UserStatus,
-     password: string | null = null,
-@@ -49,7 +50,8 @@ export default class AuthService {
+   async getBuilderProjects(userId: string, highestRole: number, builderId: string): Promise<ProjectType[]> {
+@@ -123,7 +134,7 @@ export default class ProjectService {
+       projectData.push(projectDto.toObject() as ProjectType);
+     }
  
-     userDto.setData({
-       email,
--      name,
-+      firstName,
-+      lastName,
-       imageUrl: imageUrl || '',
-       password: passwordHash,
-       isContractor: false,
-diff --git a/src/backend/services/builder.service.ts b/src/backend/services/builder.service.ts
-index 05e2182..2e6e55e 100644
---- a/src/backend/services/builder.service.ts
-+++ b/src/backend/services/builder.service.ts
-@@ -240,7 +240,7 @@ export default class BuilderService {
-       const newObject = (item as unknown as mongoose.Document<Builder>).toObject();
-       return {
-         ...newObject,
--        creatorId: newObject.creatorId._id,
-+        creatorId: newObject.creatorId?._id,
-         creator: newObject.creatorId
+-    return projectData;
++    return projectData as ProjectType[];
+   }
+ 
+   private async isUserInProject(userId: string, projectId: string): Promise<boolean> {
+@@ -137,44 +148,21 @@ export default class ProjectService {
+   }
+ 
+   async getProject(projectId: string): Promise<ProjectType | null> {
+-    const project = await this.projectRepository.findOne({ _id: projectId });
++    const project = await this.projectRepository.findProjectId(projectId);
+ 
+     if (!project) {
+       return null;
+     }
+ 
+     const data = new ProjectDto();
+-    data.setData({
+-      id: project.get('_id'),
+-      address: project.get('address'),
+-      amount: project.get('amount'),
+-      builderId: project.get('builderId'),
+-      category: project.get('category'),
+-      completionStatus: project.get('completionStatus'),
+-      creatorEmail: project.get('creatorEmail'),
+-      creatorId: project.get('creatorId'),
+-      currency: project.get('currency'),
+-      currentClaimNumber: project.get('currentClaimNumber'),
+-      budgetSeperatorComma: project.get('budgetSeperatorComma'),
+-      budgetSeperatorSemiColon: project.get('budgetSeperatorSemiColon'),
+-      budgetSeperatorTab: project.get('budgetSeperatorTab'),
+-      date: project.get('date'),
+-      dateCreate: project.get('dateCreate'),
+-      dateModify: project.get('dateModify'),
+-      imageBucket: project.get('imageBucket'),
+-      imageUrl: project.get('imageBucket') || '',
+-      items: project.get('items'),
+-      projectName: project.get('projectName'),
+-      role0: project.get('role0'),
+-      role1: project.get('role1'),
+-      role2: project.get('role2'),
+-      role3: project.get('role3'),
+-      role4: project.get('role4'),
+-      roleProjectContractors: project.get('roleProjectContractors'),
+-      startDate: null
+-    });
+-
+-    return data.toObject() as ProjectType;
++    data.setData(project.toJSON());
++    const currentObject = data.toObject() as Project;
++    const creator = currentObject.creatorId as Partial<User & { id: string }>;
++    return {
++      ...currentObject,
++      creatorId: creator.id || '',
++      creator
++    };
+   }
+ 
+   async getProjects(projectIds: string[]): Promise<mongoose.Document[]> {
+@@ -216,4 +204,117 @@ export default class ProjectService {
+ 
+     return roleArr;
+   }
++
++  async addProject(formData: FormData, currentUser: UserDto): Promise<mongoose.Document> {
++    const data = parsePayloadProjectToCreateData(formData);
++    const projectDto = new ProjectDto();
++    const defaultData = projectDto.toObject();
++    let imageUrl = projectDto.imageUrl;
++    if (data.image) {
++      imageUrl = await this.storageFactory.getStorage().uploadFile(data.image, FolderName.PROJECTS);
++    }
++    projectDto.setData({
++      ...defaultData,
++      startDate: data.startDate,
++      projectName: data.projectName,
++      address: data.address,
++      imageUrl,
++      creatorId: currentUser.toObject().id + '',
++      creatorEmail: currentUser.email
++    });
++    try {
++      return this.projectRepository.create(projectDto);
++    } catch (error) {
++      if (!!imageUrl) {
++        await this.storageFactory.getStorage().removeFile(imageUrl);
++      }
++
++      throw error;
++    }
++  }
++
++  async updateProject(projectId: string, formData: FormData): Promise<mongoose.Document | null> {
++    const project = await this.getProject(projectId);
++    if (!project) {
++      throw new NotFoundException('Project not found');
++    }
++    const data = parsePayloadProjectToCreateData(formData);
++
++    const projectDto = new ProjectDto();
++    let imageUrl = project.imageUrl;
++
++    if (data.image) {
++      imageUrl = await this.storageFactory.getStorage().uploadFile(data.image, FolderName.PROJECTS);
++    }
++
++    try {
++      projectDto.setData({
++        ...project,
++        projectName: data.projectName,
++        startDate: data.startDate,
++        currentClaimNumber: data.currentClaimNumber,
++        address: data.address,
++        imageUrl,
++        dateModify: new Date()
++      });
++
++      return await this.projectRepository.update(projectId, projectDto);
++    } catch (error) {
++      if (!!imageUrl) {
++        await this.storageFactory.getStorage().removeFile(imageUrl);
++      }
++      throw error;
++    }
++  }
++
++  async deleteProject(projectId: string): Promise<mongoose.Document | null> {
++    return await this.projectRepository.delete(projectId);
++  }
++
++  async listProjects(
++    limit: number,
++    offset: number,
++    order: { [key: string]: 'asc' | 'desc' },
++    search: string
++  ): Promise<{
++    pagination: PaginationStruct;
++    collection: Project[];
++  }> {
++    const projectDto = new ProjectDto();
++
++    const validOrderFields = Object.keys(projectDto);
++
++    for (const key in order) {
++      if (!validOrderFields.includes(key)) {
++        delete order[key];
++      }
++    }
++
++    if (Object.keys(order).length === 0) {
++      order = { projectName: 'asc' };
++    }
++
++    const filterSearch = search !== '' ? { projectName: { $regex: search } } : {};
++    const total = await this.projectRepository.count(filterSearch);
++    const projects = await this.projectRepository.findWithSort(filterSearch, order, limit, offset);
++
++    const collection: Project[] = [];
++
++    projects.forEach((project: mongoose.Document<Project>) => {
++      projectDto.setData(project.toJSON());
++      const currentObject = projectDto.toObject() as Project;
++      const creator = currentObject.creatorId as Partial<User & { id: string }>;
++      collection.push({
++        ...currentObject,
++        creatorId: creator.id || '',
++        creator
++      });
++    });
++
++    const pagination = new PaginationStruct(offset, limit, total);
++    return {
++      pagination,
++      collection
++    };
++  }
+ }
+diff --git a/src/backend/validator/project.validator.ts b/src/backend/validator/project.validator.ts
+new file mode 100644
+index 0000000..46757ad
+--- /dev/null
++++ b/src/backend/validator/project.validator.ts
+@@ -0,0 +1,39 @@
++import BaseValidator from '@/backend/validator/base.validator';
++import { date, number, string } from 'yup';
++import UploadValidator from './upload.validator';
++import { FolderName } from '@/utils/enums';
++import { ProjectRequestType } from '@/utils/dtos/project.dto';
++
++export default class ProjectValidator extends BaseValidator {
++  constructor(data: ProjectRequestType) {
++    super();
++    this.data = data;
++  }
++
++  validateRules() {
++    const projectNameRule = { projectName: string().required() };
++    const currentClaimNumberRule = { currentClaimNumber: number().required() };
++    const addressRule = { address: string().required() };
++    const startDateRule = { startDate: date().required() };
++    this.rules = [projectNameRule, currentClaimNumberRule, addressRule, startDateRule];
++
++    return this;
++  }
++
++  validateProjectImage() {
++    const data: ProjectRequestType = this.data;
++    if (!!data?.image) {
++      const uploadValidator = new UploadValidator({ file: data.image, folderName: FolderName.PROJECTS });
++      uploadValidator.validate();
++      return uploadValidator.getErrors().length === 0;
++    }
++    return true;
++  }
++  async validate(): Promise<boolean> {
++    super.validate();
++    if (this.getErrors().length > 0) {
++      return false;
++    }
++    return this.validateProjectImage();
++  }
++}
+diff --git a/src/components/projects/Add/index.tsx b/src/components/projects/Add/index.tsx
+index 0bed301..c988046 100644
+--- a/src/components/projects/Add/index.tsx
++++ b/src/components/projects/Add/index.tsx
+@@ -5,44 +5,40 @@ import { useIntl } from 'react-intl';
+ import { useFormik } from 'formik';
+ import { object as yupObject } from 'yup';
+ import { GridCloseIcon } from '@mui/x-data-grid';
+-import { format } from 'date-fns';
+ 
+ // projects import
+ import * as notify from 'utils/notify';
+ import useCommonValidates from '@/hooks/useCommonValidates';
+ import { useAsync } from 'hooks/useAsync';
+-import useUploadFile from '@/hooks/useUploadFile';
+ import DatePicker from 'components/ui-component/DatePicker';
+ import Upload from 'components/ui-component/Upload';
+ import TextField from 'components/ui-component/TextField';
+ import { Button } from 'ui-component/buttons';
+ import { AmountInput } from 'ui-component/inputs';
+-import { Project } from 'utils/dtos/project.dto';
+-import { FolderName } from 'utils/enums';
+ import { getFieldErrors } from 'utils/form';
+ import { createProject, updateProject } from 'utils/services/project';
+-import { DATE_FORMAT } from '@/constant';
+ import styles from '@/styles/dataDialog.module.scss';
++import { IProject } from '@/types/resource/project';
++import { formatDate } from '@/utils/datetime/date.custom';
+ 
+ export interface IFormValues {
+   projectName: string;
+   startDate: Date;
+   address: string;
+-  file?: File;
++  image?: File;
+   currentClaimNumber: number;
+ }
+ 
+ interface ProjectAddDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
+-  project: Partial<Project> | null;
++  project: Partial<IProject> | null;
+   onClose: () => void;
+-  onSuccess?: (project: Project) => void;
++  onSuccess?: (project: IProject) => void;
+   loading?: boolean;
+ }
+ 
+ export default function ProjectAddDialog({ onClose, project, onSuccess, loading = false, ...props }: ProjectAddDialogProps): JSX.Element {
+   const { formatMessage } = useIntl();
+   const validates = useCommonValidates();
+-  const { triggerUpload } = useUploadFile();
+   const { request } = useAsync();
+   const isEdit = !isEmpty(project);
+   const { handleSubmit, values, errors, touched, isSubmitting, handleChange, setFieldValue, setValues, resetForm } = useFormik({
+@@ -53,32 +49,15 @@ export default function ProjectAddDialog({ onClose, project, onSuccess, loading
+       currentClaimNumber: Number(project?.currentClaimNumber || 0)
+     },
+     onSubmit: async (currentValues: IFormValues) => {
+-      let imageUrl = project?.imageUrl;
+-      if (currentValues.file) {
+-        const result = await triggerUpload({
+-          file: currentValues.file,
+-          folder: FolderName.PROJECTS
+-        });
+-        if (!result?.error) {
+-          imageUrl = result?.data.url;
+-        }
+-      }
+       const params = {
+         projectName: currentValues.projectName,
+-        startDate: format(currentValues.startDate as Date, DATE_FORMAT),
++        startDate: formatDate(currentValues.startDate).toString(),
+         address: currentValues.address,
+-        imageUrl: imageUrl || '',
++        image: currentValues.image,
+         currentClaimNumber: currentValues.currentClaimNumber
        };
-     });
-diff --git a/src/backend/services/user.service.ts b/src/backend/services/user.service.ts
-index 46d3236..488b29b 100644
---- a/src/backend/services/user.service.ts
-+++ b/src/backend/services/user.service.ts
-@@ -5,7 +5,7 @@ import { Actions, UserStatus } from '@/utils/enums';
- import PaginationStruct from '@/backend/structs/pagination.struct';
- import { User as UserType } from '@/utils/dtos/user.dto';
- import IdsNotFoundException from '@/backend/exceptions/idsnotfound.exception';
--import NotFoundException from "@/backend/exceptions/notfound.exception";
-+import NotFoundException from '@/backend/exceptions/notfound.exception';
+ 
+-      const result = await request(
+-        isEdit
+-          ? updateProject({
+-              id: `${project._id}`,
+-              ...params
+-            })
+-          : createProject(params)
+-      );
++      const result = await request(isEdit ? updateProject(params, project?.id || '') : createProject(params));
+ 
+       if (!result?.error) {
+         if (!isEdit) notify.success(formatMessage({ id: 'projectCreatedSuccessful' }));
+@@ -187,7 +166,7 @@ export default function ProjectAddDialog({ onClose, project, onSuccess, loading
+               <Box flex="1" display="flex">
+                 <Upload
+                   onChange={(file) => {
+-                    setFieldValue('file', file);
++                    setFieldValue('image', file);
+                   }}
+                   imageUrl={project?.imageUrl}
+                 />
+diff --git a/src/components/projects/DeleteDialog/index.tsx b/src/components/projects/DeleteDialog/index.tsx
+index f4abe3a..d01a0af 100644
+--- a/src/components/projects/DeleteDialog/index.tsx
++++ b/src/components/projects/DeleteDialog/index.tsx
+@@ -6,14 +6,14 @@ import { GridCloseIcon } from '@mui/x-data-grid';
+ import * as notify from 'utils/notify';
+ import { useAsync } from 'hooks/useAsync';
+ import { Button } from 'ui-component/buttons';
+-import { Project } from 'utils/dtos/project.dto';
+ import { deleteProject } from 'utils/services/project';
+ import styles from '@/styles/dataDialog.module.scss';
++import { IProject } from '@/types/resource/project';
+ 
+ interface ProjectDeleteDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
+-  project: Partial<Project>;
++  project: Partial<IProject>;
+   onClose: () => void;
+-  onSuccess?: (project: Partial<Project>) => void;
++  onSuccess?: (project: Partial<IProject>) => void;
+ }
+ 
+ export default function ProjectDeleteDialog({ onClose, project, onSuccess, ...props }: ProjectDeleteDialogProps) {
+@@ -30,7 +30,7 @@ export default function ProjectDeleteDialog({ onClose, project, onSuccess, ...pr
+   };
+ 
+   const handleDelete = async () => {
+-    const result = await request(deleteProject(`${project._id}`));
++    const result = await request(deleteProject(`${project.id}`));
+     if (!result.error) {
+       if (onSuccess) onSuccess(project);
+       notify.success(formatMessage({ id: 'projectDialogDeletedSuccessful' }));
+diff --git a/src/components/projects/Detail/budgets/addBudget/index.tsx b/src/components/projects/Detail/budgets/addBudget/index.tsx
+index 4d8e923..36ffb3a 100644
+--- a/src/components/projects/Detail/budgets/addBudget/index.tsx
++++ b/src/components/projects/Detail/budgets/addBudget/index.tsx
+@@ -10,9 +10,9 @@ import Select from 'components/ui-component/Select';
+ // projects import
+ import useCommonValidates from '@/hooks/useCommonValidates';
+ import { Button } from 'ui-component/buttons';
+-import { Project } from 'utils/dtos/project.dto';
+ import styles from '@/styles/dataDialog.module.scss';
+ import { PROJECT_CATEGORY } from '@/constant/project';
++import { IProject } from '@/types/resource/project';
+ 
+ export interface IFormValues {
+   projectId: string;
+@@ -31,7 +31,7 @@ export interface IFormValues {
+ interface ProjectAddDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
+   projectId: string;
+   onClose: () => void;
+-  onSuccess?: (project: Project) => void;
++  onSuccess?: (project: IProject) => void;
+   loading?: boolean;
+ }
+ 
+diff --git a/src/components/projects/Detail/budgets/index.tsx b/src/components/projects/Detail/budgets/index.tsx
+index 03703dd..e71af8d 100644
+--- a/src/components/projects/Detail/budgets/index.tsx
++++ b/src/components/projects/Detail/budgets/index.tsx
+@@ -1,5 +1,4 @@
+ import { Button } from '@/components/ui-component/buttons';
+-import { Project } from '@/utils/dtos/project.dto';
+ import { Box, Typography } from '@mui/material';
+ import { Plus, Trash, Upload } from '@phosphor-icons/react';
+ import { useIntl } from 'react-intl';
+@@ -10,9 +9,10 @@ import Table from '@/components/ui-component/table';
+ import { GridColDef } from '@mui/x-data-grid';
+ import { formatPrice } from '@/utils/currency';
+ import ProjectAddBudgetDialog from './addBudget';
++import { IProject } from '@/types/resource/project';
+ 
+ interface Props {
+-  project: Project;
++  project: IProject;
+ }
+ export const ProjectBudgets = ({ project }: Props) => {
+   const { formatMessage } = useIntl();
+@@ -21,7 +21,7 @@ export const ProjectBudgets = ({ project }: Props) => {
+   const { execute, isLoading } = useAsync();
+ 
+   const getData = async () => {
+-    const result = await execute(getProjectBudgets(project._id + ''));
++    const result = await execute(getProjectBudgets(project.id + ''));
+     const data = result.data?.budgets && result.data?.budgets.length > 0 ? result.data?.budgets : [];
+     setListContractors(data);
+   };
+@@ -133,7 +133,7 @@ export const ProjectBudgets = ({ project }: Props) => {
+           }
+         }}
+       />
+-      <ProjectAddBudgetDialog open={openAddDialog} projectId={project._id.toString()} onClose={() => setOpenAddDialog(false)} />
++      <ProjectAddBudgetDialog open={openAddDialog} projectId={project.id} onClose={() => setOpenAddDialog(false)} />
+     </Box>
+   );
+ };
+diff --git a/src/components/projects/Detail/contractors/addContractor/index.tsx b/src/components/projects/Detail/contractors/addContractor/index.tsx
+index c8836dd..5e74ef9 100644
+--- a/src/components/projects/Detail/contractors/addContractor/index.tsx
++++ b/src/components/projects/Detail/contractors/addContractor/index.tsx
+@@ -19,10 +19,10 @@ import { success as notifySuccess } from '@/utils/notify';
+ // projects import
+ import useCommonValidates from '@/hooks/useCommonValidates';
+ import { Button } from 'ui-component/buttons';
+-import { Project } from 'utils/dtos/project.dto';
+ import styles from '@/styles/dataDialog.module.scss';
+ import { PROJECT_ROLE } from '@/constant/project';
+ import UserAutoComplete from '@/components/ui-component/autocomplete/Users';
++import { IProject } from '@/types/resource/project';
+ 
+ export interface IFormValues {
+   projectId: string;
+@@ -33,7 +33,7 @@ export interface IFormValues {
+ interface ProjectAddDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
+   projectId: string;
+   onClose: () => void;
+-  onSuccess?: (project: Project) => void;
++  onSuccess?: (project: IProject) => void;
+   loading?: boolean;
+ }
+ 
+diff --git a/src/components/projects/Detail/contractors/index.tsx b/src/components/projects/Detail/contractors/index.tsx
+index 4b2e247..6a36375 100644
+--- a/src/components/projects/Detail/contractors/index.tsx
++++ b/src/components/projects/Detail/contractors/index.tsx
+@@ -1,5 +1,4 @@
+ import { Button } from '@/components/ui-component/buttons';
+-import { Project } from '@/utils/dtos/project.dto';
+ import { Box, Typography } from '@mui/material';
+ import { Plus, Trash } from '@phosphor-icons/react';
+ import { useIntl } from 'react-intl';
+@@ -11,9 +10,10 @@ import Table from '@/components/ui-component/table';
+ import { GridColDef, GridRowParams } from '@mui/x-data-grid';
+ import Avatar from '@/components/ui-component/extended/Avatar';
+ import ProjectAddUserDialog from './addContractor';
++import { IProject } from '@/types/resource/project';
+ 
+ interface Props {
+-  project: Project;
++  project: IProject;
+ }
+ export const ProjectContractors = ({ project }: Props) => {
+   const { formatMessage } = useIntl();
+@@ -22,7 +22,7 @@ export const ProjectContractors = ({ project }: Props) => {
+   const { execute, isLoading } = useAsync();
+ 
+   const getData = async () => {
+-    const result = await execute(getProjectContractors(project._id + ''));
++    const result = await execute(getProjectContractors(project.id + ''));
+     const data = result.data?.contractors && result.data?.contractors.length > 0 ? result.data?.contractors : [];
+     setListContractors(data);
+   };
+@@ -101,7 +101,7 @@ export const ProjectContractors = ({ project }: Props) => {
+           }
+         }}
+       />
+-      <ProjectAddUserDialog open={openDialog} projectId={project._id.toString()} onClose={() => setOpenDialog(false)} />
++      <ProjectAddUserDialog open={openDialog} projectId={project.id} onClose={() => setOpenDialog(false)} />
+     </Box>
+   );
+ };
+diff --git a/src/components/projects/Detail/index.tsx b/src/components/projects/Detail/index.tsx
+index 494978a..4b1d87a 100644
+--- a/src/components/projects/Detail/index.tsx
++++ b/src/components/projects/Detail/index.tsx
+@@ -7,7 +7,6 @@ import { useParams, useRouter } from 'next/navigation';
+ import { useEffect, useState } from 'react';
+ import { useAsync } from '@/hooks/useAsync';
+ import Loader from '@/components/ui-component/Loader';
+-import { Project } from '@/utils/dtos/project.dto';
+ import { CurrencyCircleDollar, Receipt, Rows, SquaresFour, UserCircleGear } from '@phosphor-icons/react';
+ import style from './style.module.scss';
+ import { ProjectOverview } from './overview';
+@@ -16,13 +15,14 @@ import { ProjectRoles } from './roles';
+ import { ProjectContractors } from './contractors';
+ import { ProjectBudgets } from './budgets';
+ import { ProjectInvoices } from './invoices';
++import { IProject } from '@/types/resource/project';
+ 
+ const ProjectDetail = () => {
+   const { execute, isLoading } = useAsync();
+   const params = useParams();
+   const router = useRouter();
+   const projectId = params.id as string;
+-  const [project, setProject] = useState<Project | null>(null);
++  const [project, setProject] = useState<IProject | null>(null);
+   const [selectedTab, setSelectedTab] = useState(0);
+   const projectUrl = routes.projects.getUrl();
+   const breadCrumbs = [
+@@ -44,8 +44,8 @@ const ProjectDetail = () => {
+   const getData = async () => {
+     if (params.id) {
+       const result = await execute(getProject(projectId));
+-      if (result.data) {
+-        setProject(result.data);
++      if (result?.data?.project) {
++        setProject(result.data.project);
+       } else {
+         router.push(projectUrl);
+       }
+diff --git a/src/components/projects/Detail/invoices/index.tsx b/src/components/projects/Detail/invoices/index.tsx
+index 1c832bb..785dc33 100644
+--- a/src/components/projects/Detail/invoices/index.tsx
++++ b/src/components/projects/Detail/invoices/index.tsx
+@@ -1,5 +1,4 @@
+ import { Button } from '@/components/ui-component/buttons';
+-import { Project } from '@/utils/dtos/project.dto';
+ import { Box, Typography, Chip } from '@mui/material';
+ import { Plus, Trash } from '@phosphor-icons/react';
+ import { useIntl } from 'react-intl';
+@@ -11,10 +10,11 @@ import { GridColDef } from '@mui/x-data-grid';
+ import { formatPrice } from '@/utils/currency';
+ import { GST_RATE, HOLDBACK_RATE, PST_RATE } from '@/utils/constant';
+ import styles from './style.module.scss';
+-import { formatDate } from '@/utils/datetime/date.utc';
++import { formatDate } from '@/utils/datetime/date.custom';
++import { IProject } from '@/types/resource/project';
+ 
+ interface Props {
+-  project: Project;
++  project: IProject;
+ }
+ export const ProjectInvoices = ({ project }: Props) => {
+   const { formatMessage } = useIntl();
+@@ -22,7 +22,7 @@ export const ProjectInvoices = ({ project }: Props) => {
+   const { execute, isLoading } = useAsync();
+ 
+   const getData = async () => {
+-    const result = await execute(getProjectInvoices(project._id + ''));
++    const result = await execute(getProjectInvoices(project.id + ''));
+     const data = result.data?.invoices && result.data?.invoices.length > 0 ? result.data?.invoices : [];
+     setListInvoices(data);
+   };
+diff --git a/src/components/projects/Detail/overview/index.tsx b/src/components/projects/Detail/overview/index.tsx
+index ae5e5bc..696dd9c 100644
+--- a/src/components/projects/Detail/overview/index.tsx
++++ b/src/components/projects/Detail/overview/index.tsx
+@@ -1,6 +1,5 @@
+ import { Button } from '@/components/ui-component/buttons';
+ import DateCustom, { formatDate } from '@/utils/datetime/date.custom';
+-import { Project } from '@/utils/dtos/project.dto';
+ import { Box, Grid, Typography } from '@mui/material';
+ import { Pencil } from '@phosphor-icons/react';
+ import Image from 'next/image';
+@@ -8,9 +7,10 @@ import { useIntl } from 'react-intl';
+ import styles from '../style.module.scss';
+ import { useState } from 'react';
+ import ProjectAddDialog from '../../Add';
++import { IProject } from '@/types/resource/project';
+ 
+ interface Props {
+-  project: Project;
++  project: IProject;
+ }
+ export const ProjectOverview = ({ project }: Props) => {
+   const { formatMessage } = useIntl();
+diff --git a/src/components/projects/Detail/roles/addUser/index.tsx b/src/components/projects/Detail/roles/addUser/index.tsx
+index 141bb9d..cb8f0f8 100644
+--- a/src/components/projects/Detail/roles/addUser/index.tsx
++++ b/src/components/projects/Detail/roles/addUser/index.tsx
+@@ -19,10 +19,10 @@ import { success as notifySuccess } from '@/utils/notify';
+ // projects import
+ import useCommonValidates from '@/hooks/useCommonValidates';
+ import { Button } from 'ui-component/buttons';
+-import { Project } from 'utils/dtos/project.dto';
+ import styles from '@/styles/dataDialog.module.scss';
+ import { PROJECT_ROLE } from '@/constant/project';
+ import UserAutoComplete from '@/components/ui-component/autocomplete/Users';
++import { IProject } from '@/types/resource/project';
+ 
+ export interface IFormValues {
+   projectId: string;
+@@ -33,7 +33,7 @@ export interface IFormValues {
+ interface ProjectAddDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
+   projectId: string;
+   onClose: () => void;
+-  onSuccess?: (project: Project) => void;
++  onSuccess?: (project: IProject) => void;
+   loading?: boolean;
+ }
+ 
+diff --git a/src/components/projects/Detail/roles/index.tsx b/src/components/projects/Detail/roles/index.tsx
+index 386d878..c91f1f3 100644
+--- a/src/components/projects/Detail/roles/index.tsx
++++ b/src/components/projects/Detail/roles/index.tsx
+@@ -1,5 +1,4 @@
+ import { Button } from '@/components/ui-component/buttons';
+-import { Project } from '@/utils/dtos/project.dto';
+ import { Box, Typography } from '@mui/material';
+ import { Plus, Trash } from '@phosphor-icons/react';
+ import { useIntl } from 'react-intl';
+@@ -11,9 +10,10 @@ import Table from '@/components/ui-component/table';
+ import { GridColDef, GridRowParams } from '@mui/x-data-grid';
+ import Avatar from '@/components/ui-component/extended/Avatar';
+ import ProjectAddUserDialog from './addUser';
++import { IProject } from '@/types/resource/project';
+ 
+ interface Props {
+-  project: Project;
++  project: IProject;
+ }
+ export const ProjectRoles = ({ project }: Props) => {
+   const { formatMessage } = useIntl();
+@@ -22,7 +22,7 @@ export const ProjectRoles = ({ project }: Props) => {
+   const { execute, isLoading } = useAsync();
+ 
+   const getData = async () => {
+-    const result = await execute(getProjectRoles(project._id + ''));
++    const result = await execute(getProjectRoles(project.id + ''));
+     const data = result.data?.roles && result.data?.roles.length > 0 ? result.data?.roles : [];
+     setListRoles(data);
+   };
+@@ -108,7 +108,7 @@ export const ProjectRoles = ({ project }: Props) => {
+           }
+         }}
+       />
+-      <ProjectAddUserDialog open={openDialog} projectId={project._id.toString()} onClose={() => setOpenDialog(false)} />
++      <ProjectAddUserDialog open={openDialog} projectId={project.id} onClose={() => setOpenDialog(false)} />
+     </Box>
+   );
+ };
+diff --git a/src/components/projects/List/components/DeleteBtn/index.tsx b/src/components/projects/List/components/DeleteBtn/index.tsx
+index 0d9af95..23d3c88 100644
+--- a/src/components/projects/List/components/DeleteBtn/index.tsx
++++ b/src/components/projects/List/components/DeleteBtn/index.tsx
+@@ -3,12 +3,12 @@ import { useState } from 'react';
+ // projects import
+ import { Button } from '@/components/ui-component/buttons';
+ import { Trash } from '@phosphor-icons/react';
+-import { Project } from '@/utils/dtos/project.dto';
+ import DeleteDialog from '../../../DeleteDialog';
++import { IProject } from '@/types/resource/project';
+ 
+ export interface IDeleteBtnProps {
+-  project: Partial<Project>;
+-  onSuccess?: (data: Partial<Project>) => void;
++  project: Partial<IProject>;
++  onSuccess?: (data: Partial<IProject>) => void;
+ }
+ 
+ export default function DeleteBtn(props: IDeleteBtnProps) {
+@@ -19,7 +19,7 @@ export default function DeleteBtn(props: IDeleteBtnProps) {
+     setOpen(false);
+   };
+ 
+-  const handleSuccess = (data: Partial<Project>) => {
++  const handleSuccess = (data: Partial<IProject>) => {
+     setOpen(false);
+     if (onSuccess) {
+       onSuccess(data);
+diff --git a/src/components/projects/List/components/EditBtn/index.tsx b/src/components/projects/List/components/EditBtn/index.tsx
+index 245f570..3b70589 100644
+--- a/src/components/projects/List/components/EditBtn/index.tsx
++++ b/src/components/projects/List/components/EditBtn/index.tsx
+@@ -5,19 +5,19 @@ import { useAsync } from '@/hooks/useAsync';
+ import { Button } from '@/components/ui-component/buttons';
+ import { Pencil } from '@phosphor-icons/react';
+ import { getProject } from 'utils/services/project';
+-import { Project } from '@/utils/dtos/project.dto';
  import DateCustom from '@/utils/datetime/date.custom';
  
- export default class UserService {
-diff --git a/src/backend/validator/profile.validator.ts b/src/backend/validator/profile.validator.ts
-index 254e755..c663889 100644
---- a/src/backend/validator/profile.validator.ts
-+++ b/src/backend/validator/profile.validator.ts
-@@ -7,7 +7,7 @@ import UserRepository from '@/backend/repositories/mongodb/user.repository';
- export default class ProfileValidator extends BaseValidator {
-   private userRepository: UserRepositoryInterface;
+ import AddDialog from '../../../Add';
++import { IProject } from '@/types/resource/project';
  
--  constructor(data: { id: string; email: string; password: string; name: string }, connection: Mongoose) {
-+  constructor(data: { id: string; email: string; password: string; firstName: string; lastName: string }, connection: Mongoose) {
-     super();
-     this.data = data;
+ export interface IEditBtnProps {
+   id: string;
+-  onSuccess?: (data: Project) => void;
++  onSuccess?: (data: IProject) => void;
+ }
  
-@@ -39,14 +39,15 @@ export default class ProfileValidator extends BaseValidator {
+ export default function EditBtn(props: IEditBtnProps) {
+   const { id, onSuccess } = props;
+-  const [project, setProject] = useState<Project | null>(null);
++  const [project, setProject] = useState<IProject | null>(null);
+   const [open, setOpen] = useState(false);
+   const { request, isLoading } = useAsync();
  
-     const idRule = { id: string().required() };
-     const mailRule = { email: string().email().required() };
--    const nameRule = { name: string().required() };
-+    const firstNameRule = { name: string().required() };
-+    const lastNameNameRule = { name: string().required() };
-     const phoneRule = { phoneNumber: phoneNumberRule };
-     const companyRule = { company: string().max(255).nullable() };
-     const countryRule = { country: string().max(20).nullable() };
-     const birthDateRule = { birthDate: birthDateRulesSchema.nullable() };
-     const imageRule = { image: string().url().nullable() };
+@@ -25,7 +25,7 @@ export default function EditBtn(props: IEditBtnProps) {
+     setOpen(false);
+   };
  
--    this.rules = [idRule, mailRule, nameRule, phoneRule, companyRule, countryRule, birthDateRule, imageRule];
-+    this.rules = [idRule, mailRule, firstNameRule, lastNameNameRule, phoneRule, companyRule, countryRule, birthDateRule, imageRule];
+-  const handleSuccess = (data: Project) => {
++  const handleSuccess = (data: IProject) => {
+     setOpen(false);
+     setProject(null);
+     if (onSuccess) {
+@@ -37,10 +37,9 @@ export default function EditBtn(props: IEditBtnProps) {
+     if (!id) return;
+     setOpen(true);
+     const result = await request(getProject(id));
+-    if (!result?.error) {
+-      const { _id, startDate, ...rest } = result.data;
++    if (result?.data?.project) {
++      const { startDate, ...rest } = result?.data?.project;
+       setProject({
+-        _id: _id,
+         startDate: startDate ? new DateCustom(startDate) : null,
+         ...rest
+       });
+diff --git a/src/components/projects/List/components/ProjectName/index.tsx b/src/components/projects/List/components/ProjectName/index.tsx
+index ecf6260..ece06f7 100644
+--- a/src/components/projects/List/components/ProjectName/index.tsx
++++ b/src/components/projects/List/components/ProjectName/index.tsx
+@@ -3,12 +3,12 @@ import { Box, Typography } from '@mui/material';
  
-     return this;
-   }
-diff --git a/src/backend/validator/register.validator.ts b/src/backend/validator/register.validator.ts
-index c06e51e..ad7d441 100644
---- a/src/backend/validator/register.validator.ts
-+++ b/src/backend/validator/register.validator.ts
-@@ -7,7 +7,7 @@ import UserRepository from '@/backend/repositories/mongodb/user.repository';
- export default class RegisterValidator extends BaseValidator {
-   private userRepository: UserRepositoryInterface;
+ //projects import
+ import Avatar from '@/components/ui-component/extended/Avatar';
+-import { Project } from '@/utils/dtos/project.dto';
  
--  constructor(data: { email: string; password: string; name: string }, connection: Mongoose) {
-+  constructor(data: { email: string; password: string; firstName: string; lastName: string }, connection: Mongoose) {
-     super();
-     this.data = data;
-     this.userRepository = new UserRepository(connection);
-@@ -16,9 +16,10 @@ export default class RegisterValidator extends BaseValidator {
-   validateRules() {
-     const mailRule = { email: string().email().required() };
-     const passRule = { password: string().min(8).required() };
--    const nameRule = { name: string().required() };
-+    const firstNameRule = { firstName: string().required() };
-+    const lastNameRule = { lastName: string().required() };
+ import styles from './styles.module.scss';
++import { IProject } from '@/types/resource/project';
  
--    this.rules = [mailRule, passRule, nameRule];
-+    this.rules = [mailRule, passRule, firstNameRule, lastNameRule];
+ export interface IProjectNameProps {
+-  project: Project;
++  project: IProject;
+ }
  
-     return this;
-   }
-diff --git a/src/components/authentication/auth-forms/RegisterForm/index.tsx b/src/components/authentication/auth-forms/RegisterForm/index.tsx
-index c468386..b729e01 100644
---- a/src/components/authentication/auth-forms/RegisterForm/index.tsx
-+++ b/src/components/authentication/auth-forms/RegisterForm/index.tsx
-@@ -61,14 +61,15 @@ function RegisterForm() {
-       register({
-         email: values.email,
-         password: values.password,
--        name: `${values.firstName} ${values.lastName}`
-+        firstName: values.firstName,
-+        lastName: values.lastName
-       })
-     );
+ export default function ProjectName(props: IProjectNameProps) {
+diff --git a/src/components/projects/List/components/StartDate/index.tsx b/src/components/projects/List/components/StartDate/index.tsx
+index 7bf378c..8158466 100644
+--- a/src/components/projects/List/components/StartDate/index.tsx
++++ b/src/components/projects/List/components/StartDate/index.tsx
+@@ -4,11 +4,11 @@ import { Typography } from '@mui/material';
  
-     if (!result.error) {
-       setStatus({ success: true });
-       setSubmitting(false);
--      notify.success(formatMessage({ id: 'registerSuccessfull' }));
-+      notify.success(formatMessage({ id: 'registerSuccessfully' }));
+ //projects import
+ import DateCustom from '@/utils/datetime/date.custom';
+-import { Project } from '@/utils/dtos/project.dto';
+ import { VISIABLE_DATE_FORMAT } from '@/constant';
++import { IProject } from '@/types/resource/project';
  
-       setTimeout(() => {
-         router.push(routes.login.getUrl());
-diff --git a/src/components/authentication/auth-forms/VerifyEmailForm/index.tsx b/src/components/authentication/auth-forms/VerifyEmailForm/index.tsx
-index 31283c8..6738de3 100644
---- a/src/components/authentication/auth-forms/VerifyEmailForm/index.tsx
-+++ b/src/components/authentication/auth-forms/VerifyEmailForm/index.tsx
-@@ -60,7 +60,7 @@ function ConfirmEmailForm(props: IConfirmEmailFormProps) {
-         })
-       );
-       setTimeout(() => {
--        const linkResetPassword = result.data?.linkResetPassword;
-+        const linkResetPassword = result.data?.data.linkResetPassword;
-         router.push(linkResetPassword || routes.resetPassword.getUrl());
-       }, 500);
+ export interface IStartDateProps {
+-  project: Project;
++  project: IProject;
+ }
+ 
+ export default function StartDate(props: IStartDateProps) {
+diff --git a/src/components/projects/List/components/TotalBudget/index.tsx b/src/components/projects/List/components/TotalBudget/index.tsx
+index 31096b8..c723a76 100644
+--- a/src/components/projects/List/components/TotalBudget/index.tsx
++++ b/src/components/projects/List/components/TotalBudget/index.tsx
+@@ -2,11 +2,11 @@ import * as React from 'react';
+ import { Typography } from '@mui/material';
+ 
+ //projects import
+-import { Project } from '@/utils/dtos/project.dto';
+ import { formatPrice } from 'utils/currency';
++import { IProject } from '@/types/resource/project';
+ 
+ export interface ITotalBudgetProps {
+-  project: Project;
++  project: IProject;
+ }
+ 
+ export default function TotalBudget(props: ITotalBudgetProps) {
+diff --git a/src/components/projects/List/index.tsx b/src/components/projects/List/index.tsx
+index 1e6e894..7c70c04 100644
+--- a/src/components/projects/List/index.tsx
++++ b/src/components/projects/List/index.tsx
+@@ -1,7 +1,7 @@
+ 'use client';
+ import { useEffect, useState } from 'react';
+ import { useIntl } from 'react-intl';
+-import { GridColDef } from '@mui/x-data-grid';
++import { GridColDef, GridPaginationModel, GridSortModel } from '@mui/x-data-grid';
+ import { Box, Stack } from '@mui/material';
+ import { Pencil, Eye } from '@phosphor-icons/react';
+ 
+@@ -11,8 +11,6 @@ import Breadcrumbs from 'components/Breadcrumbs';
+ import Table from 'components/ui-component/table';
+ import { getProjects } from '@/utils/services/project';
+ import { useAsync } from '@/hooks/useAsync';
+-import { IResponseProjects } from 'types/response';
+-import { Project } from '@/utils/dtos/project.dto';
+ import AddDialog from '../Add';
+ 
+ import ProjectName from './components/ProjectName';
+@@ -23,15 +21,21 @@ import DeleteBtn from './components/DeleteBtn';
+ 
+ import NextLink from 'next/link';
+ import routes from '@/routes';
++import { IProject } from '@/types/resource/project';
++import { ResponseMeta } from '@/types/pagination';
++import { IRequestFilter } from '@/types/request';
++import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT, SORT_FIELD_DEFAULT } from '@/utils/constant';
+ 
+ const ProjectList = () => {
+-  const [projects, setProjects] = useState<Project[]>([]);
++  const [projects, setProjects] = useState<IProject[]>([]);
+   const [openDialog, setOpenDialog] = useState(false);
+   const { formatMessage } = useIntl();
+   const { request, isLoading } = useAsync();
++  const [projectFilters, setProjectFilters] = useState<IRequestFilter>({});
++  const [projectMeta, setProjectMeta] = useState<ResponseMeta | null>(null);
+ 
+-  const columns: GridColDef<Project>[] = [
+-    { field: '_id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
++  const columns: GridColDef<IProject>[] = [
++    { field: 'id', headerName: formatMessage({ id: 'tableId' }), align: 'center', headerAlign: 'center', flex: 1 },
+     {
+       field: 'name',
+       headerName: formatMessage({ id: 'projectName' }),
+@@ -76,32 +80,35 @@ const ProjectList = () => {
+           >
+             <Eye />
+           </Button>
+-          <EditBtn
+-            id={`${params.row._id}`}
+-            onSuccess={(data) => {
+-              console.log(data);
+-            }}
+-            key="edit"
+-          />
++          <EditBtn id={`${params.row.id}`} onSuccess={() => handleActionSuccess()} key="edit" />
+           <DeleteBtn
+             project={{
+-              _id: `${params.row._id}`,
++              id: `${params.row.id}`,
+               projectName: params.row.projectName
+             }}
+             key="delete"
+-            onSuccess={(project) => {
+-              setProjects((prevState) => {
+-                return prevState.filter((item) => item._id !== project._id);
+-              });
+-            }}
++            onSuccess={() => handleActionSuccess()}
+           />
+         </Box>
+       )
      }
+   ];
+ 
++  const fetchProjects = async (filters?: IRequestFilter) => {
++    const newFilter = {
++      ...projectFilters,
++      ...filters
++    };
++    const result = await request(getProjects(newFilter));
++    const data = result.data?.data && result.data?.data.length > 0 ? result.data?.data : [];
++    const meta = result.data.meta || null;
++    setProjects(data);
++    setProjectMeta(meta);
++    setProjectFilters(newFilter);
++  };
++
+   useEffect(() => {
+-    initData();
++    fetchProjects();
+     // eslint-disable-next-line react-hooks/exhaustive-deps
+   }, []);
+ 
+@@ -115,19 +122,51 @@ const ProjectList = () => {
+     </Button>
+   );
+ 
+-  const initData = async () => {
+-    const result = await request(getProjects());
++  const handleSort = async (model: GridSortModel) => {
++    const field = model?.[0]?.field || SORT_FIELD_DEFAULT;
++    const dir = model?.[0]?.sort || SORT_DIRECTION_DEFAULT;
++    await fetchProjects({
++      sort: dir,
++      field
++    });
++  };
++
++  const handlePaginationChange = async (model: GridPaginationModel) => {
++    const newPage = (model?.page || 0) + 1;
++    const limit = model?.pageSize || PAGINATE_PAGE_SIZE;
++    await fetchProjects({
++      page: newPage,
++      limit
++    });
++  };
++
++  const handleActionSuccess = async () => {
++    await fetchProjects({});
++  };
+ 
+-    if (!result.error) {
+-      const { projects } = result.data as IResponseProjects;
+-      setProjects(projects);
++  const handleSearch = async (keyword: string) => {
++    if (keyword !== projectFilters.search) {
++      await fetchProjects({
++        search: keyword
++      });
+     }
+   };
+ 
+   return (
+     <Stack direction="column">
+-      <Breadcrumbs title={formatMessage({ id: 'projects' })} actionCom={renderAddButton} onSearch={() => console.log('hello')} />
+-      <Table rows={projects} columns={columns} loading={isLoading} />
++      <Breadcrumbs title={formatMessage({ id: 'projects' })} actionCom={renderAddButton} onSearch={handleSearch} />
++      <Table
++        rows={projects}
++        columns={columns}
++        loading={isLoading}
++        onSortModelChange={handleSort}
++        paginationModel={{
++          page: (projectFilters?.page || 1) - 1,
++          pageSize: projectFilters.limit || PAGINATE_PAGE_SIZE
++        }}
++        rowCount={projectMeta?.total || 0}
++        onPaginationModelChange={handlePaginationChange}
++      />
+       <AddDialog
+         open={openDialog}
+         project={null}
+@@ -136,6 +175,7 @@ const ProjectList = () => {
+         }}
+         onSuccess={() => {
+           setOpenDialog(false);
++          handleActionSuccess();
+         }}
+       />
+     </Stack>
+diff --git a/src/components/ui-component/Upload/index.tsx b/src/components/ui-component/Upload/index.tsx
+index e1fb234..981bcd0 100644
+--- a/src/components/ui-component/Upload/index.tsx
++++ b/src/components/ui-component/Upload/index.tsx
+@@ -1,4 +1,4 @@
+-import { ChangeEvent, useState } from 'react';
++import { ChangeEvent, useEffect, useState } from 'react';
+ import { Button } from '@mui/material';
+ import { useIntl } from 'react-intl';
+ 
+@@ -36,6 +36,13 @@ export default function Upload(props: IUploadProps) {
+     }
+   };
+ 
++  useEffect(() => {
++    if (imageUrl !== src) {
++      setSrc(imageUrl);
++    }
++    // eslint-disable-next-line react-hooks/exhaustive-deps
++  }, [imageUrl]);
++
+   return (
+     <Button component="label" variant="outlined" color="primary" sx={{ width: '100%', position: 'relative' }}>
+       <AddIcon />
 diff --git a/src/types/request.ts b/src/types/request.ts
-index 4743719..8552d73 100644
+index 97e3abe..25b5600 100644
 --- a/src/types/request.ts
 +++ b/src/types/request.ts
-@@ -15,7 +15,8 @@ export interface IRequestFilter {
- export interface IRequestRegister {
-   email: string;
-   password: string;
--  name: string;
-+  firstName: string;
-+  lastName: string;
+@@ -97,18 +97,11 @@ export interface IRequestCreateProject {
+   projectName: string;
+   startDate: string;
+   address: string;
+-  imageUrl: string;
++  image?: File;
+   currentClaimNumber: number;
  }
  
- export interface IRequestUpdateProfile extends UserProfile {}
+-export interface IRequestUpdateProject {
+-  id: string;
+-  projectName: string;
+-  startDate: string;
+-  address: string;
+-  imageUrl: string;
+-  currentClaimNumber: number;
+-}
++export interface IRequestUpdateProject extends Partial<IRequestCreateProject> {}
+ 
+ /* UPLOAD */
+ export interface IRequestUpload {
+diff --git a/src/types/resource/project.ts b/src/types/resource/project.ts
+new file mode 100644
+index 0000000..cce0593
+--- /dev/null
++++ b/src/types/resource/project.ts
+@@ -0,0 +1,5 @@
++import { Project as ProjectDto } from '@/utils/dtos/project.dto';
++
++export interface IProject extends Omit<ProjectDto, '_id'> {
++  id: string;
++}
 diff --git a/src/types/response.ts b/src/types/response.ts
-index 89d9971..5a91d95 100644
+index 4fd578f..89d9971 100644
 --- a/src/types/response.ts
 +++ b/src/types/response.ts
-@@ -75,6 +75,10 @@ export interface ResponseError {
- /* AUTH */
- export interface IResponseVerifyCode {
-   success: boolean;
+@@ -1,7 +1,7 @@
+ import { Builder } from '@/utils/dtos/builder.dto';
+-import { Project } from '@/utils/dtos/project.dto';
+ import { ResponseMeta } from './pagination';
+ import { IContractor } from '@/utils/services/contractor';
++import { IProject } from './resource/project';
+ 
+ export interface IResponse<T> {
+   data: T;
+@@ -87,8 +87,18 @@ export interface IResponseResetPassword {
+ 
+ /* PROJECT */
+ export interface IResponseProjects {
+-  projects: Project[] | [];
+-  totalItem: number;
++  data: IProject[] | [];
++  meta: ResponseMeta;
++}
++
++export interface IResponseCreateProject {
++  success: boolean;
 +  status: number;
-+  data: {
-+    linkResetPassword: string;
-+  };
++}
++
++export interface IResponseUpdateProject {
++  success: boolean;
++  status: number;
  }
  
- export interface IResponseSendCode {
-diff --git a/src/utils/dtos/user.dto.ts b/src/utils/dtos/user.dto.ts
-index a92ef51..e4fe4bf 100644
---- a/src/utils/dtos/user.dto.ts
-+++ b/src/utils/dtos/user.dto.ts
-@@ -9,7 +9,8 @@ import DateCustom from '@/utils/datetime/date.custom';
+ export interface IResponseDeleteProject {
+diff --git a/src/utils/api.ts b/src/utils/api.ts
+index ffba8a2..0604e74 100644
+--- a/src/utils/api.ts
++++ b/src/utils/api.ts
+@@ -25,15 +25,11 @@ const APIS = {
+   VERIFY_CODE: '/auth/code/verify',
+   RESET_PASSWORD: '/auth/reset-password',
+   UPLOAD_FILE: '/file/upload',
+-  GET_PROJECTS: '/project/list',
++  PROJECT: '/project',
+   GET_PROJECT_ROLES: '/project/:id/roles',
+   GET_PROJECT_CONTRACTORS: '/project/:id/contractors',
+   GET_PROJECT_BUDGETS: '/project/:id/budgets',
+-  GET_PROJECT_INVOICES: '/project/:id/invoices',
+-  CREATE_PROJECT: '/project/create',
+-  GET_PROJECT: '/project/:id',
+-  UPDATE_PROJECT: '/project/:id',
+-  DELETE_PROJECT: '/project/:id'
++  GET_PROJECT_INVOICES: '/project/:id/invoices'
+ };
  
- export type User = {
-   email: string;
--  name: string;
-+  firstName: string;
-+  lastName: string;
-   password: string | null;
-   emailConfirmed: boolean;
-   confirmationToken: string | null;
-@@ -32,7 +33,8 @@ export type User = {
+ export default APIS;
+diff --git a/src/utils/dtos/project.dto.ts b/src/utils/dtos/project.dto.ts
+index eb975e0..7edfbb5 100644
+--- a/src/utils/dtos/project.dto.ts
++++ b/src/utils/dtos/project.dto.ts
+@@ -4,25 +4,24 @@
+  */
  
- export default class UserDto extends BaseDto {
-   email: string = '';
--  name: string = '';
-+  firstName: string = '';
-+  lastName: string = '';
-   password: string | null = null;
-   emailConfirmed: boolean = false;
-   confirmationToken: string | null = null;
-diff --git a/src/utils/locales/en/auth.json b/src/utils/locales/en/auth.json
-index 1995d1b..4d25fa1 100644
---- a/src/utils/locales/en/auth.json
-+++ b/src/utils/locales/en/auth.json
-@@ -27,7 +27,7 @@
-   "requiredValidateMessage": "This field is required",
-   "maxLengthValidateMessage": "This field must be at most {number} characters",
-   "minLengthValidateMessage": "This field must be at least {number} characters",
--  "registerSuccessfull": "Your registration has been successfully completed.",
-+  "registerSuccessfully": "Your registration has been successfully completed.",
-   "agreeWithTermsCondition": "Agree with <link>Terms & Condition.</link>",
-   "hasAccount": "Already have an account?",
-   "verificationCodeFormTitle": "Verification Code",
-@@ -76,4 +76,4 @@
-   "updateSuccessful": "Update Successful",
-   "updateFailed": "Update Failed",
-   "emailInValid": "Email is invalid"
--}
-\ No newline at end of file
-+}
-diff --git a/src/utils/services/auth.ts b/src/utils/services/auth.ts
-index 1a9a50c..f5e19bb 100644
---- a/src/utils/services/auth.ts
-+++ b/src/utils/services/auth.ts
-@@ -14,7 +14,8 @@ import { IResponseRegister, IResponseVerifyCode, IResponseSendCode, IResponseSuc
- export const register = async (user: IRequestRegister): Promise<IResponseRegister> => {
-   const res: IResponseRegister = await axios.post(endPoints.REGISTER, {
-     email: user.email,
--    name: user.name,
-+    firstName: user.firstName,
-+    lastName: user.lastName,
-     password: user.password
-   });
+ import BaseDto from '@/utils/dtos/base.dto';
++import DateUTC from '@/utils/datetime/date.custom';
++import { User } from './user.dto';
++import { CURRENCY } from '@/constant';
  
-diff --git a/types/next-auth.d.ts b/types/next-auth.d.ts
-index c2bb6c9..ae81c5a 100644
---- a/types/next-auth.d.ts
-+++ b/types/next-auth.d.ts
-@@ -4,6 +4,8 @@ declare module 'next-auth' {
-   interface Session {
-     user: {
-       id: string;
-+      firstName: string;
-+      lastName: string;
-       token: string;
-       password: string | null;
-       provider: string;
+ export type Project = {
+   address: string;
+   amount?: number;
+   builderId: string;
+   category: string;
+-  completionStatus: string;
+   creatorEmail: string;
+-  creatorId: string;
++  creatorId: object | string;
++  creator: Partial<User> | null;
+   currency: string;
+-  currentClaimNumber: string;
+-  budgetSeperatorComma: boolean;
+-  budgetSeperatorSemiColon: boolean;
+-  budgetSeperatorTab: boolean;
+-  startDate: Date | null;
++  currentClaimNumber: number;
++  startDate: Date;
+   date: Date;
+   dateCreate: Date;
+   dateModify: Date;
+-  imageBucket?: string;
+   imageUrl?: string;
+   items: string;
+   projectName: string;
+@@ -34,25 +33,29 @@ export type Project = {
+   roleProjectContractors?: string;
+ };
+ 
++export type ProjectRequestType = {
++  projectName: string;
++  address: string;
++  currentClaimNumber: number;
++  startDate: string;
++  image?: File;
++};
++
+ export default class ProjectDto extends BaseDto {
+   address: string;
+   amount?: number;
+   builderId: string;
+   category: string;
+-  completionStatus: string;
+   creatorEmail: string;
+   creatorId: string;
++  creator: Partial<User> | null;
+   currency: string;
+-  currentClaimNumber: string;
+-  budgetSeperatorComma: boolean;
+-  budgetSeperatorSemiColon: boolean;
+-  budgetSeperatorTab: boolean;
+-  flowPublishedAt: Date;
+-  date: Date;
+-  startDate: Date | null;
+-  dateCreate: Date;
+-  dateModify: Date;
+-  imageBucket: string;
++  currentClaimNumber: number;
++  flowPublishedAt: Date = new DateUTC();
++  date: Date = new DateUTC();
++  startDate: Date = new DateUTC();
++  dateCreate: Date = new DateUTC();
++  dateModify: Date = new DateUTC();
+   imageUrl?: string;
+   items: string;
+   projectName: string;
+@@ -69,22 +72,19 @@ export default class ProjectDto extends BaseDto {
+     this.amount = 0;
+     this.builderId = '';
+     this.category = '';
+-    this.completionStatus = '';
+     this.creatorEmail = '';
+     this.creatorId = '';
+-    this.currency = '';
+-    this.currentClaimNumber = '';
+-    this.budgetSeperatorComma = false;
+-    this.budgetSeperatorSemiColon = false;
+-    this.budgetSeperatorTab = false;
++    this.creator = null;
++    this.currency = CURRENCY;
++    this.currentClaimNumber = 0;
+     this.flowPublishedAt = new Date();
+     this.date = new Date();
+     this.dateCreate = new Date();
+     this.dateModify = new Date();
+     this.startDate = new Date();
+-    this.imageBucket = '';
+     this.items = '';
+     this.projectName = '';
++    this.imageUrl = '';
+   }
+ 
+   public static fromObject(obj: Project): ProjectDto {
+diff --git a/src/utils/dtos/types/dto.type.ts b/src/utils/dtos/types/dto.type.ts
+index ee8c7ba..5a9432e 100644
+--- a/src/utils/dtos/types/dto.type.ts
++++ b/src/utils/dtos/types/dto.type.ts
+@@ -1,7 +1,7 @@
+ import Budget from '@/utils/dtos/budget.dto';
+ import Builder from '@/utils/dtos/builder.dto';
+ import Contractor from '@/utils/dtos/contractor.dto';
+-import Project from '@/utils/dtos/project.dto';
++import type Project from '@/utils/dtos/project.dto';
+ import Invoice from '@/utils/dtos/invoice.dto';
+ import Role from '@/utils/dtos/role.dto';
+ import User from '@/utils/dtos/user.dto';
+diff --git a/src/utils/helper.ts b/src/utils/helper.ts
+index 8a531b9..2fe787a 100644
+--- a/src/utils/helper.ts
++++ b/src/utils/helper.ts
+@@ -8,6 +8,7 @@ import { CSV_SEP, GST_RATE, HOLDBACK_RATE, PST_RATE } from '@/utils/constant';
+ import { CSV_COMPANY_ENUM, ROLE_LEVEL_ENUM_BUILDER, ROLE_LEVEL_ENUM_GENERAL, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
+ import { BuilderRequestType } from './dtos/builder.dto';
+ import { IRequestFilter } from '@/types/request';
++import { ProjectRequestType } from './dtos/project.dto';
+ 
+ interface FormFields {
+   [key: string]: any;
+@@ -167,6 +168,21 @@ export const parsePayloadBuilderToCreateData = (formData: FormData): BuilderRequ
+   };
+ };
+ 
++export const parsePayloadProjectToCreateData = (formData: FormData): ProjectRequestType => {
++  const image = formData.get('image') as unknown as File;
++  const projectName = formData.get('projectName') as string;
++  const currentClaimNumber = formData.get('currentClaimNumber') as string;
++  const address = formData.get('address') as string;
++  const startDate = formData.get('startDate') as string;
++  return {
++    projectName,
++    currentClaimNumber: +currentClaimNumber,
++    address,
++    startDate,
++    image
++  };
++};
++
+ export const generateQueryFromFilter = (path: string, filter: IRequestFilter) => {
+   let newQuery = '';
+   const objQuery = Object.entries(filter);
+diff --git a/src/utils/services/project.ts b/src/utils/services/project.ts
+index 104f186..ef35466 100644
+--- a/src/utils/services/project.ts
++++ b/src/utils/services/project.ts
+@@ -1,37 +1,51 @@
+ import axios from '../axios';
+ import endPoints from '../api';
+-import { IResponseProjects, IResponseDeleteProject } from 'types/response';
+-import { IRequestCreateProject, IRequestUpdateProject } from 'types/request';
+-import { Project } from '@/utils/dtos/project.dto';
++import { IResponseProjects, IResponseDeleteProject, IResponseCreateBuilder, IResponseUpdateProject } from 'types/response';
++import { IRequestCreateProject, IRequestFilter, IRequestUpdateProject } from 'types/request';
+ import { IBudget } from '@/types/resource/budget';
+ import { IInvoice } from '@/types/resource/invoice';
++import { IProject } from '@/types/resource/project';
++import { generateQueryFromFilter } from '../helper';
+ 
+-export const getProjects = async (): Promise<IResponseProjects> => {
+-  return axios.get(endPoints.GET_PROJECTS);
++export const getProjects = async (params?: IRequestFilter): Promise<IResponseProjects> => {
++  const query = params ? generateQueryFromFilter(endPoints.PROJECT, params) : endPoints.PROJECT;
++  return axios.get(query);
+ };
+ 
+-export const createProject = async (params: IRequestCreateProject): Promise<Project> => {
+-  return axios.post(endPoints.CREATE_PROJECT, params);
++export const createProject = async (payload: IRequestCreateProject) => {
++  const formData = new FormData();
++  formData.append('projectName', payload.projectName);
++  formData.append('address', payload.address);
++  formData.append('currentClaimNumber', payload.currentClaimNumber + '');
++  formData.append('startDate', payload.startDate);
++  !!payload?.image && formData.append('image', payload.image);
++
++  return axios.post<IResponseCreateBuilder>(endPoints.PROJECT, formData);
+ };
+ 
+-export const getProject = async (id: string): Promise<Project> => {
+-  return axios.get(endPoints.GET_PROJECT.replace(':id', id));
++export const getProject = async (id: string): Promise<IProject> => {
++  return axios.get(`${endPoints.PROJECT}/${id}`);
+ };
+ 
+-export const updateProject = async (params: IRequestUpdateProject): Promise<Project> => {
+-  const { id, ...rest } = params;
+-  return axios.put(endPoints.UPDATE_PROJECT.replace(':id', id), rest);
++export const updateProject = async (payload: IRequestUpdateProject, id: string) => {
++  const formData = new FormData();
++  !!payload?.projectName && formData.append('projectName', payload.projectName);
++  !!payload?.address && formData.append('address', payload.address);
++  !!payload?.currentClaimNumber && formData.append('currentClaimNumber', payload.currentClaimNumber + '');
++  !!payload?.startDate && formData.append('startDate', payload.startDate);
++  !!payload?.image && formData.append('image', payload.image);
++  return axios.put<IResponseUpdateProject>(`${endPoints.PROJECT}/${id}`, formData);
+ };
+ 
+ export const deleteProject = async (id: string): Promise<IResponseDeleteProject> => {
+-  return axios.delete(endPoints.DELETE_PROJECT.replace(':id', id));
++  return axios.delete(`${endPoints.PROJECT}/${id}`);
+ };
+ 
+-export const getProjectRoles = async (id: string): Promise<Project> => {
++export const getProjectRoles = async (id: string): Promise<IProject> => {
+   return axios.get(endPoints.GET_PROJECT_ROLES.replace(':id', id));
+ };
+ 
+-export const getProjectContractors = async (id: string): Promise<Project> => {
++export const getProjectContractors = async (id: string): Promise<IProject> => {
+   return axios.get(endPoints.GET_PROJECT_CONTRACTORS.replace(':id', id));
+ };
+ 
