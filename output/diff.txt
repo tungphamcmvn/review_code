@@ -1,0 +1,31 @@
+title:	correct the readme content
+state:	MERGED
+author:	thomasvan
+labels:	
+assignees:	
+reviewers:	
+projects:	
+milestone:	
+number:	16
+url:	https://github.com/invik-33/j2c-app/pull/16
+additions:	2
+deletions:	2
+--
+in-corrected docker command has been fixed 
+
+
+diff --git a/README.md b/README.md
+index c2a17bf..bba0b60 100644
+--- a/README.md
++++ b/README.md
+@@ -25,8 +25,8 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml stop
+ # MongoDB:27017
+ 
+ # Start 
+-docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
++docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+ 
+ # Stop
+-docker-compose -f docker-compose.yml -f docker-compose.prod.yml --build stop
++docker-compose -f docker-compose.yml -f docker-compose.prod.yml stop
+ ```
