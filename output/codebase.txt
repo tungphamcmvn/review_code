@@ -102,7 +102,9 @@ next.config.js```js
 	    REACT_APP_AWS_APP_CLIENT_ID: process.env.REACT_APP_AWS_APP_CLIENT_ID,
 	
 	    REACT_APP_AUTH0_CLIENT_ID: process.env.REACT_APP_AUTH0_CLIENT_ID,
-	    REACT_APP_AUTH0_DOMAIN: process.env.REACT_APP_AUTH0_DOMAIN
+	    REACT_APP_AUTH0_DOMAIN: process.env.REACT_APP_AUTH0_DOMAIN,
+	    SENTRY_DSN: process.env.SENTRY_DSN,
+	    APP_ENV: process.env.APP_ENV
 	  }
 	};
 
@@ -289,7 +291,7 @@ src/auth.ts```ts
 	        });
 	
 	        if (user) {
-	          const isCorrectPassword = await bcrypt.compare(credential.password, user.get('password'));
+	          const isCorrectPassword = await bcrypt.compare(credential.password, user.get('password') || '');
 	
 	          if (isCorrectPassword) {
 	            await userRepository.update(user.get('_id').toString(), {
@@ -1377,79 +1379,21 @@ src/backend/services/project.service.ts```ts
 
 src/backend/services/budget.service.ts```ts
 	import BudgetRepositoryInterface from '@/backend/repositories/interfaces/budget.repository.interface';
-	import mongoose, { Mongoose } from 'mongoose';
-	import BudgetDto, { Budget as BudgetType } from '@/utils/dtos/budget.dto';
+	import mongoose, { Mongoose, SortOrder } from 'mongoose';
+	import BudgetDto, { Budget, Budget as BudgetType } from '@/utils/dtos/budget.dto';
 	import { BUDGET_ENUM } from '@/utils/common';
 	import { ObjectId } from 'bson';
 	import BudgetRepository from '../repositories/mongodb/budget.repository';
 	import UserDto from '@/utils/dtos/user.dto';
 	import { IRequestCreateBudget } from '@/types/request';
+	import PaginationStruct from '../structs/pagination.struct';
+	import { IUser } from '@/types/resource/user';
 	
 	export default class BudgetService {
 	  protected budgetRepository: BudgetRepositoryInterface;
 	
 	  constructor(conn: Mongoose) {
 	    this.budgetRepository = new BudgetRepository(conn);
-	  }
-	
-	  async getBudgetsByProjectId(projectId: string): Promise<{
-	    budgets: BudgetType[] | [];
-	    budgetIndexMax: number;
-	    budgetBudgetTotal: number;
-	  }> {
-	    const result: mongoose.Document[] = await this.budgetRepository.findWithSort({ projectId }, { budgetIndex: 'asc' });
-	
-	    const budgets: BudgetType[] = [];
-	    let budgetIndexMax = -1;
-	    let budgetBudgetTotal = 0;
-	
-	    if (!result.length) {
-	      return {
-	        budgets: [],
-	        budgetIndexMax,
-	        budgetBudgetTotal
-	      };
-	    }
-	
-	    result.forEach((item: mongoose.Document<BudgetType>) => {
-	      const budgetDto = new BudgetDto();
-	      const data = {
-	        id: item.get('_id'),
-	        creatorEmail: item.get('creatorEmail'),
-	        creatorId: item.get('creatorId'),
-	        projectId: item.get('projectId'),
-	        budgetAdditionalFields: item.get('budgetAdditionalFields'),
-	        budgetCategory: item.get('budgetCategory'),
-	        budgetCode: item.get('budgetCode'),
-	        budgetCurrentBudget: item.get('budgetCurrentBudget'),
-	        budgetCurrentClaim: item.get('budgetCurrentClaim'),
-	        budgetDescription: item.get('budgetDescription'),
-	        budgetIndex: item.get('budgetIndex'),
-	        budgetOriginalBudget: item.get('budgetOriginalBudget'),
-	        budgetRevision: item.get('budgetRevision'),
-	        budgetTotalClaim: item.get('budgetTotalClaim'),
-	        budgetTotalClaimBeforeHoldback: item.get('budgetTotalClaimBeforeHoldback'),
-	        budgetTotalClaimPercentage: item.get('budgetTotalClaimPercentage'),
-	        dateCreate: item.get('dateCreate'),
-	        dateModify: item.get('dateModify'),
-	        budgetCostToComplete: item.get('budgetCostToComplete')
-	      };
-	      budgetDto.setData(data);
-	
-	      budgets.push(budgetDto.toObject() as BudgetType);
-	
-	      if (item.get('budgetIndex') > budgetIndexMax) {
-	        budgetIndexMax = item.get('budgetIndex');
-	      }
-	
-	      budgetBudgetTotal += item.get('budgetOriginalBudget');
-	    });
-	
-	    return {
-	      budgets,
-	      budgetIndexMax,
-	      budgetBudgetTotal
-	    };
 	  }
 	
 	  async updateBudgetCurrentClaims(projectId: string, currentClaimNumber: number): Promise<void> {
@@ -1549,6 +1493,53 @@ src/backend/services/budget.service.ts```ts
 	    await this.budgetRepository.createMany(budgetData);
 	  }
 	
+	  async findBudgetsByProjectId(
+	    projectId: string,
+	    limit: number,
+	    offset: number,
+	    order: { [key: string]: SortOrder }
+	  ): Promise<{
+	    pagination: PaginationStruct;
+	    collection: Budget[];
+	  }> {
+	    const budgetDto = new BudgetDto();
+	
+	    const validOrderFields = Object.keys(budgetDto);
+	
+	    for (const key in order) {
+	      if (!validOrderFields.includes(key)) {
+	        delete order[key];
+	      }
+	    }
+	
+	    if (Object.keys(order).length === 0) {
+	      order = { budgetIndex: 'asc' };
+	    }
+	
+	    const filterSearch = { projectId };
+	    const total = await this.budgetRepository.count(filterSearch);
+	    const budgets = await this.budgetRepository.findWithSort(filterSearch, order, limit, offset);
+	
+	    const collection: Budget[] = [];
+	
+	    budgets.forEach((budget: mongoose.Document<Budget>) => {
+	      budgetDto.setData(budget.toJSON());
+	      const currentObject = budgetDto.toObject() as Budget;
+	      const creator = currentObject.creatorId as Partial<IUser>;
+	      collection.push({
+	        ...currentObject,
+	        creatorId: creator.id || '',
+	        creator
+	      });
+	    });
+	
+	    const pagination = new PaginationStruct(offset, limit, total);
+	    return {
+	      pagination,
+	      collection
+	    };
+	  }
+	
 	  async findLastBudget() {
 	    return await this.budgetRepository.findWithSort({}, { dateCreate: -1 }, 1);
 	  }
@@ -1560,6 +1551,14 @@ src/backend/services/budget.service.ts```ts
 	        : { budgetCurrentClaim: total, dateModify: new Date() };
 	
 	    return this.budgetRepository.update(budgetId, budgetTotalClaimDictionary);
+	  }
+	
+	  async getBudget(budgetId: string): Promise<mongoose.Document | null> {
+	    return this.budgetRepository.findOne({ _id: budgetId });
+	  }
+	
+	  async deleteBudget(budgetId: string): Promise<mongoose.Document | null> {
+	    return await this.budgetRepository.delete(budgetId);
 	  }
 	}
 
@@ -2583,6 +2582,7 @@ src/backend/services/observer/interfaces/mail.notification.interface.ts```ts
 src/backend/services/storage/s3.storage.ts```ts
 	import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 	import StorageInterface from '@/backend/services/storage/interface/storage.interface';
+	import Logger from '@/utils/logger';
 	
 	export default class S3Storage implements StorageInterface {
 	  private readonly s3: S3Client;
@@ -2624,7 +2624,7 @@ src/backend/services/storage/s3.storage.ts```ts
 	      ContentType: file.type
 	    };
 	
-	    console.log(`Uploading file to S3: ${keyName}.${extension}`);
+	    Logger.info(`Uploading file to S3: ${keyName}.${extension}`);
 	    await this.s3.send(new PutObjectCommand(params));
 	
 	    return `${process.env.AWS_CLOUDFRONT_URL}/${folderName}/${keyName}.${extension}`;
@@ -2637,7 +2637,7 @@ src/backend/services/storage/s3.storage.ts```ts
 	
 	    const key = new URL(fileUrl).pathname;
 	
-	    console.log(`Removing file from S3: ${key}`);
+	    Logger.info(`Removing file from S3: ${key}`);
 	    await this.s3.send(new DeleteObjectCommand({ Bucket: this.getBucket(), Key: key }));
 	  }
 	}
@@ -3349,19 +3349,18 @@ src/backend/validator/project.validator.ts```ts
 src/backend/validator/objectId.validator.ts```ts
 	import BaseValidator from '@/backend/validator/base.validator';
 	import { string } from 'yup';
-	import { Types } from 'mongoose';
 	
 	export default class ObjectIdValidator extends BaseValidator {
 	  constructor(data: { id: string }) {
 	    super();
 	    this.data = data;
 	  }
-	
-	  validateTypeObject() {
-	    return Types.ObjectId.isValid(this.data.id);
+	  validateId(dataId: string) {
+	    const objectIdValidatorRegex = /^[0-9a-fA-F]{24}$/;
+	    return objectIdValidatorRegex.test(dataId);
 	  }
 	  validateRules(): BaseValidator {
-	    const idRule = { id: string().required() };
+	    const idRule = { id: string().required().test('valid-object-id', 'Invalid id format', this.validateId) };
 	    this.rules = [idRule];
 	    return this;
 	  }
@@ -3371,7 +3370,7 @@ src/backend/validator/objectId.validator.ts```ts
 	    if (this.getErrors().length > 0) {
 	      return false;
 	    }
-	    return this.validateTypeObject();
+	    return true;
 	  }
 	}
 
@@ -3829,8 +3828,9 @@ src/backend/models/budget.model.ts```ts
 	export const BudgetSchema: mongoose.Schema<BudgetType> = new mongoose.Schema(
 	  {
 	    creatorId: {
-	      type: String,
-	      required: true
+	      type: mongoose.Schema.Types.ObjectId,
+	      required: true,
+	      ref: 'User'
 	    },
 	    projectId: {
 	      type: String,
@@ -5107,6 +5107,10 @@ src/types/request.ts```ts
 	
 	/* BUDGET */
 	
+	export interface IRequestFilterBudget extends IRequestFilter {
+	  projectId: string;
+	}
+	
 	export interface IRequestCreateBudget {
 	  projectId: string;
 	  budgetCategory: string;
@@ -5207,6 +5211,7 @@ src/types/response.ts```ts
 	import { ResponseMeta } from './pagination';
 	import { IContractor } from '@/utils/services/contractor';
 	import { IProject } from './resource/project';
+	import { IBudget } from './resource/budget';
 	
 	export interface IResponse<T> {
 	  data: T;
@@ -5322,9 +5327,18 @@ src/types/response.ts```ts
 	  url: string;
 	}
 	
+	/* BUDGET */
+	export interface IResponseListBudgets {
+	  data: IBudget[];
+	  meta: ResponseMeta;
+	}
 	export interface IResponseCreateBudget {
 	  success: boolean;
 	  status: number;
+	}
+	
+	export interface IResponseDeleteBudget {
+	  success: boolean;
 	}
 
 ```
@@ -6143,11 +6157,8 @@ src/types/resource/invoice.ts```ts
 
 src/types/resource/budget.ts```ts
 	import { Budget as BudgetDto } from '@/utils/dtos/budget.dto';
-	
-	export interface IBudget extends Omit<BudgetDto, '_id'> {
+	export interface IBudget extends BudgetDto {
 	  id: string;
-	  budgetClaimToDate: number;
-	  budgetCostToComplete: number;
 	}
 
 ```
@@ -17063,6 +17074,7 @@ src/app/api/auth/token/[email]/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import UserRepository from '@/backend/repositories/mongodb/user.repository';
 	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
 	
 	export async function GET(request: NextRequest, { params }: { params: { email: string } }) {
 	  const { email } = params;
@@ -17090,9 +17102,14 @@ src/app/api/auth/token/[email]/route.ts```ts
 	
 	    responseStruct.setStatus(200);
 	    responseStruct.setData({ data: { token } });
-	  } catch (error) {
+	  } catch (error: any) {
 	    responseStruct.pushError('Unauthorized');
 	    responseStruct.setStatus(401);
+	
+	    Logger.error(responseStruct.getValue('errors'), {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
 	  }
 	
 	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
@@ -17107,6 +17124,7 @@ src/app/api/auth/reset-password/route.ts```ts
 	import UserService from '@/backend/services/user.service';
 	import ResetPasswordValidator from '@/backend/validator/reset-password.validator';
 	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
 	
 	export type RequestType = {
 	  email: string;
@@ -17138,6 +17156,11 @@ src/app/api/auth/reset-password/route.ts```ts
 	  } catch (err: any) {
 	    responseStruct.pushError(err.message);
 	    responseStruct.setStatus(500);
+	
+	    Logger.error(err.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: err.stack
+	    });
 	  }
 	
 	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
@@ -17150,6 +17173,7 @@ src/app/api/auth/code/verify/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import AuthService from '@/backend/services/auth.service';
 	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
 	
 	type RequestType = {
 	  email: string;
@@ -17178,6 +17202,11 @@ src/app/api/auth/code/verify/route.ts```ts
 	  } catch (error: any) {
 	    responseStruct.pushError(error.message);
 	    responseStruct.setStatus(500);
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
 	  }
 	
 	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
@@ -17191,6 +17220,7 @@ src/app/api/auth/code/send/route.ts```ts
 	import ForgotPasswordValidator from '@/backend/validator/forgot-password.validator';
 	import AuthService from '@/backend/services/auth.service';
 	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
 	
 	export type RequestType = {
 	  email: string;
@@ -17219,6 +17249,11 @@ src/app/api/auth/code/send/route.ts```ts
 	  } catch (err: any) {
 	    responseStruct.pushError(err.message);
 	    responseStruct.setStatus(400);
+	
+	    Logger.error(err.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: err.stack
+	    });
 	  }
 	
 	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
@@ -17233,6 +17268,7 @@ src/app/api/auth/register/route.ts```ts
 	import AuthService from '@/backend/services/auth.service';
 	import { UserStatus } from '@/utils/enums';
 	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
 	
 	export async function POST(request: NextRequest) {
 	  const data: { email: string; password: string; firstName: string; lastName: string } = await request.json();
@@ -17280,6 +17316,11 @@ src/app/api/auth/register/route.ts```ts
 	  } catch (error: any) {
 	    responseStruct.pushError(error.message);
 	    responseStruct.setStatus(500);
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
 	  }
 	
 	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
@@ -17309,6 +17350,11 @@ src/app/api/budget/route.ts```ts
 	import { Budget } from '@/utils/dtos/budget.dto';
 	import mongoose from 'mongoose';
 	import NotFoundException from '@/backend/exceptions/notfound.exception';
+	import ProjectService from '@/backend/services/project.service';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import { getListingQuery } from '../listing';
+	import ObjectIdValidator from '@/backend/validator/objectId.validator';
+	import Logger from '@/utils/logger';
 	
 	export async function POST(request: NextRequest) {
 	  try {
@@ -17341,7 +17387,96 @@ src/app/api/budget/route.ts```ts
 	    await budgetService.addProjectBudget(dataWithNewIndex, currentUser);
 	    return NextResponse.json({ success: true }, { status: 200 });
 	  } catch (error: any) {
+	    Logger.error(error.message, {
+	      status: 500,
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json({ errors: [error.message] }, { status: 400 });
+	  }
+	}
+	
+	export async function GET(request: NextRequest) {
+	  const responseStruct = new ResponseStruct(true);
+	  try {
+	    const projectId = request.nextUrl.searchParams.get('projectId');
+	
+	    if (!projectId) {
+	      throw new NotFoundException('Project id not found');
+	    }
+	
+	    const objectIdValidator = new ObjectIdValidator({ id: projectId });
+	    await objectIdValidator.validate();
+	
+	    if (objectIdValidator.getErrors().length > 0) {
+	      return NextResponse.json({ errors: ['Invalid project id'] }, { status: 400 });
+	    }
+	
+	    const conn = await MongoConnect();
+	    const budgetService = new BudgetService(conn);
+	    const projectService = new ProjectService(conn);
+	
+	    const projectDetail = await projectService.getProject(projectId);
+	    if (!projectDetail) {
+	      throw new NotFoundException('Project not found');
+	    }
+	
+	    const { limit: limitValue, page: pageValue, order: orderValue } = getListingQuery(request);
+	    const data = await budgetService.findBudgetsByProjectId(projectId, limitValue, pageValue, orderValue);
+	
+	    responseStruct.setData({
+	      meta: data.pagination,
+	      data: data.collection
+	    });
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: 200 });
+	  } catch (error: any) {
+	    Logger.error(error.message, {
+	      status: 500,
+	      stack: error.stack
+	    });
+	    responseStruct.pushError(error.message);
+	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
+	  }
+	}
+
+```
+
+src/app/api/budget/[id]/route.ts```ts
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import { NextRequest, NextResponse } from 'next/server';
+	import ObjectIdValidator from '@/backend/validator/objectId.validator';
+	import BudgetService from '@/backend/services/budget.service';
+	import Logger from '@/utils/logger';
+	
+	export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+	  const { id } = params;
+	
+	  try {
+	    const objectIdValidator = new ObjectIdValidator({ id });
+	    await objectIdValidator.validate();
+	
+	    if (objectIdValidator.getErrors().length > 0) {
+	      return NextResponse.json({ errors: ['Invalid budget id'] }, { status: 400 });
+	    }
+	
+	    const conn = await MongoConnect();
+	    const budgetService = new BudgetService(conn);
+	
+	    const budget = await budgetService.getBudget(id);
+	    if (!budget) {
+	      return NextResponse.json({ errors: ['Budget not found'] }, { status: 400 });
+	    }
+	
+	    await budgetService.deleteBudget(id);
+	
+	    return NextResponse.json({ success: true }, { status: 200 });
+	  } catch (error: any) {
+	    Logger.error(error.message, {
+	      status: 500,
+	      stack: error.stack
+	    });
+	    return NextResponse.json({ errors: [error?.message] }, { status: 400 });
 	  }
 	}
 
@@ -17356,6 +17491,7 @@ src/app/api/profile/route.ts```ts
 	import UserRepository from '@/backend/repositories/mongodb/user.repository';
 	import UserDto from '@/utils/dtos/user.dto';
 	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
 	
 	export async function GET(request: NextRequest) {
 	  const token = headers().get('authorization')?.split(' ')[1];
@@ -17385,6 +17521,11 @@ src/app/api/profile/route.ts```ts
 	    responseStruct.pushError(error.message);
 	    responseStruct.setStatus(500);
 	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
 	  }
 	}
@@ -17398,6 +17539,7 @@ src/app/api/profile/change-password/[id]/route.ts```ts
 	import UserRepository from '@/backend/repositories/mongodb/user.repository';
 	import ChangePasswordValidator from '@/backend/validator/change-password.validator';
 	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
 	
 	export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
 	  const { id } = params;
@@ -17428,6 +17570,11 @@ src/app/api/profile/change-password/[id]/route.ts```ts
 	    responseStruct.pushError(error.message);
 	    responseStruct.setStatus(500);
 	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
 	  }
 	
@@ -17443,6 +17590,7 @@ src/app/api/profile/update/[id]/route.ts```ts
 	import UserService from '@/backend/services/user.service';
 	import UserRepository from '@/backend/repositories/mongodb/user.repository';
 	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
 	
 	export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
 	  const { id } = params;
@@ -17485,6 +17633,11 @@ src/app/api/profile/update/[id]/route.ts```ts
 	    responseStruct.pushError(error.message);
 	    responseStruct.setStatus(500);
 	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
 	  }
 	
@@ -17497,6 +17650,7 @@ src/app/api/file/upload/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 	import UploadValidator from '@/backend/validator/upload.validator';
+	import Logger from '@/utils/logger';
 	
 	const Bucket = (process.env.AWS_S3_BUCKET_NAME as string) || '';
 	
@@ -17536,7 +17690,7 @@ src/app/api/file/upload/route.ts```ts
 	    };
 	    const s3 = initS3();
 	
-	    console.log('Uploading file to S3');
+	    Logger.info(`Uploading file to S3: ${file.name} to ${folderName}/${keyName}.${extension}`);
 	    await s3.send(new PutObjectCommand(params));
 	
 	    return NextResponse.json(
@@ -17547,6 +17701,11 @@ src/app/api/file/upload/route.ts```ts
 	      { status: 201 }
 	    );
 	  } catch (error: any) {
+	    Logger.error(error.message, {
+	      status: 500,
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json({ errors: [error.message] }, { status: 500 });
 	  }
 	}
@@ -18127,159 +18286,6 @@ src/app/api/project/[id]/roles/route.ts```ts
 
 ```
 
-src/app/api/project/[id]/budgets/route.ts```ts
-	import { IBudget } from '@/types/resource/budget';
-	import { NextResponse } from 'next/server';
-	
-	export async function GET() {
-	  const budgets: Partial<IBudget>[] = [
-	    {
-	      id: 'U001',
-	      projectId: 'P001',
-	      budgetCode: 'P808-1',
-	      budgetCategory: 'A',
-	      budgetOriginalBudget: 180000,
-	      budgetRevision: 5000,
-	      budgetCurrentBudget: 12000,
-	      budgetCurrentClaim: 0,
-	      budgetClaimToDate: 35600,
-	      budgetTotalClaim: 500000,
-	      budgetTotalClaimPercentage: 0.12,
-	      budgetCostToComplete: 40000
-	    },
-	    {
-	      id: 'U002',
-	      projectId: 'P002',
-	      budgetCode: 'P808-5',
-	      budgetCategory: 'A',
-	      budgetOriginalBudget: 190000,
-	      budgetRevision: 50000,
-	      budgetCurrentBudget: 12300,
-	      budgetCurrentClaim: 10,
-	      budgetClaimToDate: 35600,
-	      budgetTotalClaim: 400000,
-	      budgetTotalClaimPercentage: 0.12,
-	      budgetCostToComplete: 40000
-	    },
-	    {
-	      id: 'U003',
-	      projectId: 'P003',
-	      budgetCode: 'P808-4',
-	      budgetCategory: 'A',
-	      budgetOriginalBudget: 180000,
-	      budgetRevision: 5000,
-	      budgetCurrentBudget: 12000,
-	      budgetCurrentClaim: 0,
-	      budgetClaimToDate: 35600,
-	      budgetTotalClaim: 500000,
-	      budgetTotalClaimPercentage: 0.12,
-	      budgetCostToComplete: 40000
-	    },
-	    {
-	      id: 'U004',
-	      projectId: 'P004',
-	      budgetCode: 'P808-1',
-	      budgetCategory: 'A',
-	      budgetOriginalBudget: 180000,
-	      budgetRevision: 5000,
-	      budgetCurrentBudget: 12000,
-	      budgetCurrentClaim: 0,
-	      budgetClaimToDate: 35600,
-	      budgetTotalClaim: 500000,
-	      budgetTotalClaimPercentage: 0.12,
-	      budgetCostToComplete: 40000
-	    },
-	    {
-	      id: 'U005',
-	      projectId: 'P005',
-	      budgetCode: 'P808-7',
-	      budgetCategory: 'A',
-	      budgetOriginalBudget: 180000,
-	      budgetRevision: 5000,
-	      budgetCurrentBudget: 12000,
-	      budgetCurrentClaim: 0,
-	      budgetClaimToDate: 35600,
-	      budgetTotalClaim: 500000,
-	      budgetTotalClaimPercentage: 0.12,
-	      budgetCostToComplete: 40000
-	    },
-	    {
-	      id: 'U006',
-	      projectId: 'P006',
-	      budgetCode: 'P808-1',
-	      budgetCategory: 'A',
-	      budgetOriginalBudget: 180000,
-	      budgetRevision: 5000,
-	      budgetCurrentBudget: 12000,
-	      budgetCurrentClaim: 0,
-	      budgetClaimToDate: 35600,
-	      budgetTotalClaim: 500000,
-	      budgetTotalClaimPercentage: 0.12,
-	      budgetCostToComplete: 40000
-	    },
-	    {
-	      id: 'U010',
-	      projectId: 'P007',
-	      budgetCode: 'P808-2',
-	      budgetCategory: 'A',
-	      budgetOriginalBudget: 180000,
-	      budgetRevision: 5000,
-	      budgetCurrentBudget: 12000,
-	      budgetCurrentClaim: 0,
-	      budgetClaimToDate: 35600,
-	      budgetTotalClaim: 500000,
-	      budgetTotalClaimPercentage: 0.12,
-	      budgetCostToComplete: 40000
-	    },
-	    {
-	      id: 'U007',
-	      projectId: 'P008',
-	      budgetCode: 'P808-3',
-	      budgetCategory: 'A',
-	      budgetOriginalBudget: 180000,
-	      budgetRevision: 5000,
-	      budgetCurrentBudget: 12000,
-	      budgetCurrentClaim: 0,
-	      budgetClaimToDate: 35600,
-	      budgetTotalClaim: 500000,
-	      budgetTotalClaimPercentage: 0.12,
-	      budgetCostToComplete: 40000
-	    },
-	    {
-	      id: 'U008',
-	      projectId: 'P009',
-	      budgetCode: 'P808-1',
-	      budgetCategory: 'A',
-	      budgetOriginalBudget: 180000,
-	      budgetRevision: 5000,
-	      budgetCurrentBudget: 12000,
-	      budgetCurrentClaim: 0,
-	      budgetClaimToDate: 35600,
-	      budgetTotalClaim: 500000,
-	      budgetTotalClaimPercentage: 0.12,
-	      budgetCostToComplete: 40000
-	    },
-	    {
-	      id: 'U009',
-	      projectId: 'P001',
-	      budgetCode: 'P808-9',
-	      budgetCategory: 'A',
-	      budgetOriginalBudget: 180000,
-	      budgetRevision: 5000,
-	      budgetCurrentBudget: 12000,
-	      budgetCurrentClaim: 0,
-	      budgetClaimToDate: 35600,
-	      budgetTotalClaim: 500000,
-	      budgetTotalClaimPercentage: 0.12,
-	      budgetCostToComplete: 40000
-	    }
-	  ];
-	
-	  return NextResponse.json({ budgets }, { status: 200 });
-	}
-
-```
-
 src/app/api/user/create/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
@@ -18320,6 +18326,7 @@ src/app/api/user/bulk-control/route.ts```ts
 	import IdsNotFoundException from '@/backend/exceptions/idsnotfound.exception';
 	import { headers } from 'next/headers';
 	import { decode, JWT } from 'next-auth/jwt';
+	import Logger from '@/utils/logger';
 	
 	export async function PATCH(request: NextRequest) {
 	  const data: { ids: string[]; action: Actions } = await request.json();
@@ -18361,6 +18368,11 @@ src/app/api/user/bulk-control/route.ts```ts
 	    if (error instanceof IdsNotFoundException) {
 	      responseStruct.setStatus(400);
 	    }
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
 	  }
 	
 	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
@@ -18377,6 +18389,7 @@ src/app/api/user/list/route.ts```ts
 	import { getListingQuery } from '@/app/api/listing';
 	import { headers } from 'next/headers';
 	import { decode, JWT } from 'next-auth/jwt';
+	import Logger from '@/utils/logger';
 	
 	export async function GET(request: NextRequest) {
 	  const conn = await MongoConnect();
@@ -18410,6 +18423,11 @@ src/app/api/user/list/route.ts```ts
 	    responseStruct.pushError(error.message);
 	    responseStruct.setStatus(500);
 	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
 	  }
 	
@@ -18425,6 +18443,7 @@ src/app/api/user/[id]/route.ts```ts
 	import UserRepository from '@/backend/repositories/mongodb/user.repository';
 	import UserDto from '@/utils/dtos/user.dto';
 	import NotFoundException from '@/backend/exceptions/notfound.exception';
+	import Logger from '@/utils/logger';
 	
 	export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
 	  const responseStruct = new ResponseStruct(true);
@@ -18453,6 +18472,11 @@ src/app/api/user/[id]/route.ts```ts
 	    }
 	
 	    responseStruct.pushError(error.message);
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
 	  }
 	
 	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
@@ -18470,6 +18494,7 @@ src/app/api/user/[id]/delete/route.ts```ts
 	import NotFoundException from '@/backend/exceptions/notfound.exception';
 	import { headers } from 'next/headers';
 	import { decode, JWT } from 'next-auth/jwt';
+	import Logger from '@/utils/logger';
 	
 	export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
 	  const token = headers().get('authorization')?.split(' ')[1];
@@ -18508,6 +18533,11 @@ src/app/api/user/[id]/delete/route.ts```ts
 	    }
 	
 	    responseStruct.pushError(error.message);
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
 	  }
 	
 	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
@@ -18526,6 +18556,7 @@ src/app/api/user/[id]/status/route.ts```ts
 	import { decode, JWT } from 'next-auth/jwt';
 	import { Actions, UserStatus } from '@/utils/enums';
 	import DateCustom from '@/utils/datetime/date.custom';
+	import Logger from '@/utils/logger';
 	
 	export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
 	  const token = headers().get('authorization')?.split(' ')[1];
@@ -18582,6 +18613,11 @@ src/app/api/user/[id]/status/route.ts```ts
 	    }
 	
 	    responseStruct.pushError(error.message);
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
 	  }
 	
 	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
@@ -18599,6 +18635,7 @@ src/app/api/user/[id]/archive/route.ts```ts
 	import NotFoundException from '@/backend/exceptions/notfound.exception';
 	import { headers } from 'next/headers';
 	import { decode, JWT } from 'next-auth/jwt';
+	import Logger from '@/utils/logger';
 	
 	export async function PATCH(_: NextRequest, { params }: { params: { id: string } }) {
 	  const token = headers().get('authorization')?.split(' ')[1];
@@ -18637,6 +18674,11 @@ src/app/api/user/[id]/archive/route.ts```ts
 	    }
 	
 	    responseStruct.pushError(error.message);
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
 	  }
 	
 	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
@@ -18675,6 +18717,7 @@ src/app/api/contractor/create/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ContractorValidator from '@/backend/validator/contractor.validator';
 	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
 	
 	export async function POST(request: NextRequest) {
 	  const formData: FormData = await request.formData();
@@ -18724,6 +18767,11 @@ src/app/api/contractor/create/route.ts```ts
 	    responseStruct.pushError(err.message);
 	    responseStruct.setStatus(500);
 	
+	    Logger.error(err.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: err.stack
+	    });
+	
 	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
 	  }
 	
@@ -18737,6 +18785,7 @@ src/app/api/contractor/delete/[id]/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ContractorService from '@/backend/services/contractor.service';
 	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
 	
 	export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
 	  const { id } = params;
@@ -18750,6 +18799,11 @@ src/app/api/contractor/delete/[id]/route.ts```ts
 	  } catch (error: any) {
 	    responseStruct.pushError(error.message);
 	    responseStruct.setStatus(500);
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
 	
 	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
 	  }
@@ -18798,6 +18852,7 @@ src/app/api/contractor/list/route.ts```ts
 	import ContractorService from '@/backend/services/contractor.service';
 	import ResponseStruct from '@/backend/structs/response.struct';
 	import { getListingQuery } from '@/app/api/listing';
+	import Logger from '@/utils/logger';
 	
 	export async function GET(request: NextRequest) {
 	  const conn = await MongoConnect();
@@ -18819,6 +18874,11 @@ src/app/api/contractor/list/route.ts```ts
 	    responseStructure.pushError(error.message);
 	    responseStructure.setStatus(500);
 	
+	    Logger.error(error.message, {
+	      status: responseStructure.getValue('status'),
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json(responseStructure.getResponse(), { status: 500 });
 	  }
 	}
@@ -18833,6 +18893,7 @@ src/app/api/contractor/update/[id]/route.ts```ts
 	import { FolderName } from '@/utils/enums';
 	import ContractorValidator from '@/backend/validator/contractor.validator';
 	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
 	
 	export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
 	  const { id } = params;
@@ -18886,6 +18947,11 @@ src/app/api/contractor/update/[id]/route.ts```ts
 	    responseStruct.pushError(error.message);
 	    responseStruct.setStatus(500);
 	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
 	  }
 	}
@@ -18901,6 +18967,7 @@ src/app/api/builder/route.ts```ts
 	import { parsePayloadBuilderToCreateData } from '@/utils/helper';
 	import ResponseStruct from '@/backend/structs/response.struct';
 	import { getListingQuery } from '../listing';
+	import Logger from '@/utils/logger';
 	
 	export async function POST(request: NextRequest) {
 	  const formData = await request.formData();
@@ -18924,6 +18991,11 @@ src/app/api/builder/route.ts```ts
 	      return NextResponse.json({ success: true, builder: result.toObject() }, { status: 200 });
 	    }
 	  } catch (error: any) {
+	    Logger.error(error.message, {
+	      status: 500,
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json({ errors: [error.message] }, { status: 400 });
 	  }
 	}
@@ -18946,6 +19018,11 @@ src/app/api/builder/route.ts```ts
 	    responseStruct.pushError(error.message);
 	    responseStruct.setStatus(500);
 	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
 	  }
 	  return NextResponse.json(responseStruct.getResponse(), { status: 200 });
@@ -18961,6 +19038,7 @@ src/app/api/builder/[id]/route.ts```ts
 	import { parsePayloadBuilderToCreateData } from '@/utils/helper';
 	import ObjectIdValidator from '@/backend/validator/objectId.validator';
 	import StorageFactory from '@/backend/services/storage/storage.factory';
+	import Logger from '@/utils/logger';
 	
 	export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
 	  const { id } = params;
@@ -18976,7 +19054,12 @@ src/app/api/builder/[id]/route.ts```ts
 	    }
 	
 	    return NextResponse.json({ success: true, builder }, { status: 200 });
-	  } catch (error) {
+	  } catch (error: any) {
+	    Logger.error(error.message, {
+	      status: 500,
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json({ errors: [error] }, { status: 400 });
 	  }
 	}
@@ -19005,7 +19088,12 @@ src/app/api/builder/[id]/route.ts```ts
 	
 	    await builderService.updateBuilder(id, formData);
 	    return NextResponse.json({ success: true }, { status: 200 });
-	  } catch (error) {
+	  } catch (error: any) {
+	    Logger.error(error.message, {
+	      status: 500,
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json({ errors: [error] }, { status: 400 });
 	  }
 	}
@@ -19037,7 +19125,12 @@ src/app/api/builder/[id]/route.ts```ts
 	      await storageFactory.getStorage().removeFile(imageUrl);
 	    }
 	    return NextResponse.json({ success: true }, { status: 200 });
-	  } catch (error) {
+	  } catch (error: any) {
+	    Logger.error(error.message, {
+	      status: 500,
+	      stack: error.stack
+	    });
+	
 	    return NextResponse.json({ errors: [error] }, { status: 400 });
 	  }
 	}
@@ -19147,9 +19240,10 @@ src/hooks/useAsync.ts```ts
 	        (error) => {
 	          setState({ status: 'rejected', data: null, error });
 	          if (state.showNotifOnError) {
-	            notifyError(error.errors[0]);
+	            const msgError = error.errors[0]?.message || error.errors[0];
+	            notifyError(msgError);
 	          }
-	          return Promise.reject(Error);
+	          return Promise.reject(error);
 	        }
 	      );
 	    },
@@ -19580,7 +19674,6 @@ src/utils/api.ts```ts
 	  PROJECT: '/project',
 	  GET_PROJECT_ROLES: '/project/:id/roles',
 	  GET_PROJECT_CONTRACTORS: '/project/:id/contractors',
-	  GET_PROJECT_BUDGETS: '/project/:id/budgets',
 	  CREATE_PROJECT: '/project/create',
 	  GET_PROJECT: '/project/:id',
 	  UPDATE_PROJECT: '/project/:id',
@@ -20163,13 +20256,23 @@ src/utils/services/contractorProject.ts```ts
 ```
 
 src/utils/services/budget.ts```ts
-	import { IResponseCreateBudget } from 'types/response';
+	import { IResponseListBudgets, IResponseCreateBudget, IResponseDeleteBudget } from 'types/response';
 	import axios from '../axios';
 	import endPoints from '../api';
-	import { IRequestCreateBudget } from '@/types/request';
+	import { IRequestCreateBudget, IRequestFilterBudget } from '@/types/request';
+	import { generateQueryFromFilter } from '../helper';
+	
+	export const getBudgetsByProject = async (params?: IRequestFilterBudget) => {
+	  const query = params ? generateQueryFromFilter(endPoints.BUDGET, params) : endPoints.BUDGET;
+	  return await axios.get<IResponseListBudgets>(query);
+	};
 	
 	export const createBudget = async (data: IRequestCreateBudget) => {
 	  return await axios.post<IResponseCreateBudget>(endPoints.BUDGET, data);
+	};
+	
+	export const deleteBudget = async (id: string) => {
+	  return await axios.delete<IResponseDeleteBudget>(`${endPoints.BUDGET}/${id}`);
 	};
 
 ```
@@ -20319,7 +20422,6 @@ src/utils/services/project.ts```ts
 	import endPoints from '../api';
 	import { IResponseProjects, IResponseDeleteProject, IResponseCreateBuilder, IResponseUpdateProject } from 'types/response';
 	import { IRequestCreateProject, IRequestFilter, IRequestUpdateProject } from 'types/request';
-	import { IBudget } from '@/types/resource/budget';
 	import { IInvoice } from '@/types/resource/invoice';
 	import { IProject } from '@/types/resource/project';
 	import { generateQueryFromFilter } from '../helper';
@@ -20364,10 +20466,6 @@ src/utils/services/project.ts```ts
 	
 	export const getProjectContractors = async (id: string): Promise<IProject> => {
 	  return axios.get(endPoints.GET_PROJECT_CONTRACTORS.replace(':id', id));
-	};
-	
-	export const getProjectBudgets = async (id: string): Promise<IBudget[]> => {
-	  return axios.get(endPoints.GET_PROJECT_BUDGETS.replace(':id', id));
 	};
 	
 	export const getProjectInvoices = async (id: string): Promise<IInvoice[]> => {
@@ -20619,10 +20717,12 @@ src/utils/dtos/budget.dto.ts```ts
 	 * Copyright 2024 J2C
 	 */
 	
+	import { IUser } from '@/types/resource/user';
 	import BaseDto from '@/utils/dtos/base.dto';
 	
 	export type Budget = {
-	  creatorId: string;
+	  creatorId: object | string;
+	  creator?: Partial<IUser>;
 	  projectId: string;
 	  budgetIndex: number;
 	  budgetCategory: string;
@@ -21136,6 +21236,131 @@ src/utils/form/index.ts```ts
 	  });
 	
 	  return newErrors;
+	}
+
+```
+
+src/utils/logger/sentry.logger.ts```ts
+	import LoggerInterface from '@/utils/logger/interface/logger.interface';
+	import * as Sentry from '@sentry/nextjs';
+	import { ExclusiveEventHintOrCaptureContext } from '@sentry/core/types/utils/prepareEvent';
+	
+	export default class SentryLogger implements LoggerInterface {
+	  constructor() {
+	    Sentry.init({
+	      dsn: process.env.SENTRY_DSN,
+	      environment: process.env.APP_ENV,
+	      tracesSampleRate: 1.0
+	    });
+	  }
+	
+	  debug(message: string): void {
+	    Sentry.captureMessage(message, 'debug');
+	  }
+	
+	  error(message: string, hint?: ExclusiveEventHintOrCaptureContext): void {
+	    Sentry.captureException(message, hint);
+	  }
+	
+	  info(message: string): void {
+	    Sentry.captureMessage(message, 'info');
+	  }
+	
+	  log(message: string): void {
+	    Sentry.captureMessage(message, 'log');
+	  }
+	
+	  warn(message: string): void {
+	    Sentry.captureMessage(message, 'warning');
+	  }
+	}
+
+```
+
+src/utils/logger/console.logger.ts```ts
+	import LoggerInterface from '@/utils/logger/interface/logger.interface';
+	
+	export default class ConsoleLogger implements LoggerInterface {
+	  debug(message: string): void {
+	    console.debug(message);
+	  }
+	
+	  error(message: string): void {
+	    console.error(message);
+	  }
+	
+	  info(message: string): void {
+	    console.info(message);
+	  }
+	
+	  log(message: string): void {
+	    console.log(message);
+	  }
+	
+	  warn(message: string): void {
+	    console.warn(message);
+	  }
+	}
+
+```
+
+src/utils/logger/index.ts```ts
+	import LoggerInterface from '@/utils/logger/interface/logger.interface';
+	import * as process from 'process';
+	import ConsoleLogger from '@/utils/logger/console.logger';
+	import SentryLogger from '@/utils/logger/sentry.logger';
+	import { ExclusiveEventHintOrCaptureContext } from '@sentry/core/types/utils/prepareEvent';
+	
+	export default class Logger {
+	  private static instance: LoggerInterface;
+	
+	  // @ts-ignore
+	  private static isDebug: boolean = process.env.NODE_ENV === 'development';
+	
+	  public static getInstance(): LoggerInterface {
+	    if (!Logger.instance) {
+	      Logger.instance = Logger.isDebug ? new ConsoleLogger() : new SentryLogger();
+	    }
+	
+	    return Logger.instance;
+	  }
+	
+	  public static setInstance(instance: LoggerInterface): void {
+	    Logger.instance = instance;
+	  }
+	
+	  public static debug(message: string): void {
+	    Logger.getInstance().debug(message);
+	  }
+	
+	  public static error(message: string, hint?: ExclusiveEventHintOrCaptureContext | any): void {
+	    Logger.getInstance().error(message, hint);
+	  }
+	
+	  public static info(message: string): void {
+	    Logger.getInstance().info(message);
+	  }
+	
+	  public static log(message: string): void {
+	    Logger.getInstance().log(message);
+	  }
+	
+	  public static warn(message: string): void {
+	    Logger.getInstance().warn(message);
+	  }
+	}
+
+```
+
+src/utils/logger/interface/logger.interface.ts```ts
+	import { ExclusiveEventHintOrCaptureContext } from '@sentry/core/types/utils/prepareEvent';
+	
+	export default interface LoggerInterface {
+	  info(message: string): void;
+	  error(message: string, hint?: ExclusiveEventHintOrCaptureContext | any): void;
+	  warn(message: string): void;
+	  debug(message: string): void;
+	  log(message: string): void;
 	}
 
 ```
@@ -26991,12 +27216,17 @@ src/components/projects/Detail/budgets/index.tsx```tsx
 	import { useIntl } from 'react-intl';
 	import { useEffect, useState } from 'react';
 	import { useAsync } from '@/hooks/useAsync';
-	import { getProjectBudgets } from '@/utils/services/project';
 	import Table from '@/components/ui-component/table';
-	import { GridColDef } from '@mui/x-data-grid';
+	import { GridColDef, GridPaginationModel, GridRowSelectionModel, GridSortModel } from '@mui/x-data-grid';
 	import { formatPrice } from '@/utils/currency';
 	import ProjectAddBudgetDialog from './addBudget';
+	import ProjectDeleteBudgetDialog from './deleteBudget';
 	import { IProject } from '@/types/resource/project';
+	import { IBudget } from '@/types/resource/budget';
+	import { getBudgetsByProject } from '@/utils/services/budget';
+	import { ResponseMeta } from '@/types/pagination';
+	import { IRequestFilter, IRequestFilterBudget } from '@/types/request';
+	import { PAGINATE_PAGE_SIZE, SORT_DIRECTION_DEFAULT } from '@/utils/constant';
 	
 	interface Props {
 	  project: IProject;
@@ -27004,16 +27234,57 @@ src/components/projects/Detail/budgets/index.tsx```tsx
 	export const ProjectBudgets = ({ project }: Props) => {
 	  const { formatMessage } = useIntl();
 	  const [openAddDialog, setOpenAddDialog] = useState(false);
-	  const [listContractors, setListContractors] = useState([]);
+	  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+	  const [rowsSelected, setRowsSelected] = useState<GridRowSelectionModel>([]);
+	  const [selectedBudgets, setSelectedBudgets] = useState<IBudget[]>([]);
+	  const [listBudgets, setListBudgets] = useState<IBudget[]>([]);
+	  const [budgetFilters, setBudgetFilters] = useState<IRequestFilterBudget>({ projectId: project.id, field: 'budgetIndex', sort: 'asc' });
+	  const [budgetMeta, setBudgetMeta] = useState<ResponseMeta | null>(null);
 	  const { execute, isLoading } = useAsync();
 	
-	  const getData = async () => {
-	    const result = await execute(getProjectBudgets(project.id + ''));
-	    const data = result.data?.budgets && result.data?.budgets.length > 0 ? result.data?.budgets : [];
-	    setListContractors(data);
+	  const getBudgets = async (filters?: IRequestFilter) => {
+	    const newFilter: IRequestFilterBudget = {
+	      ...budgetFilters,
+	      ...filters
+	    };
+	    const result = await execute(getBudgetsByProject(newFilter));
+	    const data = result.data?.data && result.data?.data.length > 0 ? result.data?.data : [];
+	    const meta = result.data.meta || null;
+	    setBudgetMeta(meta);
+	    setListBudgets(data);
+	    setBudgetFilters(newFilter);
 	  };
+	
+	  const handleSort = async (model: GridSortModel) => {
+	    const field = model?.[0]?.field || 'budgetIndex';
+	    const dir = model?.[0]?.sort || SORT_DIRECTION_DEFAULT;
+	    await getBudgets({
+	      field: field,
+	      sort: dir
+	    });
+	  };
+	
+	  const handleSelectRow = (rowSelectionModel: GridRowSelectionModel) => {
+	    const budgets = listBudgets.filter((l) => rowSelectionModel.includes(l.id));
+	    setRowsSelected(rowSelectionModel);
+	    setSelectedBudgets(budgets);
+	  };
+	
+	  const handlePaginationChange = async (model: GridPaginationModel) => {
+	    const newPage = (model?.page || 0) + 1;
+	    const limit = model?.pageSize || PAGINATE_PAGE_SIZE;
+	    await getBudgets({
+	      page: newPage,
+	      limit
+	    });
+	  };
+	
+	  const handleActionSuccess = async () => {
+	    await getBudgets({});
+	  };
+	
 	  useEffect(() => {
-	    getData();
+	    getBudgets({});
 	    // eslint-disable-next-line react-hooks/exhaustive-deps
 	  }, []);
 	
@@ -27025,9 +27296,8 @@ src/components/projects/Detail/budgets/index.tsx```tsx
 	      align: 'center'
 	    },
 	    {
-	      field: 'index',
+	      field: 'budgetIndex',
 	      headerName: formatMessage({ id: 'budgetTableIndex' }),
-	      valueGetter: (params) => params.id,
 	      width: 120,
 	      align: 'center'
 	    },
@@ -27060,7 +27330,7 @@ src/components/projects/Detail/budgets/index.tsx```tsx
 	      renderCell: ({ value }) => <Typography variant="h5">{formatPrice(value)}</Typography>
 	    },
 	    {
-	      field: 'budgetClaimToDate',
+	      field: 'budgetClaimedToDate',
 	      headerName: formatMessage({ id: 'budgetTableClaimedToDate' }),
 	      width: 200,
 	      align: 'center',
@@ -27105,22 +27375,60 @@ src/components/projects/Detail/budgets/index.tsx```tsx
 	        <Button variant="contained" startIcon={<Plus size={14} />} color="primary" sx={{ px: 3 }} onClick={() => setOpenAddDialog(true)}>
 	          {formatMessage({ id: 'projectDetailBtnAddBudget' })}
 	        </Button>
-	        <Button variant="contained" startIcon={<Trash size={14} />} color="danger" sx={{ px: 3, color: '#fff' }}>
-	          {formatMessage({ id: 'projectDetailBtnDeleteBudget' })}
-	        </Button>
+	        {rowsSelected.length > 0 && (
+	          <Button
+	            variant="contained"
+	            startIcon={<Trash size={14} />}
+	            color="danger"
+	            sx={{ px: 3, color: '#fff' }}
+	            onClick={() => setOpenDeleteDialog(true)}
+	          >
+	            {formatMessage({ id: 'projectDetailBtnDeleteBudget' })}
+	          </Button>
+	        )}
 	      </Box>
 	      <Table
-	        rows={listContractors}
+	        rows={listBudgets}
 	        columns={columns}
 	        loading={isLoading}
 	        checkboxSelection
+	        onRowSelectionModelChange={handleSelectRow}
+	        onSortModelChange={handleSort}
+	        rowSelectionModel={rowsSelected}
+	        paginationModel={{
+	          page: (budgetFilters?.page || 1) - 1,
+	          pageSize: budgetFilters.limit || PAGINATE_PAGE_SIZE
+	        }}
+	        rowCount={budgetMeta?.total || 0}
+	        onPaginationModelChange={handlePaginationChange}
 	        sx={{
 	          '& .MuiDataGrid-main': {
 	            border: 0
 	          }
 	        }}
+	        initialState={{
+	          sorting: {
+	            sortModel: [
+	              {
+	                field: 'budgetIndex',
+	                sort: SORT_DIRECTION_DEFAULT
+	              }
+	            ]
+	          }
+	        }}
 	      />
-	      <ProjectAddBudgetDialog open={openAddDialog} projectId={project.id} onClose={() => setOpenAddDialog(false)} />
+	      <ProjectAddBudgetDialog
+	        open={openAddDialog}
+	        projectId={project.id}
+	        onClose={() => setOpenAddDialog(false)}
+	        onSuccess={handleActionSuccess}
+	      />
+	      <ProjectDeleteBudgetDialog
+	        open={openDeleteDialog && selectedBudgets.length > 0}
+	        budgets={selectedBudgets}
+	        onClose={() => setOpenDeleteDialog(false)}
+	        onSuccess={handleActionSuccess}
+	      />
 	    </Box>
 	  );
 	};
@@ -27142,7 +27450,6 @@ src/components/projects/Detail/budgets/addBudget/index.tsx```tsx
 	import { Button } from 'ui-component/buttons';
 	import styles from '@/styles/dataDialog.module.scss';
 	import { PROJECT_CATEGORY } from '@/constant/project';
-	import { IProject } from '@/types/resource/project';
 	import { IRequestCreateBudget } from '@/types/request';
 	import { useAsync } from '@/hooks/useAsync';
 	import { createBudget } from '@/utils/services/budget';
@@ -27164,7 +27471,7 @@ src/components/projects/Detail/budgets/addBudget/index.tsx```tsx
 	interface ProjectAddDialogProps extends Omit<DialogProps, 'onError' | 'onClose'> {
 	  projectId: string;
 	  onClose: () => void;
-	  onSuccess?: (project: IProject) => void;
+	  onSuccess?: () => void;
 	  loading?: boolean;
 	}
 	
@@ -27188,6 +27495,7 @@ src/components/projects/Detail/budgets/addBudget/index.tsx```tsx
 	      notifySuccess(formatMessage({ id: 'budgetApiAdded' }));
 	      resetForm();
 	      onClose();
+	      onSuccess?.();
 	    },
 	    validationSchema: yupObject().shape({
 	      budgetCode: validates.text({ isRequired: true, maxLength: 25 }),
@@ -27418,6 +27726,81 @@ src/components/projects/Detail/budgets/addBudget/index.tsx```tsx
 	          </Button>
 	        </DialogActions>
 	      </form>
+	    </Dialog>
+	  );
+	}
+
+```
+
+src/components/projects/Detail/budgets/deleteBudget/index.tsx```tsx
+	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
+	import { GridCloseIcon } from '@mui/x-data-grid';
+	import { Button } from '@/components/ui-component/buttons';
+	import { useIntl } from 'react-intl';
+	import { useAsync } from '@/hooks/useAsync';
+	import { success as notifySuccess } from '@/utils/notify';
+	import LoadingButton from '@mui/lab/LoadingButton';
+	import { IBudget } from '@/types/resource/budget';
+	import { deleteBudget } from '@/utils/services/budget';
+	
+	interface BudgetDialogProps extends Omit<DialogProps, 'onClose'> {
+	  budgets: Partial<IBudget>[];
+	  onClose?: () => void;
+	  onSuccess?: () => void;
+	}
+	
+	export default function BudgetDeleteDialog({ budgets, onClose, onSuccess, ...props }: BudgetDialogProps): JSX.Element {
+	  const { formatMessage } = useIntl();
+	  const { isLoading, execute } = useAsync();
+	  const handleClose = () => {
+	    onClose?.();
+	  };
+	
+	  const handleDelete = async () => {
+	    for (let index = 0; index < budgets.length; index++) {
+	      const item = budgets[index];
+	      await execute(deleteBudget(item.id + ''));
+	    }
+	
+	    handleClose();
+	    notifySuccess(formatMessage({ id: 'budgetApiDeleted' }));
+	    onSuccess?.();
+	  };
+	
+	  return (
+	    <Dialog onClose={handleClose} {...props}>
+	      <DialogTitle sx={{ pt: '8px' }}>{formatMessage({ id: 'budgetDialogDeleteTitle' })}</DialogTitle>
+	      <IconButton
+	        aria-label="close"
+	        onClick={handleClose}
+	        sx={{
+	          position: 'absolute',
+	          right: 10,
+	          top: 16,
+	          color: (theme) => theme.palette.grey[500]
+	        }}
+	      >
+	        <GridCloseIcon />
+	      </IconButton>
+	      <DialogContent dividers sx={{ minWidth: '600px' }}>
+	        <Typography gutterBottom sx={{ my: '12px' }}>
+	          <span dangerouslySetInnerHTML={{ __html: formatMessage({ id: 'budgetDialogDeleteContent' }) }} />
+	        </Typography>
+	      </DialogContent>
+	      <DialogActions sx={{ gap: '20px', pt: '24px', pb: '12px', px: '24px' }}>
+	        <Button variant="text" color="error" onClick={handleClose}>
+	          {formatMessage({ id: 'buttonLabelCancel' })}
+	        </Button>
+	        {isLoading ? (
+	          <LoadingButton loading variant="contained" color="error" type="submit">
+	            {formatMessage({ id: 'delete' })}
+	          </LoadingButton>
+	        ) : (
+	          <Button variant="contained" color="error" type="submit" onClick={handleDelete}>
+	            {formatMessage({ id: 'delete' })}
+	          </Button>
+	        )}
+	      </DialogActions>
 	    </Dialog>
 	  );
 	}
@@ -33758,6 +34141,10 @@ lib/swagger/doc/budget/post.ts```ts
 	*           type: number
 	*           format: budgetTotalClaimPercentage
 	*           description: Total Claim %
+	*         budgetCostToComplete:
+	*           type: number
+	*           format: budgetCostToComplete
+	*           description: Budget Cost To Complete
 	*           required: true
 	*     BudgetResponse:
 	*       type: object
@@ -33766,6 +34153,174 @@ lib/swagger/doc/budget/post.ts```ts
 	*           type: boolean
 	*           description: Budget created
 	@constructor
+	**/
+	export {};
+
+```
+
+lib/swagger/doc/budget/delete.ts```ts
+	// @ts-nocheck
+	/**
+	* @swagger
+	 
+	* /api/budget/{id}:
+	*   delete:
+	*     tags:
+	*       - Budget
+	*     description: Delete a budget
+	*     summary: Delete a budget
+	*     security:
+	*       - bearerAuth: []
+	*     parameters:
+	*       - in: path
+	*         name: id
+	*         schema:
+	*           type: string
+	*         required: true
+	*         description: The Budget's id
+	*     requestBody:
+	*       required: false
+	*       content:
+	*         application/json:
+	*     responses:
+	*       200:
+	*         description: Budget deleted
+	*         content:
+	*           application/json:
+	*             schema:
+	*               type: object
+	*               properties:
+	*                 success:
+	*                   type: boolean
+	*                   description: Budget deleted
+	*       400:
+	*         description: Bad request
+	*         content:
+	*           application/json:
+	*             schema:
+	*               type: object
+	*               properties:
+	*                 errors:
+	*                   type: array
+	*                   items:
+	*                     type: string
+	* @param request
+	* @constructor
+	*/
+	export {};
+
+```
+
+lib/swagger/doc/budget/get.ts```ts
+	/**
+	@swagger
+	* /api/budget:
+	*   get:
+	*     summary: Get list budgets
+	*     description: Get list budgets
+	*     tags:
+	*       - Budget
+	*     security:
+	*       - bearerAuth: []
+	*     parameters:
+	*       - in: query
+	*         name: projectId
+	*         schema:
+	*           type: string
+	*         required: true
+	*       - in: query
+	*         name: page
+	*         schema:
+	*           type: number
+	*         required: false
+	*         description: Current page
+	*       - in: query
+	*         name: limit
+	*         schema:
+	*           type: number
+	*         required: false
+	*         description: Page size
+	*       - in: query
+	*         name: sort
+	*         schema:
+	*           type: string
+	*         required: false
+	*         description: Sort direction
+	*       - in: query
+	*         name: field
+	*         schema:
+	*           type: string
+	*         required: false
+	*         description: Sort by this field
+	*       - in: query
+	*         name: fields
+	*         schema:
+	*           type: string
+	*         required: false
+	*         description: Sort by these fields
+	*       - in: query
+	*         name: search
+	*         schema:
+	*           type: string
+	*         required: false
+	*         description: Search budget name
+	*     responses:
+	*       '200':
+	*         description: List Budget
+	*         content:
+	*           application/json:
+	*             schema:
+	*               $ref: '#/components/schemas/Budget'
+	* components:
+	*   schemas:
+	*     Budget:
+	*       type: array
+	*       items:
+	*         type: object
+	*         properties:
+	*           id:
+	*             type: string      
+	*           budgetCategory:
+	*             type: string
+	*           budgetCode:
+	*             type: string
+	*           budgetIndex:
+	*             type: number
+	*           budgetOriginalBudget:
+	*             type: number
+	*           budgetCurrentBudget:
+	*             type: number
+	*           budgetRevision:
+	*             type: number
+	*           budgetClaimedToDate:
+	*             type: number
+	*           budgetCurrentClaim:
+	*             type: number
+	*           budgetTotalClaim:
+	*             type: number
+	*           budgetTotalClaimPercentage:
+	*             type: number
+	*           budgetCostToComplete:
+	*             type: number
+	*           dateCreate:
+	*             type: string
+	*           dateModify:
+	*             type: string
+	*           creatorId:
+	*             type: string
+	*           creator:
+	*             type: object
+	*             properties:
+	*               email:
+	*                 type: string
+	*               name:
+	*                 type: string
+	*               imageUrl:
+	*                 type: string
+	*               id:
+	*                 type: string
+	* @param request
+	* @constructor
 	**/
 	export {};
 

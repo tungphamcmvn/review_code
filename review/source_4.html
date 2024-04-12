@@ -1,0 +1,73 @@
+<html>
+
+<head>
+  <title>Source Code Analysis</title>
+</head>
+
+<body>
+  <h1>Source Code Analysis</h1>
+  <h2>Source Title</h2>
+  <p>The codebase detailed in 'codebase.txt' appears to be for a complex web application built using Next.js, React.js,
+    and MongoDB. It includes full-stack functionality with frontend components, backend API routes, database models,
+    authentication, and more. A good pull request title summarizing the modifications could be:</p>
+  <p style="background-color:green;color:white;">Full-stack Next.js app with React frontend, Node/Express backend, and
+    MongoDB database</p>
+
+  <h2>Architecture Alignment</h2>
+  <p>The codebase structure and modifications align well with the described application architecture and db schema. A
+    few notes:</p>
+  <ul>
+    <li style="background-color:green;color:white;">The directory structure properly separates concerns between
+      frontend, backend, models, services, utilities, etc.</li>
+    <li style="background-color:green;color:white;">The db schema in 'dbschema.txt' matches the Mongoose models defined
+      in src/backend/models/</li>
+    <li>One potential discrepancy is that auth-related code is in src/auth.ts, whereas the architecture specifies
+      src/backend/services/auth.service. Consider <span style="background-color:red;color:white;">moving auth.ts under
+        src/backend/services for consistency.</span></li>
+  </ul>
+
+  <h2>Best Practices Assessment</h2>
+  <p>The codebase generally adheres to Next.js and React best practices. A few areas to improve:</p>
+  <ul>
+    <li>In next.config.js, there are options to ignore TypeScript and ESLint errors in builds. For code quality,
+      consider <span style="background-color:red;color:white;">enabling these checks even in production builds.</span>
+    </li>
+    <li style="background-color:green;color:white;">Good use of environment variables in next.config.js to keep
+      sensitive config out of code.</li>
+    <li>auth.ts has long methods for callbacks. Consider <span style="background-color:red;color:white;">refactoring to
+        smaller, single-responsibility methods.</span></li>
+    <li style="background-color:green;color:white;">Proper use of services and repositories to encapsulate business
+      logic and data access.</li>
+  </ul>
+
+  <h2>Performance and Security</h2>
+  <p>The codebase takes some good steps for performance and security:</p>
+  <ul>
+    <li style="background-color:green;color:white;">next.config.js implements image optimization which will help with
+      performance.</li>
+    <li style="background-color:green;color:white;">auth.ts sets httpOnly and sameSite cookie options which improves
+      security.</li>
+    <li>To further optimize performance, consider <span style="background-color:red;color:white;">implementing caching
+        strategies, especially for non-dynamic data.</span></li>
+    <li>For additional security, consider <span style="background-color:red;color:white;">adding rate limiting
+        middleware to protect against brute force attacks.</span></li>
+  </ul>
+
+  <h2>Code Logic Evaluation</h2>
+  <p>The code logic in the changes is generally sound. A few observations:</p>
+  <ul>
+    <li style="background-color:green;color:white;">Good use of async/await for handling asynchronous operations.</li>
+    <li style="background-color:green;color:white;">Auth callbacks correctly lookup or create user based on different
+      authentication methods.</li>
+    <li>In auth.ts, consider <span style="background-color:red;color:white;">adding more error handling and logging for
+        cases like missing env variables.</span></li>
+  </ul>
+
+  <h2>Estimation Time</h2>
+  <p>For an experienced senior developer familiar with the tech stack, implementing this full-stack codebase with the
+    given architecture would likely take <i>3-5 weeks of full-time development</i>, including time for testing and
+    debugging. The authentication system and proper separation of frontend and backend concerns would be the most time
+    consuming portions.</p>
+</body>
+
+</html>
