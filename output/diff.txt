@@ -1,16 +1,43 @@
-title:	J2C-157: API for Project Details - Budgets
+title:	Fix missing file import
 state:	MERGED
 author:	huyphamnguyen
 labels:	
 assignees:	
-reviewers:	tungphamcmvn (Requested)
+reviewers:	MinhT191195 (Commented)
 projects:	
 milestone:	
-number:	19
-url:	https://github.com/invik-33/j2c-app/pull/19
-additions:	526
-deletions:	254
+number:	13
+url:	https://github.com/invik-33/j2c-app/pull/13
+additions:	9
+deletions:	1
 --
-- Api gets list budgets by project id
-- Api delete a budget
 
+
+
+diff --git a/src/components/dialogs/contractor/ContractorDialog.tsx b/src/components/dialogs/contractor/ContractorDialog.tsx
+index 8570625..2fa2ca6 100644
+--- a/src/components/dialogs/contractor/ContractorDialog.tsx
++++ b/src/components/dialogs/contractor/ContractorDialog.tsx
+@@ -24,7 +24,7 @@ import { object as yupObject } from 'yup';
+ import { useAsync } from '@/hooks/useAsync';
+ import { success as notifySuccess } from '@/utils/notify';
+ import { CONTRACTOR_SERVICES, CONTRACTOR_STATUS, CONTRACTOR_STATUS_ACTIVE } from '@/constant/contractor';
+-import stylesDialog from '../builder/style.module.scss';
++import stylesDialog from './style.module.scss';
+ import useCommonValidates from '@/hooks/useCommonValidates';
+ import { IContractor, createContractor, updateContractor } from '@/utils/services/contractor';
+ import { useSession } from 'next-auth/react';
+diff --git a/src/components/dialogs/contractor/style.module.scss b/src/components/dialogs/contractor/style.module.scss
+new file mode 100644
+index 0000000..c38e58e
+--- /dev/null
++++ b/src/components/dialogs/contractor/style.module.scss
+@@ -0,0 +1,8 @@
++.imageLocal{
++  position: absolute;
++  inset: 0;
++  z-index: 0;
++  width: 100%;
++  height: 100%;
++  object-fit: contain;
++}
