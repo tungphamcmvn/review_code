@@ -1203,6 +1203,7 @@ src/backend/services/project.service.ts```ts
 	    return !!roles.length;
 	  }
 	
+	  /** Get detail a project by id */
 	  async getProject(projectId: string): Promise<ProjectType | null> {
 	    const project = await this.projectRepository.findProjectId(projectId);
 	
@@ -1261,6 +1262,7 @@ src/backend/services/project.service.ts```ts
 	    return roleArr;
 	  }
 	
+	  /** Create a project  */
 	  async addProject(formData: FormData, currentUser: UserDto): Promise<mongoose.Document> {
 	    const data = parsePayloadProjectToCreateData(formData);
 	    const projectDto = new ProjectDto();
@@ -1288,7 +1290,7 @@ src/backend/services/project.service.ts```ts
 	      throw error;
 	    }
 	  }
-	
+	  /** Update a project by id */
 	  async updateProject(projectId: string, formData: FormData): Promise<mongoose.Document | null> {
 	    const project = await this.getProject(projectId);
 	    if (!project) {
@@ -1323,10 +1325,18 @@ src/backend/services/project.service.ts```ts
 	    }
 	  }
 	
+	  /** Delete a project by id */
 	  async deleteProject(projectId: string): Promise<mongoose.Document | null> {
 	    return await this.projectRepository.delete(projectId);
 	  }
 	
+	  /**
+	   *  Get list projects by pagination
+	   *  limit: total items each page (page size)
+	   *  offset: current page (default = 0)
+	   *  order: Sort the builder list by field
+	   *  search: Search builder based on search value (search by builderName only)
+	   * */
 	  async listProjects(
 	    limit: number,
 	    offset: number,
@@ -1406,6 +1416,7 @@ src/backend/services/budget.service.ts```ts
 	    await this.budgetRepository.updateMany({ projectId }, { budgetTotalClaim: currentClaimNumber });
 	  }
 	
+	  /** Create a project budget */
 	  async addProjectBudget(data: IRequestCreateBudget, currentUser: UserDto): Promise<mongoose.Document> {
 	    try {
 	      const budgetDto = new BudgetDto();
@@ -1493,6 +1504,7 @@ src/backend/services/budget.service.ts```ts
 	    await this.budgetRepository.createMany(budgetData);
 	  }
 	
+	  /** Get all budgets by project id */
 	  async findBudgetsByProjectId(
 	    projectId: string,
 	    limit: number,
@@ -1540,6 +1552,7 @@ src/backend/services/budget.service.ts```ts
 	    };
 	  }
 	
+	  /** Get the latest budget */
 	  async findLastBudget() {
 	    return await this.budgetRepository.findWithSort({}, { dateCreate: -1 }, 1);
 	  }
@@ -1553,10 +1566,12 @@ src/backend/services/budget.service.ts```ts
 	    return this.budgetRepository.update(budgetId, budgetTotalClaimDictionary);
 	  }
 	
+	  /** Get detail of budget by budgetId */
 	  async getBudget(budgetId: string): Promise<mongoose.Document | null> {
 	    return this.budgetRepository.findOne({ _id: budgetId });
 	  }
 	
+	  /** Delete a budget by budgetId */
 	  async deleteBudget(budgetId: string): Promise<mongoose.Document | null> {
 	    return await this.budgetRepository.delete(budgetId);
 	  }
@@ -2289,6 +2304,7 @@ src/backend/services/builder.service.ts```ts
 	    };
 	  }
 	
+	  /** Create a builder */
 	  async addBuilder(formData: FormData, currentUser: UserDto): Promise<mongoose.Document> {
 	    const data = parsePayloadBuilderToCreateData(formData);
 	    const builderDto = new BuilderDto();
@@ -2319,6 +2335,7 @@ src/backend/services/builder.service.ts```ts
 	    }
 	  }
 	
+	  /** Update a builder by id */
 	  async updateBuilder(builderId: string, formData: FormData): Promise<mongoose.Document | null> {
 	    const currentBuilder = await this.getBuilder(builderId);
 	
@@ -2371,10 +2388,18 @@ src/backend/services/builder.service.ts```ts
 	    return this.builderRepository.update(builderId, rolesData);
 	  }
 	
+	  /** Delete a builder by id */
 	  async deleteBuilder(builderId: string): Promise<mongoose.Document | null> {
 	    return await this.builderRepository.delete(builderId);
 	  }
 	
+	  /**
+	   *  Get list builders by pagination
+	   *  limit: total items each page (page size)
+	   *  offset: current page (default = 0)
+	   *  order: Sort the builder list by field
+	   *  search: Search builder based on search value (search by builderName only)
+	   * */
 	  async listBuilders(
 	    limit: number,
 	    offset: number,
@@ -2410,7 +2435,7 @@ src/backend/services/builder.service.ts```ts
 	      const creator = currentObject.creatorId as Partial<User & { id: string }>;
 	      collection.push({
 	        ...currentObject,
-	        creatorId: creator.id || '',
+	        creatorId: creator?.id || '',
 	        creator
 	      });
 	    });
@@ -2432,7 +2457,7 @@ src/backend/services/observer/providers/smtp.provider.ts```ts
 	  private subject: string;
 	  private body: string;
 	  private recipient: string;
-	  private sender: string = process.env.NEXT_SMTP_USER as string;
+	  private sender: string = process.env.NEXT_SMTP_SENDER as string;
 	
 	  private client: any;
 	
@@ -4752,15 +4777,32 @@ src/backend/middlewares/auth.middleware.ts```ts
 
 src/backend/middlewares/jwt.middleware.ts```ts
 	import { NextFetchEvent, NextMiddleware, NextRequest, NextResponse } from 'next/server';
-	import { MiddlewareFactory } from '@/backend/middlewares/type/middleware.type';
+	import { MiddlewareFactory, specialPublicApisDefinition } from '@/backend/middlewares/type/middleware.type';
 	import { decode } from 'next-auth/jwt';
 	import { headers } from 'next/headers';
 	
-	const publicApi: string[] = ['/api-docs', '/api/auth', '/api/auth/csrf', '/api/auth/signin', '/api/auth/signout', 'api/auth/providers'];
+	const PUBLIC_GROUP = 'public';
+	
+	const isPublicGroupApi = (pathname: string) => {
+	  // Assuming API routes are structured like /api/groupName/endpoint
+	  const pathSegments = pathname.split('/');
+	  let apiGroup = '';
+	
+	  if (pathSegments[1] === 'api' && pathSegments.length > 2) {
+	    apiGroup = pathSegments[2]; // This should be the API group part of the path
+	  }
+	
+	  return apiGroup === PUBLIC_GROUP;
+	}
 	
 	export const withJwt: MiddlewareFactory = (next: NextMiddleware) => {
 	  return async (request: NextRequest, _next: NextFetchEvent) => {
-	    if (publicApi.some((path) => request.nextUrl.pathname.startsWith(path)) || !request.nextUrl.pathname.startsWith('/api')) {
+	    const isPublicApi = specialPublicApisDefinition.some((path) => request.nextUrl.pathname.startsWith(path))
+	      || isPublicGroupApi(request.nextUrl.pathname);
+	
+	    // Skip if the request path is not starting with /api (not an API request)
+	    // If the API is public, we don't need to check for JWT
+	    if (!request.nextUrl.pathname.startsWith('/api') || isPublicApi) {
 	      return next(request, _next);
 	    }
 	
@@ -4790,6 +4832,15 @@ src/backend/middlewares/type/middleware.type.ts```ts
 	import { NextMiddleware } from 'next/server';
 	
 	export type MiddlewareFactory = (middleware: NextMiddleware) => NextMiddleware;
+	
+	export const specialPublicApisDefinition = [
+	  '/api-docs',
+	  '/api/auth',
+	  '/api/auth/csrf',
+	  '/api/auth/signin',
+	  '/api/auth/signout',
+	  '/api/auth/providers'
+	];
 
 ```
 
@@ -4977,8 +5028,8 @@ src/menu-items/index.tsx```tsx
 ```
 
 src/types/request.ts```ts
-	import { UserProfile } from './user-profile';
 	import { FolderName } from 'utils/enums';
+	import { UserProfile } from './user-profile';
 	
 	export interface IRequestFilter {
 	  search?: string;
@@ -5125,6 +5176,13 @@ src/types/request.ts```ts
 	  budgetCostToComplete: number;
 	  budgetIndex?: number;
 	}
+	
+	/* COMPANY */
+	export interface IRequestCreateCompany {
+	  companyName: string;
+	  address: string;
+	  service: string;
+	}
 
 ```
 
@@ -5212,6 +5270,8 @@ src/types/response.ts```ts
 	import { IContractor } from '@/utils/services/contractor';
 	import { IProject } from './resource/project';
 	import { IBudget } from './resource/budget';
+	import { ICompany } from 'types/resource/company';
+	import { IService } from 'types/resource/service';
 	
 	export interface IResponse<T> {
 	  data: T;
@@ -5339,6 +5399,20 @@ src/types/response.ts```ts
 	
 	export interface IResponseDeleteBudget {
 	  success: boolean;
+	}
+	
+	/* COMPANY */
+	
+	export interface IResponseGetCompanies {
+	  data: ICompany[];
+	  meta: ResponseMeta;
+	}
+	
+	/* SERVICE */
+	
+	export interface IResponseGetServices {
+	  data: IService[];
+	  meta: ResponseMeta;
 	}
 
 ```
@@ -6131,6 +6205,24 @@ src/types/overrides/createTheme.d.ts```ts
 	    grey500: string;
 	    darkTextPrimary: string;
 	  }
+	}
+
+```
+
+src/types/resource/company.ts```ts
+	export interface ICompany {
+	  id: string;
+	  companyName: string;
+	  logo: string;
+	  address: string;
+	}
+
+```
+
+src/types/resource/service.ts```ts
+	export interface IService {
+	  id: string;
+	  serviceName: string;
 	}
 
 ```
@@ -13650,6 +13742,21 @@ src/views/authentication/login.tsx```tsx
 
 ```
 
+src/views/authentication/registerRole.tsx```tsx
+	'use client';
+	
+	import RegisterRoleForm from 'components/authentication/auth-forms/RegisterRoleForm';
+	
+	// ================================|| AUTH3 - REGISTER ||================================ //
+	
+	const RegisterRole = () => {
+	  return <RegisterRoleForm />;
+	};
+	
+	export default RegisterRole;
+
+```
+
 src/views/account/profile.tsx```tsx
 	'use client';
 	import { Profile } from '@/components/account';
@@ -14537,7 +14644,7 @@ src/scss/_cm.module.scss```scss
 	$warningDark: #ffc107;
 	
 	// danger
-	$dangerLight: #F65555;
+	$dangerLight: #f65555;
 	$dangerMain: #f20202;
 	$dangerDark: #dc0202;
 	
@@ -14579,6 +14686,7 @@ src/scss/_cm.module.scss```scss
 	$darkTextTitle: #d7dcec;
 	$darkTextPrimary: #bdc8f0;
 	$darkTextSecondary: #8492c4;
+	$textNotmal: #202020;
 	
 	// ==============================|| JAVASCRIPT ||============================== //
 	
@@ -16270,7 +16378,30 @@ src/app/loading.tsx```tsx
 
 ```
 
-src/app/auth/confirm-email/page.tsx```tsx
+src/app/(minimal)/register-role/page.tsx```tsx
+	import RegisterRole from 'views/authentication/registerRole';
+	
+	// ==============================|| PAGE ||============================== //
+	
+	export default async function RegisterRolePage() {
+	  return <RegisterRole />;
+	}
+
+```
+
+src/app/(publicPages)/layout.tsx```tsx
+	// PROJECT IMPORTS
+	import MinimalLayout from 'layout/MinimalLayout';
+	
+	// ================================|| SIMPLE LAYOUT ||================================ //
+	
+	export default function Layout({ children }: { children: React.ReactNode }) {
+	  return <MinimalLayout>{children}</MinimalLayout>;
+	}
+
+```
+
+src/app/(publicPages)/auth/confirm-email/page.tsx```tsx
 	import AuthService from '@/backend/services/auth.service';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { redirect } from 'next/navigation';
@@ -16300,19 +16431,7 @@ src/app/auth/confirm-email/page.tsx```tsx
 
 ```
 
-src/app/(minimal)/layout.tsx```tsx
-	// PROJECT IMPORTS
-	import MinimalLayout from 'layout/MinimalLayout';
-	
-	// ================================|| SIMPLE LAYOUT ||================================ //
-	
-	export default function Layout({ children }: { children: React.ReactNode }) {
-	  return <MinimalLayout>{children}</MinimalLayout>;
-	}
-
-```
-
-src/app/(minimal)/login/page.tsx```tsx
+src/app/(publicPages)/login/page.tsx```tsx
 	import { getServerSession } from 'next-auth';
 	import { redirect } from 'next/navigation';
 	import routes from 'routes';
@@ -16359,7 +16478,7 @@ src/app/(minimal)/login/page.tsx```tsx
 
 ```
 
-src/app/(minimal)/forgot-password/page.tsx```tsx
+src/app/(publicPages)/forgot-password/page.tsx```tsx
 	import ForgotPasswordView from '@/views/authentication/forgotPassword';
 	
 	export default async function ForgotPassword() {
@@ -16368,7 +16487,7 @@ src/app/(minimal)/forgot-password/page.tsx```tsx
 
 ```
 
-src/app/(minimal)/verify-email/page.tsx```tsx
+src/app/(publicPages)/verify-email/page.tsx```tsx
 	import VerifyEmailView from '@/views/authentication/verifyEmail';
 	
 	export default async function VerifyEmail() {
@@ -16377,7 +16496,7 @@ src/app/(minimal)/verify-email/page.tsx```tsx
 
 ```
 
-src/app/(minimal)/pages/maintenance/under-construction/page.tsx```tsx
+src/app/(publicPages)/pages/maintenance/under-construction/page.tsx```tsx
 	// PROJECT IMPORTS
 	import UnderConstruction from 'views/maintenance/under-construction';
 	
@@ -16391,7 +16510,7 @@ src/app/(minimal)/pages/maintenance/under-construction/page.tsx```tsx
 
 ```
 
-src/app/(minimal)/pages/maintenance/404/page.tsx```tsx
+src/app/(publicPages)/pages/maintenance/404/page.tsx```tsx
 	// PROJECT IMPORTS
 	import Error from 'views/maintenance/404-notfound';
 	
@@ -16405,7 +16524,7 @@ src/app/(minimal)/pages/maintenance/404/page.tsx```tsx
 
 ```
 
-src/app/(minimal)/pages/maintenance/500/page.tsx```tsx
+src/app/(publicPages)/pages/maintenance/500/page.tsx```tsx
 	// PROJECT IMPORTS
 	import Error from 'views/maintenance/500';
 	
@@ -16419,7 +16538,7 @@ src/app/(minimal)/pages/maintenance/500/page.tsx```tsx
 
 ```
 
-src/app/(minimal)/pages/maintenance/coming-soon/coming-soon2/page.tsx```tsx
+src/app/(publicPages)/pages/maintenance/coming-soon/coming-soon2/page.tsx```tsx
 	// PROJECT IMPORTS
 	import ComingSoon2 from 'views/maintenance/coming-soon2';
 	
@@ -16433,7 +16552,7 @@ src/app/(minimal)/pages/maintenance/coming-soon/coming-soon2/page.tsx```tsx
 
 ```
 
-src/app/(minimal)/pages/maintenance/coming-soon/coming-soon1/page.tsx```tsx
+src/app/(publicPages)/pages/maintenance/coming-soon/coming-soon1/page.tsx```tsx
 	// PROJECT IMPORTS
 	import ComingSoon1 from 'views/maintenance/coming-soon1';
 	
@@ -16447,7 +16566,7 @@ src/app/(minimal)/pages/maintenance/coming-soon/coming-soon1/page.tsx```tsx
 
 ```
 
-src/app/(minimal)/reset-password/page.tsx```tsx
+src/app/(publicPages)/reset-password/page.tsx```tsx
 	import ResetPasswordView from '@/views/authentication/resetPassword';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import AuthService from '@/backend/services/auth.service';
@@ -16471,7 +16590,7 @@ src/app/(minimal)/reset-password/page.tsx```tsx
 
 ```
 
-src/app/(minimal)/register/page.tsx```tsx
+src/app/(publicPages)/register/page.tsx```tsx
 	import Register from 'views/authentication/register';
 	import { getServerSession } from 'next-auth';
 	import routes from '@/routes';
@@ -16491,7 +16610,7 @@ src/app/(minimal)/register/page.tsx```tsx
 
 ```
 
-src/app/(dashboard)/layout.tsx```tsx
+src/app/(adminPanel)/layout.tsx```tsx
 	// PROJECT IMPORTS
 	import DashboardLayout from 'layout/MainLayout';
 	import AuthGuard from 'utils/route-guard/AuthGuard';
@@ -16514,7 +16633,7 @@ src/app/(dashboard)/layout.tsx```tsx
 
 ```
 
-src/app/(dashboard)/my-account/page.tsx```tsx
+src/app/(adminPanel)/my-account/page.tsx```tsx
 	import Profile from '@/views/account/profile';
 	
 	// ==============================|| PAGE ||============================== //
@@ -16525,7 +16644,7 @@ src/app/(dashboard)/my-account/page.tsx```tsx
 
 ```
 
-src/app/(dashboard)/contractor-projects/page.tsx```tsx
+src/app/(adminPanel)/contractor-projects/page.tsx```tsx
 	import ContractorProjectsView from '@/views/contractorProjects';
 	
 	// ==============================|| PAGE ||============================== //
@@ -16536,7 +16655,7 @@ src/app/(dashboard)/contractor-projects/page.tsx```tsx
 
 ```
 
-src/app/(dashboard)/contractor-projects/[id]/page.tsx```tsx
+src/app/(adminPanel)/contractor-projects/[id]/page.tsx```tsx
 	import React from 'react';
 	import ContractorProjectDetail from 'views/contractorProjectDetail';
 	
@@ -16546,7 +16665,7 @@ src/app/(dashboard)/contractor-projects/[id]/page.tsx```tsx
 
 ```
 
-src/app/(dashboard)/api-docs/page.tsx```tsx
+src/app/(adminPanel)/api-docs/page.tsx```tsx
 	import ReactSwagger from '@/views/react-swagger';
 	import { getApiSpecs } from '../../../../lib/swagger';
 	
@@ -16558,7 +16677,7 @@ src/app/(dashboard)/api-docs/page.tsx```tsx
 
 ```
 
-src/app/(dashboard)/projects/page.tsx```tsx
+src/app/(adminPanel)/projects/page.tsx```tsx
 	import ProjectsView from '@/views/projects';
 	
 	// ==============================|| PAGE ||============================== //
@@ -16569,7 +16688,7 @@ src/app/(dashboard)/projects/page.tsx```tsx
 
 ```
 
-src/app/(dashboard)/projects/[id]/page.tsx```tsx
+src/app/(adminPanel)/projects/[id]/page.tsx```tsx
 	import React from 'react';
 	import ProjectDetail from '@/components/projects/Detail';
 	
@@ -16579,7 +16698,7 @@ src/app/(dashboard)/projects/[id]/page.tsx```tsx
 
 ```
 
-src/app/(dashboard)/user/page.tsx```tsx
+src/app/(adminPanel)/user/page.tsx```tsx
 	import React from 'react';
 	import User from '@/views/user';
 	
@@ -16589,7 +16708,7 @@ src/app/(dashboard)/user/page.tsx```tsx
 
 ```
 
-src/app/(dashboard)/user/[id]/page.tsx```tsx
+src/app/(adminPanel)/user/[id]/page.tsx```tsx
 	import React from 'react';
 	import UserDetail from '@/components/user/detail';
 	
@@ -16599,7 +16718,7 @@ src/app/(dashboard)/user/[id]/page.tsx```tsx
 
 ```
 
-src/app/(dashboard)/contractor/page.tsx```tsx
+src/app/(adminPanel)/contractor/page.tsx```tsx
 	import React from 'react';
 	import Contractor from '@/views/contractor';
 	
@@ -16609,7 +16728,7 @@ src/app/(dashboard)/contractor/page.tsx```tsx
 
 ```
 
-src/app/(dashboard)/builder/page.tsx```tsx
+src/app/(adminPanel)/builder/page.tsx```tsx
 	import React from 'react';
 	import Builder from '@/views/builder';
 	
@@ -16619,7 +16738,38 @@ src/app/(dashboard)/builder/page.tsx```tsx
 
 ```
 
-src/app/api/listing.ts```ts
+src/app/api/auth/[...nextauth]/route.ts```ts
+	import NextAuth from 'next-auth/next';
+	import { authOptions } from '@/auth';
+	import { AuthOptions } from 'next-auth';
+	
+	const handler = NextAuth(authOptions as unknown as AuthOptions);
+	
+	export { handler as GET, handler as POST };
+
+```
+
+src/app/api/service/list/route.ts```ts
+	import { NextResponse } from 'next/server';
+	
+	export async function GET() {
+	  const services = [
+	    {
+	      id: '1111',
+	      serviceName: 'Service 1'
+	    },
+	    {
+	      id: '1222',
+	      serviceName: 'Service 2'
+	    }
+	  ];
+	
+	  return NextResponse.json({ data: services, totalItems: services.length }, { status: 200 });
+	}
+
+```
+
+src/app/api/private/listing.ts```ts
 	import { NextRequest } from 'next/server';
 	import { PAGINATE_OFFSET, PAGINATE_PAGE_SIZE } from '@/utils/constant';
 	
@@ -16685,7 +16835,7 @@ src/app/api/listing.ts```ts
 
 ```
 
-src/app/api/contractor-project/create/route.ts```ts
+src/app/api/private/contractor-project/create/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	type RequestType = {
@@ -16702,7 +16852,7 @@ src/app/api/contractor-project/create/route.ts```ts
 
 ```
 
-src/app/api/contractor-project/list/route.ts```ts
+src/app/api/private/contractor-project/list/route.ts```ts
 	import { NextResponse } from 'next/server';
 	
 	export async function GET() {
@@ -16813,7 +16963,7 @@ src/app/api/contractor-project/list/route.ts```ts
 
 ```
 
-src/app/api/contractor-project/[id]/route.ts```ts
+src/app/api/private/contractor-project/[id]/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	export async function GET(request: NextRequest) {
@@ -16845,7 +16995,7 @@ src/app/api/contractor-project/[id]/route.ts```ts
 
 ```
 
-src/app/api/contractor-project/[id]/invoices/route.ts```ts
+src/app/api/private/contractor-project/[id]/invoices/route.ts```ts
 	import { IInvoice } from '@/types/resource/invoice';
 	import DateCustom from '@/utils/datetime/date.custom';
 	import { NextResponse } from 'next/server';
@@ -17048,7 +17198,7 @@ src/app/api/contractor-project/[id]/invoices/route.ts```ts
 
 ```
 
-src/app/api/protected/route.ts```ts
+src/app/api/private/protected/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	export async function GET(request: NextRequest) {
@@ -17057,278 +17207,7 @@ src/app/api/protected/route.ts```ts
 
 ```
 
-src/app/api/auth/[...nextauth]/route.ts```ts
-	import NextAuth from 'next-auth/next';
-	import { authOptions } from '@/auth';
-	import { AuthOptions } from 'next-auth';
-	
-	const handler = NextAuth(authOptions as unknown as AuthOptions);
-	
-	export { handler as GET, handler as POST };
-
-```
-
-src/app/api/auth/token/[email]/route.ts```ts
-	import { NextRequest, NextResponse } from 'next/server';
-	import { encode } from 'next-auth/jwt';
-	import MongoConnect from '@/backend/connection/mongo.connection';
-	import UserRepository from '@/backend/repositories/mongodb/user.repository';
-	import ResponseStruct from '@/backend/structs/response.struct';
-	import Logger from '@/utils/logger';
-	
-	export async function GET(request: NextRequest, { params }: { params: { email: string } }) {
-	  const { email } = params;
-	  const responseStruct = new ResponseStruct(true);
-	  const conn = await MongoConnect();
-	
-	  try {
-	    const userRepo = new UserRepository(conn);
-	    const user = await userRepo.findOne({ email });
-	
-	    if (!user) {
-	      responseStruct.setStatus(404);
-	      responseStruct.pushError('Email not found');
-	
-	      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	    }
-	
-	    const token = await encode({
-	      token: {
-	        email: email
-	      },
-	      secret: (process.env.NEXTAUTH_SECRET as string) || '',
-	      maxAge: 60 * 60 * 4 // 4 hours
-	    });
-	
-	    responseStruct.setStatus(200);
-	    responseStruct.setData({ data: { token } });
-	  } catch (error: any) {
-	    responseStruct.pushError('Unauthorized');
-	    responseStruct.setStatus(401);
-	
-	    Logger.error(responseStruct.getValue('errors'), {
-	      status: responseStruct.getValue('status'),
-	      stack: error.stack
-	    });
-	  }
-	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	}
-
-```
-
-src/app/api/auth/reset-password/route.ts```ts
-	import { NextRequest, NextResponse } from 'next/server';
-	import UserRepository from '@/backend/repositories/mongodb/user.repository';
-	import MongoConnect from '@/backend/connection/mongo.connection';
-	import UserService from '@/backend/services/user.service';
-	import ResetPasswordValidator from '@/backend/validator/reset-password.validator';
-	import ResponseStruct from '@/backend/structs/response.struct';
-	import Logger from '@/utils/logger';
-	
-	export type RequestType = {
-	  email: string;
-	  password: string;
-	  confirmPassword: string;
-	  token: string;
-	};
-	
-	export async function POST(request: NextRequest) {
-	  const { email, password, confirmPassword, token } = await request.json();
-	  const responseStruct = new ResponseStruct(true);
-	
-	  const validator = new ResetPasswordValidator({ email, password, confirmPassword, token });
-	  validator.validate();
-	
-	  if (validator.getErrors().length > 0) {
-	    responseStruct.setStatus(400);
-	    responseStruct.setErrors(validator.getErrors());
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	  }
-	
-	  try {
-	    const conn = await MongoConnect();
-	    const userRepository = new UserRepository(conn);
-	    const userServices = new UserService(userRepository);
-	    await userServices.changePassword(email, password, token);
-	    responseStruct.setStatus(200);
-	  } catch (err: any) {
-	    responseStruct.pushError(err.message);
-	    responseStruct.setStatus(500);
-	
-	    Logger.error(err.message, {
-	      status: responseStruct.getValue('status'),
-	      stack: err.stack
-	    });
-	  }
-	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	}
-
-```
-
-src/app/api/auth/code/verify/route.ts```ts
-	import { NextRequest, NextResponse } from 'next/server';
-	import MongoConnect from '@/backend/connection/mongo.connection';
-	import AuthService from '@/backend/services/auth.service';
-	import ResponseStruct from '@/backend/structs/response.struct';
-	import Logger from '@/utils/logger';
-	
-	type RequestType = {
-	  email: string;
-	  code: string;
-	};
-	
-	export async function POST(request: NextRequest) {
-	  const data: RequestType = await request.json();
-	  const responseStruct = new ResponseStruct(true);
-	
-	  let linkResetPassword = '';
-	  try {
-	    const conn = await MongoConnect();
-	    const authService = new AuthService(conn);
-	
-	    const userDto = await authService.verifyCode(data.email, data.code);
-	
-	    linkResetPassword = await authService.generatePasswordResetToken(userDto._id.valueOf() as string);
-	
-	    responseStruct.setStatus(200);
-	    responseStruct.setData({
-	      data: {
-	        linkResetPassword
-	      }
-	    });
-	  } catch (error: any) {
-	    responseStruct.pushError(error.message);
-	    responseStruct.setStatus(500);
-	
-	    Logger.error(error.message, {
-	      status: responseStruct.getValue('status'),
-	      stack: error.stack
-	    });
-	  }
-	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	}
-
-```
-
-src/app/api/auth/code/send/route.ts```ts
-	import { NextRequest, NextResponse } from 'next/server';
-	import MongoConnect from '@/backend/connection/mongo.connection';
-	import ForgotPasswordValidator from '@/backend/validator/forgot-password.validator';
-	import AuthService from '@/backend/services/auth.service';
-	import ResponseStruct from '@/backend/structs/response.struct';
-	import Logger from '@/utils/logger';
-	
-	export type RequestType = {
-	  email: string;
-	};
-	
-	export async function POST(request: NextRequest) {
-	  const { email }: RequestType = await request.json();
-	  const responseStruct = new ResponseStruct(true);
-	  const conn = await MongoConnect();
-	
-	  try {
-	    const validator = new ForgotPasswordValidator({ email }, conn);
-	
-	    await validator.validate();
-	
-	    if (validator.getErrors().length > 0) {
-	      responseStruct.setStatus(400);
-	      responseStruct.setErrors(validator.getErrors());
-	
-	      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	    }
-	
-	    const authService = new AuthService(conn);
-	    await authService.forgotPassword(email);
-	    responseStruct.setStatus(200);
-	  } catch (err: any) {
-	    responseStruct.pushError(err.message);
-	    responseStruct.setStatus(400);
-	
-	    Logger.error(err.message, {
-	      status: responseStruct.getValue('status'),
-	      stack: err.stack
-	    });
-	  }
-	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	}
-
-```
-
-src/app/api/auth/register/route.ts```ts
-	import { NextRequest, NextResponse } from 'next/server';
-	import RegisterValidator from '@/backend/validator/register.validator';
-	import MongoConnect from '@/backend/connection/mongo.connection';
-	import AuthService from '@/backend/services/auth.service';
-	import { UserStatus } from '@/utils/enums';
-	import ResponseStruct from '@/backend/structs/response.struct';
-	import Logger from '@/utils/logger';
-	
-	export async function POST(request: NextRequest) {
-	  const data: { email: string; password: string; firstName: string; lastName: string } = await request.json();
-	
-	  const conn = await MongoConnect();
-	  const authService = new AuthService(conn);
-	  const responseStruct = new ResponseStruct(true);
-	
-	  const requestData = {
-	    email: data.email,
-	    password: data.password,
-	    firstName: data.firstName,
-	    lastName: data.lastName
-	  };
-	
-	  const requestValidator = new RegisterValidator(requestData, conn);
-	
-	  try {
-	    await requestValidator.validate();
-	
-	    if (requestValidator.getErrors().length > 0) {
-	      responseStruct.setStatus(400);
-	      responseStruct.setErrors(requestValidator.getErrors());
-	
-	      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	    }
-	
-	    const user = await authService.createNewUser(
-	      data.email,
-	      data.firstName,
-	      data.lastName,
-	      false,
-	      UserStatus.INACTIVE,
-	      data.password,
-	      null
-	    );
-	
-	    await authService.sendEmailConfirmation(user.get('_id').valueOf(), user.get('email'), `${data.firstName} ${data.lastName}`);
-	    responseStruct.setStatus(200);
-	    responseStruct.setData({
-	      data: {
-	        message: 'User created successfully. Please check your email to verify your account.'
-	      }
-	    });
-	  } catch (error: any) {
-	    responseStruct.pushError(error.message);
-	    responseStruct.setStatus(500);
-	
-	    Logger.error(error.message, {
-	      status: responseStruct.getValue('status'),
-	      stack: error.stack
-	    });
-	  }
-	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	}
-
-```
-
-src/app/api/invoice/upsert/route.ts```ts
+src/app/api/private/invoice/upsert/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	export async function POST(request: NextRequest) {
@@ -17341,7 +17220,7 @@ src/app/api/invoice/upsert/route.ts```ts
 
 ```
 
-src/app/api/budget/route.ts```ts
+src/app/api/private/budget/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import AuthService from '@/backend/services/auth.service';
@@ -17442,7 +17321,7 @@ src/app/api/budget/route.ts```ts
 
 ```
 
-src/app/api/budget/[id]/route.ts```ts
+src/app/api/private/budget/[id]/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import ObjectIdValidator from '@/backend/validator/objectId.validator';
@@ -17482,7 +17361,7 @@ src/app/api/budget/[id]/route.ts```ts
 
 ```
 
-src/app/api/profile/route.ts```ts
+src/app/api/private/profile/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import { headers } from 'next/headers';
 	import { decode, JWT } from 'next-auth/jwt';
@@ -17532,7 +17411,7 @@ src/app/api/profile/route.ts```ts
 
 ```
 
-src/app/api/profile/change-password/[id]/route.ts```ts
+src/app/api/private/profile/change-password/[id]/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import UserService from '@/backend/services/user.service';
@@ -17583,7 +17462,7 @@ src/app/api/profile/change-password/[id]/route.ts```ts
 
 ```
 
-src/app/api/profile/update/[id]/route.ts```ts
+src/app/api/private/profile/update/[id]/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import ProfileValidator from '@/backend/validator/profile.validator';
 	import MongoConnect from '@/backend/connection/mongo.connection';
@@ -17646,7 +17525,7 @@ src/app/api/profile/update/[id]/route.ts```ts
 
 ```
 
-src/app/api/file/upload/route.ts```ts
+src/app/api/private/file/upload/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 	import UploadValidator from '@/backend/validator/upload.validator';
@@ -17712,7 +17591,7 @@ src/app/api/file/upload/route.ts```ts
 
 ```
 
-src/app/api/project/route.ts```ts
+src/app/api/private/project/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import AuthService from '@/backend/services/auth.service';
@@ -17772,7 +17651,7 @@ src/app/api/project/route.ts```ts
 
 ```
 
-src/app/api/project/list/route.ts```ts
+src/app/api/private/project/list/route.ts```ts
 	import { NextResponse } from 'next/server';
 	
 	export async function GET() {
@@ -17883,7 +17762,7 @@ src/app/api/project/list/route.ts```ts
 
 ```
 
-src/app/api/project/[id]/route.ts```ts
+src/app/api/private/project/[id]/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import { parsePayloadProjectToCreateData } from '@/utils/helper';
@@ -17974,7 +17853,7 @@ src/app/api/project/[id]/route.ts```ts
 
 ```
 
-src/app/api/project/[id]/contractors/route.ts```ts
+src/app/api/private/project/[id]/contractors/route.ts```ts
 	import { NextResponse } from 'next/server';
 	
 	export async function GET() {
@@ -18026,7 +17905,7 @@ src/app/api/project/[id]/contractors/route.ts```ts
 
 ```
 
-src/app/api/project/[id]/invoices/route.ts```ts
+src/app/api/private/project/[id]/invoices/route.ts```ts
 	import { IInvoice } from '@/types/resource/invoice';
 	import DateCustom from '@/utils/datetime/date.custom';
 	import { NextResponse } from 'next/server';
@@ -18229,7 +18108,7 @@ src/app/api/project/[id]/invoices/route.ts```ts
 
 ```
 
-src/app/api/project/[id]/roles/route.ts```ts
+src/app/api/private/project/[id]/roles/route.ts```ts
 	import { NextResponse } from 'next/server';
 	
 	export async function GET() {
@@ -18286,7 +18165,7 @@ src/app/api/project/[id]/roles/route.ts```ts
 
 ```
 
-src/app/api/user/create/route.ts```ts
+src/app/api/private/user/create/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	type RequestType = {
@@ -18304,7 +18183,7 @@ src/app/api/user/create/route.ts```ts
 
 ```
 
-src/app/api/user/delete/[id]/route.ts```ts
+src/app/api/private/user/delete/[id]/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
@@ -18315,7 +18194,7 @@ src/app/api/user/delete/[id]/route.ts```ts
 
 ```
 
-src/app/api/user/bulk-control/route.ts```ts
+src/app/api/private/user/bulk-control/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import { Actions } from '@/utils/enums';
 	import MongoConnect from '@/backend/connection/mongo.connection';
@@ -18380,13 +18259,13 @@ src/app/api/user/bulk-control/route.ts```ts
 
 ```
 
-src/app/api/user/list/route.ts```ts
+src/app/api/private/user/list/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ResponseStruct from '@/backend/structs/response.struct';
 	import UserService from '@/backend/services/user.service';
 	import UserRepository from '@/backend/repositories/mongodb/user.repository';
-	import { getListingQuery } from '@/app/api/listing';
+	import { getListingQuery } from '@/app/api/private/listing';
 	import { headers } from 'next/headers';
 	import { decode, JWT } from 'next-auth/jwt';
 	import Logger from '@/utils/logger';
@@ -18436,7 +18315,7 @@ src/app/api/user/list/route.ts```ts
 
 ```
 
-src/app/api/user/[id]/route.ts```ts
+src/app/api/private/user/[id]/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ResponseStruct from '@/backend/structs/response.struct';
@@ -18484,7 +18363,7 @@ src/app/api/user/[id]/route.ts```ts
 
 ```
 
-src/app/api/user/[id]/delete/route.ts```ts
+src/app/api/private/user/[id]/delete/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ResponseStruct from '@/backend/structs/response.struct';
@@ -18545,7 +18424,7 @@ src/app/api/user/[id]/delete/route.ts```ts
 
 ```
 
-src/app/api/user/[id]/status/route.ts```ts
+src/app/api/private/user/[id]/status/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ResponseStruct from '@/backend/structs/response.struct';
@@ -18625,7 +18504,7 @@ src/app/api/user/[id]/status/route.ts```ts
 
 ```
 
-src/app/api/user/[id]/archive/route.ts```ts
+src/app/api/private/user/[id]/archive/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ResponseStruct from '@/backend/structs/response.struct';
@@ -18686,7 +18565,7 @@ src/app/api/user/[id]/archive/route.ts```ts
 
 ```
 
-src/app/api/user/update/[id]/route.ts```ts
+src/app/api/private/user/update/[id]/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	type RequestData = {
@@ -18709,7 +18588,7 @@ src/app/api/user/update/[id]/route.ts```ts
 
 ```
 
-src/app/api/contractor/create/route.ts```ts
+src/app/api/private/contractor/create/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import UploadValidator from '@/backend/validator/upload.validator';
 	import { FolderName } from '@/utils/enums';
@@ -18780,7 +18659,7 @@ src/app/api/contractor/create/route.ts```ts
 
 ```
 
-src/app/api/contractor/delete/[id]/route.ts```ts
+src/app/api/private/contractor/delete/[id]/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ContractorService from '@/backend/services/contractor.service';
@@ -18813,7 +18692,7 @@ src/app/api/contractor/delete/[id]/route.ts```ts
 
 ```
 
-src/app/api/contractor/update-contractor-role/route.ts```ts
+src/app/api/private/contractor/update-contractor-role/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ContractorRepository from '@/backend/repositories/mongodb/contractor.repository';
@@ -18846,12 +18725,12 @@ src/app/api/contractor/update-contractor-role/route.ts```ts
 
 ```
 
-src/app/api/contractor/list/route.ts```ts
+src/app/api/private/contractor/list/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ContractorService from '@/backend/services/contractor.service';
 	import ResponseStruct from '@/backend/structs/response.struct';
-	import { getListingQuery } from '@/app/api/listing';
+	import { getListingQuery } from '@/app/api/private/listing';
 	import Logger from '@/utils/logger';
 	
 	export async function GET(request: NextRequest) {
@@ -18885,7 +18764,7 @@ src/app/api/contractor/list/route.ts```ts
 
 ```
 
-src/app/api/contractor/update/[id]/route.ts```ts
+src/app/api/private/contractor/update/[id]/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ContractorService from '@/backend/services/contractor.service';
@@ -18958,7 +18837,7 @@ src/app/api/contractor/update/[id]/route.ts```ts
 
 ```
 
-src/app/api/builder/route.ts```ts
+src/app/api/private/builder/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import BuilderValidator from '@/backend/validator/builder.validator';
 	import { NextRequest, NextResponse } from 'next/server';
@@ -18966,7 +18845,7 @@ src/app/api/builder/route.ts```ts
 	import AuthService from '@/backend/services/auth.service';
 	import { parsePayloadBuilderToCreateData } from '@/utils/helper';
 	import ResponseStruct from '@/backend/structs/response.struct';
-	import { getListingQuery } from '../listing';
+	import { getListingQuery } from '@/app/api/private/listing';
 	import Logger from '@/utils/logger';
 	
 	export async function POST(request: NextRequest) {
@@ -19030,7 +18909,7 @@ src/app/api/builder/route.ts```ts
 
 ```
 
-src/app/api/builder/[id]/route.ts```ts
+src/app/api/private/builder/[id]/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import BuilderValidator from '@/backend/validator/builder.validator';
 	import { NextRequest, NextResponse } from 'next/server';
@@ -19137,6 +19016,307 @@ src/app/api/builder/[id]/route.ts```ts
 
 ```
 
+src/app/api/company/create/route.ts```ts
+	import { NextRequest, NextResponse } from 'next/server';
+	
+	export async function POST(request: NextRequest) {
+	  return NextResponse.json(
+	    {
+	      id: '12222',
+	      companyName: 'Apex Construction Co.',
+	      logo: '/assets/images/j2c-logo-2.svg',
+	      address: 'address 2'
+	    },
+	    { status: 200 }
+	  );
+	}
+
+```
+
+src/app/api/company/list/route.ts```ts
+	import { NextResponse } from 'next/server';
+	
+	export async function GET() {
+	  const companies = [
+	    {
+	      id: '11111',
+	      companyName: 'Apex Construction Co.',
+	      logo: '/assets/images/j2c-logo-2.svg',
+	      address: 'address 1'
+	    },
+	    {
+	      id: '12222',
+	      companyName: 'Apex Construction Co.',
+	      logo: '/assets/images/j2c-logo-2.svg',
+	      address: 'address 2'
+	    }
+	  ];
+	
+	  return NextResponse.json({ data: companies, totalItems: companies.length }, { status: 200 });
+	}
+
+```
+
+src/app/api/public/auth/token/[email]/route.ts```ts
+	import { NextRequest, NextResponse } from 'next/server';
+	import { encode } from 'next-auth/jwt';
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import UserRepository from '@/backend/repositories/mongodb/user.repository';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
+	
+	export async function GET(request: NextRequest, { params }: { params: { email: string } }) {
+	  const { email } = params;
+	  const responseStruct = new ResponseStruct(true);
+	  const conn = await MongoConnect();
+	
+	  try {
+	    const userRepo = new UserRepository(conn);
+	    const user = await userRepo.findOne({ email });
+	
+	    if (!user) {
+	      responseStruct.setStatus(404);
+	      responseStruct.pushError('Email not found');
+	
+	      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	    }
+	
+	    const token = await encode({
+	      token: {
+	        email: email
+	      },
+	      secret: (process.env.NEXTAUTH_SECRET as string) || '',
+	      maxAge: 60 * 60 * 4 // 4 hours
+	    });
+	
+	    responseStruct.setStatus(200);
+	    responseStruct.setData({ data: { token } });
+	  } catch (error: any) {
+	    responseStruct.pushError('Unauthorized');
+	    responseStruct.setStatus(401);
+	
+	    Logger.error(responseStruct.getValue('errors'), {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	  }
+	
+	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	}
+
+```
+
+src/app/api/public/auth/reset-password/route.ts```ts
+	import { NextRequest, NextResponse } from 'next/server';
+	import UserRepository from '@/backend/repositories/mongodb/user.repository';
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import UserService from '@/backend/services/user.service';
+	import ResetPasswordValidator from '@/backend/validator/reset-password.validator';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
+	
+	export type RequestType = {
+	  email: string;
+	  password: string;
+	  confirmPassword: string;
+	  token: string;
+	};
+	
+	export async function POST(request: NextRequest) {
+	  const { email, password, confirmPassword, token } = await request.json();
+	  const responseStruct = new ResponseStruct(true);
+	
+	  const validator = new ResetPasswordValidator({ email, password, confirmPassword, token });
+	  validator.validate();
+	
+	  if (validator.getErrors().length > 0) {
+	    responseStruct.setStatus(400);
+	    responseStruct.setErrors(validator.getErrors());
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	  }
+	
+	  try {
+	    const conn = await MongoConnect();
+	    const userRepository = new UserRepository(conn);
+	    const userServices = new UserService(userRepository);
+	    await userServices.changePassword(email, password, token);
+	    responseStruct.setStatus(200);
+	  } catch (err: any) {
+	    responseStruct.pushError(err.message);
+	    responseStruct.setStatus(500);
+	
+	    Logger.error(err.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: err.stack
+	    });
+	  }
+	
+	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	}
+
+```
+
+src/app/api/public/auth/code/verify/route.ts```ts
+	import { NextRequest, NextResponse } from 'next/server';
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import AuthService from '@/backend/services/auth.service';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
+	
+	type RequestType = {
+	  email: string;
+	  code: string;
+	};
+	
+	export async function POST(request: NextRequest) {
+	  const data: RequestType = await request.json();
+	  const responseStruct = new ResponseStruct(true);
+	
+	  let linkResetPassword = '';
+	  try {
+	    const conn = await MongoConnect();
+	    const authService = new AuthService(conn);
+	
+	    const userDto = await authService.verifyCode(data.email, data.code);
+	
+	    linkResetPassword = await authService.generatePasswordResetToken(userDto._id.valueOf() as string);
+	
+	    responseStruct.setStatus(200);
+	    responseStruct.setData({
+	      data: {
+	        linkResetPassword
+	      }
+	    });
+	  } catch (error: any) {
+	    responseStruct.pushError(error.message);
+	    responseStruct.setStatus(500);
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	  }
+	
+	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	}
+
+```
+
+src/app/api/public/auth/code/send/route.ts```ts
+	import { NextRequest, NextResponse } from 'next/server';
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import ForgotPasswordValidator from '@/backend/validator/forgot-password.validator';
+	import AuthService from '@/backend/services/auth.service';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
+	
+	export type RequestType = {
+	  email: string;
+	};
+	
+	export async function POST(request: NextRequest) {
+	  const { email }: RequestType = await request.json();
+	  const responseStruct = new ResponseStruct(true);
+	  const conn = await MongoConnect();
+	
+	  try {
+	    const validator = new ForgotPasswordValidator({ email }, conn);
+	
+	    await validator.validate();
+	
+	    if (validator.getErrors().length > 0) {
+	      responseStruct.setStatus(400);
+	      responseStruct.setErrors(validator.getErrors());
+	
+	      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	    }
+	
+	    const authService = new AuthService(conn);
+	    await authService.forgotPassword(email);
+	    responseStruct.setStatus(200);
+	  } catch (err: any) {
+	    responseStruct.pushError(err.message);
+	    responseStruct.setStatus(400);
+	
+	    Logger.error(err.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: err.stack
+	    });
+	  }
+	
+	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	}
+
+```
+
+src/app/api/public/auth/register/route.ts```ts
+	import { NextRequest, NextResponse } from 'next/server';
+	import RegisterValidator from '@/backend/validator/register.validator';
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import AuthService from '@/backend/services/auth.service';
+	import { UserStatus } from '@/utils/enums';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import Logger from '@/utils/logger';
+	
+	export async function POST(request: NextRequest) {
+	  const data: { email: string; password: string; firstName: string; lastName: string } = await request.json();
+	
+	  const conn = await MongoConnect();
+	  const authService = new AuthService(conn);
+	  const responseStruct = new ResponseStruct(true);
+	
+	  const requestData = {
+	    email: data.email,
+	    password: data.password,
+	    firstName: data.firstName,
+	    lastName: data.lastName
+	  };
+	
+	  const requestValidator = new RegisterValidator(requestData, conn);
+	
+	  try {
+	    await requestValidator.validate();
+	
+	    if (requestValidator.getErrors().length > 0) {
+	      responseStruct.setStatus(400);
+	      responseStruct.setErrors(requestValidator.getErrors());
+	
+	      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	    }
+	
+	    const user = await authService.createNewUser(
+	      data.email,
+	      data.firstName,
+	      data.lastName,
+	      false,
+	      UserStatus.INACTIVE,
+	      data.password,
+	      null
+	    );
+	
+	    await authService.sendEmailConfirmation(user.get('_id').valueOf(), user.get('email'), `${data.firstName} ${data.lastName}`);
+	    responseStruct.setStatus(200);
+	    responseStruct.setData({
+	      data: {
+	        message: 'User created successfully. Please check your email to verify your account.'
+	      }
+	    });
+	  } catch (error: any) {
+	    responseStruct.pushError(error.message);
+	    responseStruct.setStatus(500);
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	  }
+	
+	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	}
+
+```
+
 src/hooks/useConfig.ts```ts
 	import { useContext } from 'react';
 	import { ConfigContext } from 'contexts/ConfigContext';
@@ -19200,7 +19380,10 @@ src/hooks/useAsync.ts```ts
 	  error: E | null;
 	  showNotifOnError?: boolean;
 	}
-	
+	/**
+	 * The hook function uses fetch api, it includes try catch, shows toast on error, manage status of request
+	 * Do not change the api's returned data structure
+	 */
 	export function useAsync<T = any, E = ResponseError>(initState?: Partial<State<T, E>> & { showNotifOnError?: boolean }) {
 	  const mounted = useRef(false);
 	  const countRef = useRef(0);
@@ -19378,6 +19561,9 @@ src/hooks/useCommonValidates.ts```ts
 	import { isUndefined } from 'lodash';
 	import * as Yup from 'yup';
 	
+	/**
+	 * @summary:  Define common validation for form
+	 */
 	const useCommonValidates = () => {
 	  const { formatMessage } = useIntl();
 	
@@ -19503,6 +19689,11 @@ src/utils/enums.ts```ts
 	  ACTIVATE = 'activate',
 	  DEACTIVATE = 'deactivate',
 	  ARCHIVE = 'archive'
+	}
+	
+	export enum Roles {
+	  BUILDER = 'BUILDER',
+	  CONTRACTOR = 'CONTRACTOR'
 	}
 
 ```
@@ -19644,46 +19835,49 @@ src/utils/common.ts```ts
 
 src/utils/api.ts```ts
 	const APIS = {
-	  GET_BUILDER_PROJECTS: '/projects',
-	  GET_CONTRACTORS: '/contractor/list',
-	  CREATE_CONTRACTOR: '/contractor/create',
-	  UPDATE_CONTRACTOR: '/contractor/update',
-	  DELETE_CONTRACTOR: '/contractor/delete',
-	  UPSERT_PROJECT: '/projects/upsert',
-	  PROJECT_ADD_BUDGET: '/projects/add-budget',
-	  BUILDERS: '/builder',
-	  GET_USERS: '/user/list',
-	  GET_USER_DETAIL: '/user/:id',
-	  CREATE_USER: '/user/create',
-	  BULK_CONTROL_USER: '/user/bulk-control',
-	  UPDATE_USER: '/user/:id/update',
-	  DELETE_USER: '/user/:id/delete',
-	  UPDATE_PROJECT_ROLES: '/projects/update-project-roles',
-	  IMPORT_PROJECT_BUDGET: '/projects/import-project-budget',
-	  UPDATE_CONTRACTOR_ROLE: '/contractors/update-contractor-role',
-	  UPSERT_INVOICE: '/invoices/upsert',
-	  UPDATE_PROJECT_CONTRACTORS: '/projects/update-project-contractors',
-	  REGISTER: '/auth/register',
-	  UPDATE_PROFILE: '/profile/update/:id',
-	  CHANGE_PASSWORD: '/profile/change-password/:id',
-	  GET_PROFILE: '/profile',
-	  SEND_CODE: '/auth/code/send',
-	  VERIFY_CODE: '/auth/code/verify',
-	  RESET_PASSWORD: '/auth/reset-password',
-	  UPLOAD_FILE: '/file/upload',
-	  PROJECT: '/project',
-	  GET_PROJECT_ROLES: '/project/:id/roles',
-	  GET_PROJECT_CONTRACTORS: '/project/:id/contractors',
-	  CREATE_PROJECT: '/project/create',
-	  GET_PROJECT: '/project/:id',
-	  UPDATE_PROJECT: '/project/:id',
-	  DELETE_PROJECT: '/project/:id',
-	  GET_CONTRACTOR_PROJECTS: '/contractor-project/list',
-	  CREATE_CONTRACTOR_PROJECT: '/contractor-project/create',
-	  GET_CONTRACTOR_PROJECT: '/contractor-project/:id',
-	  GET_CONTRACTOR_PROJECT_INVOICES: '/contractor-project/:id/invoices',
-	  GET_PROJECT_INVOICES: '/project/:id/invoices',
-	  BUDGET: '/budget'
+	  GET_BUILDER_PROJECTS: 'private/projects',
+	  GET_CONTRACTORS: 'private/contractor/list',
+	  CREATE_CONTRACTOR: 'private/contractor/create',
+	  UPDATE_CONTRACTOR: 'private/contractor/update',
+	  DELETE_CONTRACTOR: 'private/contractor/delete',
+	  UPSERT_PROJECT: 'private/projects/upsert',
+	  PROJECT_ADD_BUDGET: 'private/projects/add-budget',
+	  BUILDERS: 'private/builder',
+	  GET_USERS: 'private/user/list',
+	  GET_USER_DETAIL: 'private/user/:id',
+	  CREATE_USER: 'private/user/create',
+	  BULK_CONTROL_USER: 'private/user/bulk-control',
+	  UPDATE_USER: 'private/user/:id/update',
+	  DELETE_USER: 'private/user/:id/delete',
+	  UPDATE_PROJECT_ROLES: 'private/projects/update-project-roles',
+	  IMPORT_PROJECT_BUDGET: 'private/projects/import-project-budget',
+	  UPDATE_CONTRACTOR_ROLE: 'private/contractors/update-contractor-role',
+	  UPSERT_INVOICE: 'private/invoices/upsert',
+	  UPDATE_PROJECT_CONTRACTORS: 'private/projects/update-project-contractors',
+	  REGISTER: 'public/auth/register',
+	  UPDATE_PROFILE: 'private/profile/update/:id',
+	  CHANGE_PASSWORD: 'private/profile/change-password/:id',
+	  GET_PROFILE: 'private/profile',
+	  SEND_CODE: 'public/auth/code/send',
+	  VERIFY_CODE: 'public/auth/code/verify',
+	  RESET_PASSWORD: 'public/auth/reset-password',
+	  UPLOAD_FILE: 'private/file/upload',
+	  PROJECT: 'private/project',
+	  GET_PROJECT_ROLES: 'private/project/:id/roles',
+	  GET_PROJECT_CONTRACTORS: 'private/project/:id/contractors',
+	  CREATE_PROJECT: 'private/project/create',
+	  GET_PROJECT: 'private/project/:id',
+	  UPDATE_PROJECT: 'private/project/:id',
+	  DELETE_PROJECT: 'private/project/:id',
+	  GET_CONTRACTOR_PROJECTS: 'private/contractor-project/list',
+	  CREATE_CONTRACTOR_PROJECT: 'private/contractor-project/create',
+	  GET_CONTRACTOR_PROJECT: 'private/contractor-project/:id',
+	  GET_CONTRACTOR_PROJECT_INVOICES: 'private/contractor-project/:id/invoices',
+	  GET_PROJECT_INVOICES: 'private/project/:id/invoices',
+	  BUDGET: 'private/budget',
+	  GET_COMPANIES: '/company/list',
+	  CREATE_COMPANY: '/company/create',
+	  GET_SERVICES: '/service/list'
 	};
 	
 	export default APIS;
@@ -20100,6 +20294,48 @@ src/utils/axios.ts```ts
 
 ```
 
+src/utils/services/company.ts```ts
+	import { IResponseGetCompanies } from 'types/response';
+	import { IRequestFilter, IRequestCreateCompany } from 'types/request';
+	import { ICompany } from 'types/resource/company';
+	import { generateQueryFromFilter } from 'utils/helper';
+	import axios from '../axios';
+	import endPoints from '../api';
+	
+	/**
+	 * @summary: (method: GET) Get a list company
+	 */
+	export const getCompanies = async (params?: IRequestFilter): Promise<IResponseGetCompanies> => {
+	  const query = params ? generateQueryFromFilter(endPoints.GET_COMPANIES, params) : endPoints.GET_COMPANIES;
+	  return axios.get(query);
+	};
+	
+	/**
+	 * @summary: (method: POST) Create a company
+	 */
+	export const createCompany = async (payload: IRequestCreateCompany) => {
+	  return axios.post<ICompany>(endPoints.CREATE_COMPANY, payload);
+	};
+
+```
+
+src/utils/services/service.ts```ts
+	import { IResponseGetServices } from 'types/response';
+	import { IRequestFilter } from 'types/request';
+	import { generateQueryFromFilter } from 'utils/helper';
+	import axios from '../axios';
+	import endPoints from '../api';
+	
+	/**
+	 * @summary: (method: GET) Get a list service
+	 */
+	export const getServices = async (params?: IRequestFilter): Promise<IResponseGetServices> => {
+	  const query = params ? generateQueryFromFilter(endPoints.GET_SERVICES, params) : endPoints.GET_SERVICES;
+	  return axios.get(query);
+	};
+
+```
+
 src/utils/services/builder.ts```ts
 	import { IResponseCreateBuilder, IResponseDeleteBuilder, IResponseUpdateBuilder } from './../../types/response';
 	import axiosServices from '../axios';
@@ -20109,11 +20345,12 @@ src/utils/services/builder.ts```ts
 	import { BuilderRequestType } from '../dtos/builder.dto';
 	import { generateQueryFromFilter } from '../helper';
 	
+	/** API get list budgets */
 	export const getBuilders = async (params?: IRequestFilter) => {
 	  const query = params ? generateQueryFromFilter(endPoints.BUILDERS, params) : endPoints.BUILDERS;
 	  return await axiosServices.get<IResponseListBuilders>(query);
 	};
-	
+	/** API create a budgets */
 	export const createBuilder = async (payload: BuilderRequestType) => {
 	  const formData = new FormData();
 	  formData.append('builderName', payload.builderName);
@@ -20123,7 +20360,7 @@ src/utils/services/builder.ts```ts
 	  !!payload?.image && formData.append('image', payload.image);
 	  return await axiosServices.post<IResponseCreateBuilder>(endPoints.BUILDERS, formData);
 	};
-	
+	/** API update a budget by id */
 	export const updateBuilder = async (id: string, payload: IRequestUpdateBuilder) => {
 	  const formData = new FormData();
 	  !!payload?.builderName && formData.append('builderName', payload.builderName);
@@ -20133,7 +20370,7 @@ src/utils/services/builder.ts```ts
 	  !!payload?.image && formData.append('image', payload.image);
 	  return await axiosServices.put<IResponseUpdateBuilder>(`${endPoints.BUILDERS}/${id}`, formData);
 	};
-	
+	/** API delete a budget by id */
 	export const deleteBuilder = async (id: string) => {
 	  return await axiosServices.delete<IResponseDeleteBuilder>(`${endPoints.BUILDERS}/${id}`);
 	};
@@ -20188,11 +20425,13 @@ src/utils/services/contractor.ts```ts
 	  return '';
 	}
 	/******************** */
+	
+	/** API get list contractors*/
 	export const getContractors = async (filter?: IRequestFilter) => {
 	  const query = filter ? generateQueryFromFilter(endPoints.GET_CONTRACTORS, filter) : endPoints.GET_CONTRACTORS;
 	  return await axiosServices.get<IResponseListContractors>(query);
 	};
-	
+	/** API create a contractor */
 	export const createContractor = async (payload: FormData) => {
 	  return await axiosServices.post<IResponseCreateContractor>(endPoints.CREATE_CONTRACTOR, payload, {
 	    headers: {
@@ -20200,11 +20439,11 @@ src/utils/services/contractor.ts```ts
 	    }
 	  });
 	};
-	
+	/** API update a contractor by id */
 	export const updateContractor = async (id: string, payload: FormData) => {
 	  return await axiosServices.put<IResponseUpdateContractor>(`${endPoints.UPDATE_CONTRACTOR}/${id}`, payload);
 	};
-	
+	/** API delete a contractor by id */
 	export const deleteContractor = async (id: string) => {
 	  return await axiosServices.delete<IResponseDeleteContractor>(`${endPoints.DELETE_CONTRACTOR}/${id}`);
 	};
@@ -20216,6 +20455,9 @@ src/utils/services/upload.ts```ts
 	import endPoints from '../api';
 	import { IRequestUpload } from 'types/request';
 	
+	/**
+	 * @summary: (method: POST) Upload a file to S3
+	 */
 	export const uploadFile = async (params: IRequestUpload) => {
 	  const formData = new FormData();
 	  formData.append('file', params.file);
@@ -20237,18 +20479,30 @@ src/utils/services/contractorProject.ts```ts
 	import { Project } from '@/utils/dtos/project.dto';
 	import { IInvoice } from '@/types/resource/invoice';
 	
+	/**
+	 * @summary: (method: GET) Get a project list
+	 */
 	export const getProjects = async (): Promise<IResponseProjects> => {
 	  return axios.get(endPoints.GET_CONTRACTOR_PROJECTS);
 	};
 	
+	/**
+	 * @summary: (method: POST) Create a new project
+	 */
 	export const createProject = async (params: IRequestContractorCreateProject): Promise<Project> => {
 	  return axios.post(endPoints.CREATE_CONTRACTOR_PROJECT, params);
 	};
 	
+	/**
+	 * @summary: (method: GET) Get a project detail by id
+	 */
 	export const getProject = async (id: string): Promise<Project> => {
 	  return axios.get(endPoints.GET_CONTRACTOR_PROJECT.replace(':id', id));
 	};
 	
+	/**
+	 * @summary: (method: GET) Get a invoices of project
+	 */
 	export const getProjectInvoices = async (id: string): Promise<IInvoice[]> => {
 	  return axios.get(endPoints.GET_PROJECT_INVOICES.replace(':id', id));
 	};
@@ -20262,15 +20516,16 @@ src/utils/services/budget.ts```ts
 	import { IRequestCreateBudget, IRequestFilterBudget } from '@/types/request';
 	import { generateQueryFromFilter } from '../helper';
 	
+	/** API get budgets by project */
 	export const getBudgetsByProject = async (params?: IRequestFilterBudget) => {
 	  const query = params ? generateQueryFromFilter(endPoints.BUDGET, params) : endPoints.BUDGET;
 	  return await axios.get<IResponseListBudgets>(query);
 	};
-	
+	/** API create a budget */
 	export const createBudget = async (data: IRequestCreateBudget) => {
 	  return await axios.post<IResponseCreateBudget>(endPoints.BUDGET, data);
 	};
-	
+	/** API delete a budget by id */
 	export const deleteBudget = async (id: string) => {
 	  return await axios.delete<IResponseDeleteBudget>(`${endPoints.BUDGET}/${id}`);
 	};
@@ -20286,23 +20541,29 @@ src/utils/services/user.ts```ts
 	import { generateQueryFromFilter } from '../helper';
 	import { Actions } from '../enums';
 	
+	/** API get list users */
 	export const getUsers = async (params?: IRequestFilter) => {
 	  const query = params ? generateQueryFromFilter(endPoints.GET_USERS, params) : endPoints.GET_USERS;
 	  return await axiosServices.get<IResponseListUsers<IUser>>(query);
 	};
-	
+	/** API create a user */
 	export const createUser = async (payload: IRequestCreateUser) => {
 	  return await axiosServices.post<IResponseCreateUser>(endPoints.CREATE_USER, payload);
 	};
 	
+	/** API bulk control
+	 * action : delete, change status (active/inactive)
+	 * ids: list ids of user
+	 */
+	
 	export const bulkControlUser = async (ids: string[], action: Actions) => {
 	  return await axiosServices.patch<IResponseUpdateUser>(endPoints.BULK_CONTROL_USER, { ids, action });
 	};
-	
+	/** API delete a user by id */
 	export const deleteUser = async (id: string) => {
 	  return await axiosServices.delete<IResponseDeleteUser>(endPoints.DELETE_USER.replace(':id', id));
 	};
-	
+	/** API get detail a user by id */
 	export const getUserDetail = async (id: string) => {
 	  return await axiosServices.get<IResponseListUsers<IUser>>(endPoints.GET_USER_DETAIL.replace(':id', id));
 	};
@@ -20323,6 +20584,9 @@ src/utils/services/auth.ts```ts
 	} from 'types/request';
 	import { IResponseRegister, IResponseVerifyCode, IResponseSendCode, IResponseSuccessStatus } from 'types/response';
 	
+	/**
+	 * @summary: (method: POST) Register user
+	 */
 	export const register = async (user: IRequestRegister): Promise<IResponseRegister> => {
 	  const res: IResponseRegister = await axios.post(endPoints.REGISTER, {
 	    email: user.email,
@@ -20334,6 +20598,9 @@ src/utils/services/auth.ts```ts
 	  return res;
 	};
 	
+	/**
+	 * @summary: (method: PUT) Update user's profle
+	 */
 	export const updateProfile = async (user: IRequestUpdateProfile): Promise<IResponseRegister> => {
 	  if (!user?.id) return Promise.reject();
 	  const url = endPoints.UPDATE_PROFILE.replace(':id', user.id);
@@ -20350,6 +20617,9 @@ src/utils/services/auth.ts```ts
 	  return res;
 	};
 	
+	/**
+	 * @summary: (method: PUT) Update user's avatar
+	 */
 	export const updateAvatar = async (params: IRequestChangeAvatar): Promise<IResponseRegister> => {
 	  if (!params.id) return Promise.reject();
 	  const url = endPoints.UPDATE_PROFILE.replace(':id', params.id);
@@ -20363,11 +20633,17 @@ src/utils/services/auth.ts```ts
 	  return res;
 	};
 	
+	/**
+	 * @summary: (method: GET) GET user's profile
+	 */
 	export const getProfile = async (): Promise<any> => {
 	  const res: any = await axios.get(endPoints.GET_PROFILE);
 	  return res?.data?.data;
 	};
 	
+	/**
+	 * @summary: (method: PUT) Update user's password
+	 */
 	export const changePassword = async (params: IRequestChangePassword): Promise<IResponseSuccessStatus> => {
 	  if (!params?.password || !params?.id) return Promise.reject();
 	
@@ -20381,6 +20657,9 @@ src/utils/services/auth.ts```ts
 	  return res;
 	};
 	
+	/**
+	 * @summary: (method: POST) Verify code that send to email in reset password flow
+	 */
 	export const verifyCode = async (params: IRequestVerifyCode): Promise<IResponseSuccessStatus> => {
 	  if (!params?.email || !params?.code) return Promise.reject();
 	
@@ -20392,6 +20671,9 @@ src/utils/services/auth.ts```ts
 	  return res;
 	};
 	
+	/**
+	 * @summary: (method: POST) Send code to email in reset password flow
+	 */
 	export const sendCode = async (params: IRequestSendCode): Promise<IResponseSuccessStatus> => {
 	  if (!params?.email) return Promise.reject();
 	
@@ -20402,6 +20684,9 @@ src/utils/services/auth.ts```ts
 	  return res;
 	};
 	
+	/**
+	 * @summary: (method: POST) Reset password
+	 */
 	export const resetPassword = async (params: IRequestResetPassword): Promise<IResponseSuccessStatus> => {
 	  if (!params?.password) return Promise.reject();
 	
@@ -20426,11 +20711,17 @@ src/utils/services/project.ts```ts
 	import { IProject } from '@/types/resource/project';
 	import { generateQueryFromFilter } from '../helper';
 	
+	/**
+	 * @summary: (method: GET) Get a project list
+	 */
 	export const getProjects = async (params?: IRequestFilter): Promise<IResponseProjects> => {
 	  const query = params ? generateQueryFromFilter(endPoints.PROJECT, params) : endPoints.PROJECT;
 	  return axios.get(query);
 	};
 	
+	/**
+	 * @summary: (method: POST) Create a project
+	 */
 	export const createProject = async (payload: IRequestCreateProject) => {
 	  const formData = new FormData();
 	  formData.append('projectName', payload.projectName);
@@ -20442,10 +20733,16 @@ src/utils/services/project.ts```ts
 	  return axios.post<IResponseCreateBuilder>(endPoints.PROJECT, formData);
 	};
 	
+	/**
+	 * @summary: (method: POST) get a project detail by id
+	 */
 	export const getProject = async (id: string): Promise<IProject> => {
 	  return axios.get(`${endPoints.PROJECT}/${id}`);
 	};
 	
+	/**
+	 * @summary: (method: PUT) update a project detail by id
+	 */
 	export const updateProject = async (payload: IRequestUpdateProject, id: string) => {
 	  const formData = new FormData();
 	  !!payload?.projectName && formData.append('projectName', payload.projectName);
@@ -20456,18 +20753,30 @@ src/utils/services/project.ts```ts
 	  return axios.put<IResponseUpdateProject>(`${endPoints.PROJECT}/${id}`, formData);
 	};
 	
+	/**
+	 * @summary: (method: DELETE) remove a project detail by id
+	 */
 	export const deleteProject = async (id: string): Promise<IResponseDeleteProject> => {
 	  return axios.delete(`${endPoints.PROJECT}/${id}`);
 	};
 	
+	/**
+	 * @summary: (method: GET) roles of project
+	 */
 	export const getProjectRoles = async (id: string): Promise<IProject> => {
 	  return axios.get(endPoints.GET_PROJECT_ROLES.replace(':id', id));
 	};
 	
+	/**
+	 * @summary: (method: GET) Get contractors of project
+	 */
 	export const getProjectContractors = async (id: string): Promise<IProject> => {
 	  return axios.get(endPoints.GET_PROJECT_CONTRACTORS.replace(':id', id));
 	};
 	
+	/**
+	 * @summary: (method: GET) Get invoices of project
+	 */
 	export const getProjectInvoices = async (id: string): Promise<IInvoice[]> => {
 	  return axios.get(endPoints.GET_PROJECT_INVOICES.replace(':id', id));
 	};
@@ -21018,7 +21327,7 @@ src/utils/dtos/base.dto.ts```ts
 	
 	    // Convert Date to string
 	    if (data instanceof Date) {
-	      return new DateCustom(data).toString();
+	      return new DateCustom(data);
 	    }
 	
 	    // Convert array of data
@@ -21451,6 +21760,8 @@ src/utils/locales/en/index.ts```ts
 	import contactorProjects from './contactorProjects.json';
 	import budget from './budget.json';
 	import invoice from './invoice.json';
+	import signUp from './signUp.json';
+	import profile from './profile.json';
 	
 	const languages = {
 	  ...defaultLanguages,
@@ -21462,7 +21773,9 @@ src/utils/locales/en/index.ts```ts
 	  ...form,
 	  ...contactorProjects,
 	  ...budget,
-	  ...invoice
+	  ...invoice,
+	  ...signUp,
+	  ...profile
 	};
 	
 	export default languages;
@@ -22018,6 +22331,54 @@ src/components/ui-component/Select/styles.module.scss```scss
 	.root {
 	  border-radius: 12px;
 	  background-color: $grey50;
+	}
+
+```
+
+src/components/ui-component/SelectField/index.tsx```tsx
+	import { MenuItem as Option, Box, CircularProgress } from '@mui/material';
+	
+	// projects import
+	import TextField, { TextFieldProps } from '@/components/ui-component/TextField';
+	
+	export interface IOption {
+	  value: string | number;
+	  label: string;
+	}
+	
+	export type ISelectFieldProps = TextFieldProps & {
+	  loading?: boolean;
+	  options?: IOption[];
+	};
+	export { Option };
+	export default function SelectField(props: ISelectFieldProps) {
+	  const { placeholder, loading = false, children, options = [], ...restProps } = props;
+	
+	  return (
+	    <TextField
+	      select
+	      inputProps={{
+	        displayEmpty: true
+	      }}
+	      {...restProps}
+	    >
+	      {!!placeholder && (
+	        <Option disabled value="" style={{ display: 'none' }}>
+	          <Box display="flex">
+	            {loading && <Box component={CircularProgress} size={15} marginRight={1}></Box>}
+	            {placeholder}
+	          </Box>
+	        </Option>
+	      )}
+	      {!!children && children}
+	      {!children &&
+	        options.map((option) => (
+	          <Option key={option.value} value={option.value}>
+	            {option.label}
+	          </Option>
+	        ))}
+	    </TextField>
+	  );
 	}
 
 ```
@@ -23394,6 +23755,35 @@ src/components/ui-component/FormControl/styles.module.scss```scss
 
 ```
 
+src/components/ui-component/WaitingApprove/index.tsx```tsx
+	import * as React from 'react';
+	import { Box } from '@mui/material';
+	import { HourglassMedium } from '@phosphor-icons/react';
+	
+	// project import
+	import Card from '@/components/ui-component/Card';
+	
+	export interface IWaitingApproveProps {
+	  message?: string;
+	}
+	
+	export default function WaitingApprove(props: IWaitingApproveProps) {
+	  const { message } = props;
+	
+	  return (
+	    <Card>
+	      <Box height="358px" display="flex" flexDirection="column" justifyContent="center" alignItems="center">
+	        <HourglassMedium size={80} />
+	        <Box marginTop={5} whiteSpace="break-spaces" textAlign="center">
+	          {message}
+	        </Box>
+	      </Box>
+	    </Card>
+	  );
+	}
+
+```
+
 src/components/ui-component/Upload/index.tsx```tsx
 	import { ChangeEvent, useEffect, useState } from 'react';
 	import { Button } from '@mui/material';
@@ -23507,14 +23897,26 @@ src/components/ui-component/TextField/index.tsx```tsx
 	import { TextField as MUITextField, TextFieldProps as MUITextFieldProps } from '@mui/material';
 	import styles from './styles.module.scss';
 	
-	export type TextFieldProps = MUITextFieldProps;
+	export type TextFieldProps = MUITextFieldProps & {
+	  inputBgColor?: 'dark' | 'light';
+	};
 	export default function TextField(props: TextFieldProps) {
-	  const { size } = props;
+	  const { size = 'medium', inputBgColor, InputLabelProps, ...rest } = props;
+	
 	  return (
 	    <MUITextField
-	      {...props}
+	      {...rest}
+	      InputLabelProps={{
+	        ...InputLabelProps,
+	        shrink: true
+	      }}
+	      size={size}
 	      classes={{
-	        root: cs(styles.root, { [styles.sizeSmall]: size === 'small', [styles.sizeMedium]: size === 'medium' })
+	        root: cs(styles.root, {
+	          [styles.sizeSmall]: size === 'small',
+	          [styles.sizeMedium]: size === 'medium',
+	          [styles.inputBgLight]: inputBgColor === 'light'
+	        })
 	      }}
 	    />
 	  );
@@ -23547,6 +23949,17 @@ src/components/ui-component/TextField/styles.module.scss```scss
 	    font-weight: 500;
 	    background-color: $grey50;
 	    border-radius: inherit;
+	  }
+	}
+	
+	.inputBgLight {
+	  :global {
+	    .MuiInputBase-root {
+	      background-color: #fff;
+	      input {
+	        background-color: #fff;
+	      }
+	    }
 	  }
 	}
 	
@@ -29381,6 +29794,469 @@ src/components/authentication/auth-forms/RegisterForm/styles.module.scss```scss
 
 ```
 
+src/components/authentication/auth-forms/RegisterRoleForm/index.tsx```tsx
+	import { useState } from 'react';
+	import { Box } from '@mui/material';
+	import { useIntl } from 'react-intl';
+	
+	// projects import
+	import { ICompany } from 'types/resource/company';
+	import { Roles } from 'utils/enums';
+	
+	import FormContainer from '../FormContainer';
+	import Slides from '../Slides';
+	import SelectRoles from './components/SelectRoles';
+	import SelectCompany, { CREATE_NEW_OPTION_KEY } from './components/SelectCompany';
+	import CreateCompany from './components/CreateCompany';
+	import styles from './styles.module.scss';
+	
+	export enum STEPS {
+	  SELECT_ROLE = 'SELECT_ROLE',
+	  SELECT_COMPANY = 'SELECT_COMPANY',
+	  CREATE_NEW_COMPANY = 'CREATE_NEW_COMPANY'
+	}
+	
+	export interface IValues {
+	  company: string;
+	  role: string;
+	}
+	
+	function RegisterRoleForm() {
+	  const { formatMessage } = useIntl();
+	  const [step, setStep] = useState<STEPS>(STEPS.SELECT_ROLE);
+	  const [values, setValues] = useState<IValues>({ company: '', role: '' });
+	  let title = formatMessage({ id: 'selectRoleDesc' });
+	  if (step === STEPS.SELECT_COMPANY) {
+	    title = formatMessage({ id: 'selectCompanyDesc' });
+	  } else if (step === STEPS.CREATE_NEW_COMPANY) {
+	    title = formatMessage({ id: 'createCompanyDesc' });
+	  }
+	
+	  const handleSelectRole = (role: string) => {
+	    setValues((prevState) => {
+	      return {
+	        ...prevState,
+	        role
+	      };
+	    });
+	    setStep(STEPS.SELECT_COMPANY);
+	  };
+	
+	  const handleSelectCompany = (companyId: string) => {
+	    if (companyId === CREATE_NEW_OPTION_KEY) {
+	      setStep(STEPS.CREATE_NEW_COMPANY);
+	      return;
+	    }
+	
+	    setValues((prevState) => {
+	      return {
+	        ...prevState,
+	        company: companyId
+	      };
+	    });
+	  };
+	
+	  const handCreateNewCompanySuccess = (company: ICompany) => {
+	    setValues((prevState) => {
+	      return {
+	        ...prevState,
+	        company: company.id
+	      };
+	    });
+	  };
+	
+	  return (
+	    <FormContainer
+	      leftTitle={formatMessage({ id: 'signUp' })}
+	      leftSubTitle={title}
+	      rightContent={
+	        <Slides
+	          items={[
+	            {
+	              title: formatMessage({ id: 'authSlideTitle1' }),
+	              description: formatMessage({ id: 'authSlideContent1' }),
+	              imageUrl: '/assets/images/authentication/bg-sign-in.svg'
+	            },
+	            {
+	              title: formatMessage({ id: 'authSlideTitle2' }),
+	              description: formatMessage({ id: 'authSlideContent2' }),
+	              imageUrl: '/assets/images/authentication/bg-sign-up.svg'
+	            },
+	            {
+	              title: formatMessage({ id: 'authSlideTitle3' }),
+	              description: formatMessage({ id: 'authSlideContent3' }),
+	              imageUrl: '/assets/images/authentication/bg-forgot-password.svg'
+	            }
+	          ]}
+	        />
+	      }
+	    >
+	      <Box className={styles.loginForm}>
+	        {step === STEPS.SELECT_ROLE && <SelectRoles onSubmit={handleSelectRole} />}
+	        {step === STEPS.SELECT_COMPANY && (
+	          <SelectCompany showCreateNewOption={values.role === Roles.CONTRACTOR} onSubmit={handleSelectCompany} />
+	        )}
+	        {step === STEPS.CREATE_NEW_COMPANY && <CreateCompany onSuccess={handCreateNewCompanySuccess} />}
+	      </Box>
+	    </FormContainer>
+	  );
+	}
+	
+	export default RegisterRoleForm;
+
+```
+
+src/components/authentication/auth-forms/RegisterRoleForm/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.signUp {
+	  margin-top: 22px;
+	  padding-top: 22px;
+	  border-top: 1px solid $grey100;
+	  display: flex;
+	  justify-content: flex-end;
+	  font-weight: 500;
+	}
+	
+	.signUpLink {
+	  color: $grey500;
+	  font-weight: 500;
+	}
+
+```
+
+src/components/authentication/auth-forms/RegisterRoleForm/components/CreateCompany/index.tsx```tsx
+	import { Box, Grid } from '@mui/material';
+	import TextField from '@/components/ui-component/TextField';
+	import { useIntl } from 'react-intl';
+	import { useFormik } from 'formik';
+	import * as Yup from 'yup';
+	
+	// projects import
+	import { useAsync } from 'hooks/useAsync';
+	import { createCompany } from 'utils/services/company';
+	import { ServiceDropdownField } from 'components/resourceFields';
+	import useCommonValidates from 'hooks/useCommonValidates';
+	import { getFieldErrors } from 'utils/form';
+	import { ICompany } from 'types/resource/company';
+	import { Button } from 'ui-component/buttons';
+	
+	export interface ICreateCompanyProps {
+	  onSuccess?: (company: ICompany) => void;
+	}
+	
+	export const CREATE_NEW_OPTION_KEY = 'CREATE_NEW_COMPANY';
+	
+	interface IFormValues {
+	  companyName: string;
+	  service: string;
+	  address: string;
+	}
+	
+	/**
+	 * @onSuccess : fired after create a company sucesssful
+	 */
+	export default function CreateCompany(props: ICreateCompanyProps) {
+	  const { onSuccess } = props;
+	  const { request } = useAsync();
+	  const validates = useCommonValidates();
+	  const { formatMessage } = useIntl();
+	  const validationSchema = Yup.object().shape({
+	    companyName: validates.text({ isRequired: true }),
+	    service: validates.text({ isRequired: true }),
+	    address: validates.text({ isRequired: true })
+	  });
+	  const { handleSubmit, handleChange, values, errors, touched, setSubmitting, isSubmitting } = useFormik({
+	    initialValues: {
+	      companyName: '',
+	      service: '',
+	      address: ''
+	    },
+	    validationSchema: validationSchema,
+	    onSubmit: async (values: IFormValues) => {
+	      setSubmitting(true);
+	      const result = await request(createCompany(values));
+	      if (!result.error) {
+	        if (onSuccess) {
+	          onSuccess(result.data);
+	        }
+	      }
+	      setSubmitting(false);
+	    }
+	  });
+	  const errorList = getFieldErrors({ errors, touched });
+	
+	  return (
+	    <Box>
+	      <form onSubmit={handleSubmit}>
+	        <Grid container spacing={2.5}>
+	          <Grid item xs={12}>
+	            <TextField
+	              value={values.companyName}
+	              fullWidth
+	              inputBgColor="light"
+	              name="companyName"
+	              label={formatMessage({ id: 'companyName' })}
+	              onChange={handleChange}
+	              InputLabelProps={{
+	                shrink: true
+	              }}
+	              error={errorList.companyName?.error}
+	              helperText={errorList.companyName?.message}
+	            />
+	          </Grid>
+	          <Grid item xs={12}>
+	            <ServiceDropdownField
+	              name="service"
+	              label={formatMessage({ id: 'specialtiesServices' })}
+	              onChange={handleChange}
+	              value={values.service}
+	              error={errorList.service?.error}
+	              helperText={errorList.service?.message}
+	            />
+	          </Grid>
+	          <Grid item xs={12}>
+	            <TextField
+	              fullWidth
+	              multiline
+	              rows={3}
+	              inputBgColor="light"
+	              name="address"
+	              label={formatMessage({ id: 'address' })}
+	              onChange={handleChange}
+	              InputLabelProps={{
+	                shrink: true
+	              }}
+	              value={values.address}
+	              error={errorList.address?.error}
+	              helperText={errorList.address?.message}
+	            />
+	          </Grid>
+	          <Grid item xs={12}>
+	            <Button loading={isSubmitting} disabled={isSubmitting} color="error" fullWidth size="large" variant="contained" type="submit">
+	              {formatMessage({ id: 'submit' })}
+	            </Button>
+	          </Grid>
+	        </Grid>
+	      </form>
+	    </Box>
+	  );
+	}
+
+```
+
+src/components/authentication/auth-forms/RegisterRoleForm/components/CreateCompany/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.company {
+	  display: flex;
+	  color: $textNotmal;
+	  font-weight: 500;
+	}
+	
+	.companyLogo {
+	  position: relative;
+	  width: 20px;
+	  height: 20px;
+	  margin-right: 5px;
+	}
+	
+	.btn {
+	  margin-top: 20px;
+	}
+
+```
+
+src/components/authentication/auth-forms/RegisterRoleForm/components/SelectCompany/index.tsx```tsx
+	import { Box, Grid } from '@mui/material';
+	import { useIntl } from 'react-intl';
+	import { useFormik } from 'formik';
+	
+	// projects import
+	import { CompanyDropdownField } from 'components/resourceFields';
+	
+	import { Button } from 'ui-component/buttons';
+	
+	export interface ISelectCompanyProps {
+	  onSubmit: (companyId: string) => void;
+	  showCreateNewOption?: boolean;
+	}
+	
+	interface IFormValues {
+	  company: string;
+	}
+	
+	export const CREATE_NEW_OPTION_KEY = 'CREATE_NEW_COMPANY';
+	
+	/**
+	 * @onSubmit : fired after click 'continute' button
+	 * @showCreateNewOption : show/hide create new option
+	 */
+	export default function SelectCompany(props: ISelectCompanyProps) {
+	  const { onSubmit, showCreateNewOption = false } = props;
+	  const { formatMessage } = useIntl();
+	  const { handleSubmit, handleChange, values } = useFormik({
+	    initialValues: {
+	      company: ''
+	    },
+	    onSubmit: (values: IFormValues) => {
+	      onSubmit(values.company);
+	    }
+	  });
+	  const createNewOption = {
+	    id: CREATE_NEW_OPTION_KEY,
+	    companyName: formatMessage({ id: 'createNewCompany' }),
+	    logo: '',
+	    address: ''
+	  };
+	
+	  return (
+	    <Box>
+	      <form onSubmit={handleSubmit}>
+	        <Grid container spacing={2.5}>
+	          <Grid item xs={12}>
+	            <CompanyDropdownField
+	              extraItems={showCreateNewOption ? [createNewOption] : []}
+	              value={values.company}
+	              name="company"
+	              onChange={handleChange}
+	            />
+	          </Grid>
+	          <Grid item xs={12}>
+	            <Button disabled={!values.company} color="error" fullWidth size="large" variant="contained" type="submit">
+	              {formatMessage({ id: 'continue' })}
+	            </Button>
+	          </Grid>
+	        </Grid>
+	      </form>
+	    </Box>
+	  );
+	}
+
+```
+
+src/components/authentication/auth-forms/RegisterRoleForm/components/SelectRoles/index.tsx```tsx
+	import { useState } from 'react';
+	import { Grid, Box, Typography } from '@mui/material';
+	import cs from 'classnames';
+	import NextImage from 'next/image';
+	import { useIntl } from 'react-intl';
+	
+	// projects import
+	import { Button } from 'ui-component/buttons';
+	import { Roles } from 'utils/enums';
+	
+	import styles from './styles.module.scss';
+	
+	export interface ISelectRolesProps {
+	  onSubmit?: (roleId: string) => void;
+	}
+	
+	/**
+	 * @onSubmit : fired after click 'continute' button
+	 */
+	export default function SelectRoles(props: ISelectRolesProps) {
+	  const { onSubmit } = props;
+	  const { formatMessage } = useIntl();
+	  const [selectedRole, setSelectedRole] = useState('');
+	  const roles = [
+	    {
+	      key: Roles.BUILDER,
+	      label: formatMessage({ id: 'builderRole' }),
+	      icon: <NextImage src="/assets/images/icons/builder.svg" fill alt={formatMessage({ id: 'builderRole' })} />
+	    },
+	    {
+	      key: Roles.CONTRACTOR,
+	      label: formatMessage({ id: 'contractorRole' }),
+	      icon: <NextImage src="/assets/images/icons/contractor.svg" fill alt={formatMessage({ id: 'contractorRole' })} />
+	    }
+	  ];
+	
+	  const handleSelectRole = (key: string) => {
+	    setSelectedRole(key);
+	  };
+	
+	  const handleSubmit = () => {
+	    if (onSubmit) {
+	      onSubmit(selectedRole);
+	    }
+	  };
+	
+	  return (
+	    <Grid container spacing={2.5}>
+	      {roles?.map((item) => {
+	        const active = item.key === selectedRole;
+	        return (
+	          <Grid item xs={6} key={item.key} onClick={() => handleSelectRole(item.key)}>
+	            <Box
+	              className={cs(styles.role, {
+	                [styles.activeRole]: active
+	              })}
+	            >
+	              {item.icon}
+	            </Box>
+	            <Typography
+	              className={cs(styles.roleTitle, {
+	                [styles.activeRoleTitle]: active
+	              })}
+	            >
+	              {item.label}
+	            </Typography>
+	          </Grid>
+	        );
+	      })}
+	      <Grid item xs={12}>
+	        <Button
+	          disabled={!selectedRole}
+	          color="error"
+	          fullWidth
+	          size="large"
+	          variant="contained"
+	          className={styles.btn}
+	          onClick={handleSubmit}
+	        >
+	          {formatMessage({ id: 'continue' })}
+	        </Button>
+	      </Grid>
+	    </Grid>
+	  );
+	}
+
+```
+
+src/components/authentication/auth-forms/RegisterRoleForm/components/SelectRoles/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.role {
+	  position: relative;
+	  padding-top: 100%;
+	  border: 2px solid $grey100;
+	  border-radius: 10px;
+	  margin-bottom: 10px;
+	  cursor: pointer;
+	  img {
+	    max-width: 50%;
+	    margin: auto;
+	  }
+	}
+	
+	.activeRole {
+	  border-color: $primaryNormalActive;
+	}
+	
+	.roleTitle {
+	  color: #000;
+	  font-weight: 500;
+	  text-align: center;
+	  text-transform: uppercase;
+	}
+	
+	.activeRoleTitle {
+	  color: $primaryNormalActive;
+	}
+
+```
+
 src/components/authentication/auth-forms/ResetPasswordForm/index.tsx```tsx
 	import { Box, Grid, Typography } from '@mui/material';
 	import { useIntl } from 'react-intl';
@@ -29595,29 +30471,39 @@ src/components/account/index.ts```ts
 src/components/account/Profile/index.tsx```tsx
 	import * as React from 'react';
 	import { Grid, Box } from '@mui/material';
+	import { useSearchParams } from 'next/navigation';
 	
 	// projects import
+	import { Roles } from 'utils/enums';
+	import Breadcrumbs from '@/components/Breadcrumbs';
 	import ProfilePicture from './components/ProfilePicture';
 	import ChangePassword from './components/ChangePassword';
 	import AccountDetail from './components/AccountDetail';
-	import Breadcrumbs from '@/components/Breadcrumbs';
+	import Builder from './components/Builder';
+	import Contractor from './components/Contractor';
 	
 	export interface IProfileProps {}
 	
 	export default function Profile(props: IProfileProps) {
+	  const searchParams = useSearchParams();
+	  const role = searchParams.get('role') || '';
 	  return (
 	    <>
 	      <Breadcrumbs />
-	      <Grid container spacing={2.5}>
-	        <Grid item xs={5}>
-	          <ProfilePicture />
+	      {role === Roles.BUILDER && <Builder />}
+	      {role === Roles.CONTRACTOR && <Contractor />}
+	      {!role && (
+	        <Grid container spacing={2.5}>
+	          <Grid item xs={5}>
+	            <ProfilePicture />
+	          </Grid>
+	          <Grid item xs={7}>
+	            <AccountDetail />
+	            <Box marginBottom={2.5} />
+	            <ChangePassword />
+	          </Grid>
 	        </Grid>
-	        <Grid item xs={7}>
-	          <AccountDetail />
-	          <Box marginBottom={2.5} />
-	          <ChangePassword />
-	        </Grid>
-	      </Grid>
+	      )}
 	    </>
 	  );
 	}
@@ -29836,6 +30722,670 @@ src/components/account/Profile/components/AccountDetail/index.tsx```tsx
 	      </Formik>
 	    </Card>
 	  );
+	}
+
+```
+
+src/components/account/Profile/components/Contractor/index.tsx```tsx
+	import { useState } from 'react';
+	import { Grid, Box } from '@mui/material';
+	import * as Yup from 'yup';
+	import { useIntl } from 'react-intl';
+	import { format, parse, isValid } from 'date-fns';
+	import { useFormik } from 'formik';
+	import { Warning } from '@phosphor-icons/react';
+	
+	// project import
+	import { useAsync } from 'hooks/useAsync';
+	import useUploadFile from '@/hooks/useUploadFile';
+	import useCommonValidates from 'hooks/useCommonValidates';
+	import { updateProfile } from 'utils/services/auth';
+	import { updateAvatar } from 'utils/services/auth';
+	import { getFieldErrors } from 'utils/form';
+	import { FolderName } from 'utils/enums';
+	import * as notify from 'utils/notify';
+	import { useDispatch } from 'store';
+	import { useAccountSelector, accountActions } from 'store/slices/account';
+	import { Button } from 'ui-component/buttons';
+	import Card from 'components/ui-component/Card';
+	import WaitingApprove from '@/components/ui-component/WaitingApprove';
+	import TextField from 'components/ui-component/TextField';
+	import DatePicker from 'components/ui-component/DatePicker';
+	import { DATE_FORMAT } from '@/constant';
+	
+	import Avatar from '../Avatar';
+	import styles from './styles.module.scss';
+	
+	export interface IContractorProps {}
+	
+	export interface IFormValues {
+	  email: string;
+	  country: string;
+	  phoneNumber: string;
+	  birthDate: string;
+	  firstName: string;
+	  lastName: string;
+	  address: string;
+	  nameOfContact: string;
+	  contactEmail: string;
+	  contactPhoneNumber: string;
+	  gst: string;
+	  insurancePolicyNumber: string;
+	  workSafeBCNumber: string;
+	  file?: File;
+	}
+	
+	export default function Contractor(props: IContractorProps) {
+	  const dispatch = useDispatch();
+	  const { formatMessage } = useIntl();
+	  const { request } = useAsync();
+	  const { triggerUpload } = useUploadFile();
+	  const { user } = useAccountSelector();
+	  const validates = useCommonValidates();
+	  const [waitingApprove, setWaitingApprove] = useState(false);
+	  const validationSchema = Yup.object().shape({
+	    email: validates.email({ isRequired: true }),
+	    lastName: validates.text({ isRequired: true }),
+	    firstName: validates.text({ isRequired: true }),
+	    contactEmail: validates.email()
+	  });
+	  const { handleSubmit, handleBlur, handleChange, errors, touched, values, isSubmitting, setFieldValue } = useFormik<IFormValues>({
+	    initialValues: {
+	      email: user?.email || '',
+	      country: user?.location || '',
+	      phoneNumber: user?.phone || '',
+	      birthDate: user?.birthdayText || '',
+	      firstName: user?.firstName || '',
+	      lastName: user?.lastName || '',
+	      nameOfContact: '',
+	      contactEmail: '',
+	      contactPhoneNumber: '',
+	      gst: '',
+	      insurancePolicyNumber: '',
+	      workSafeBCNumber: '',
+	      address: ''
+	    },
+	    validationSchema: validationSchema,
+	    onSubmit: async (values: IFormValues) => {
+	      const result = await request(
+	        updateProfile({
+	          id: user?.id,
+	          firstName: values.firstName,
+	          lastName: values.lastName,
+	          email: values.email,
+	          location: values.country,
+	          birthdayText: values.birthDate,
+	          phone: values.phoneNumber
+	        })
+	      );
+	
+	      if (result.error) {
+	        notify.success(formatMessage({ id: 'profileUpdateFailed' }));
+	        return;
+	      }
+	
+	      let imageUrl = user?.avatar;
+	      if (values.file) {
+	        const fileResult = await triggerUpload({
+	          file: values.file,
+	          folder: FolderName.USERS
+	        });
+	
+	        if (fileResult?.error || !fileResult?.data) {
+	          notify.success(formatMessage({ id: 'profileUpdateFailed' }));
+	          return;
+	        }
+	
+	        const updateAvatarResult = await request(
+	          updateAvatar({
+	            id: user?.id || '',
+	            imageUrl: fileResult.data.url,
+	            firstName: values.firstName,
+	            lastName: values.lastName,
+	            email: values.email
+	          })
+	        );
+	
+	        if (updateAvatarResult.error) {
+	          notify.success(formatMessage({ id: 'profileUpdateFailed' }));
+	          return;
+	        }
+	
+	        imageUrl = fileResult.data.url;
+	      }
+	
+	      notify.success(formatMessage({ id: 'profileUpdatedSuccessful' }));
+	      dispatch(
+	        accountActions.updateUser({
+	          firstName: values.firstName,
+	          lastName: values.lastName,
+	          email: values.email,
+	          location: values.country,
+	          birthdayText: values.birthDate,
+	          phone: values.phoneNumber,
+	          avatar: imageUrl
+	        })
+	      );
+	      setWaitingApprove(true);
+	    }
+	  });
+	  const errorList = getFieldErrors<IFormValues>({ errors, touched });
+	
+	  const handleFileChange = (file: File) => {
+	    setFieldValue('file', file);
+	  };
+	
+	  if (waitingApprove) {
+	    return <WaitingApprove message={formatMessage({ id: 'waittingApproveNote' })} />;
+	  }
+	
+	  return (
+	    <Card
+	      title={
+	        <Box className={styles.alert}>
+	          <Warning size={20} />
+	          {formatMessage({ id: 'alertUpdateInfo' })}
+	        </Box>
+	      }
+	    >
+	      <form onSubmit={handleSubmit}>
+	        <Grid container spacing={2.5}>
+	          <Grid item xs={5}>
+	            <Avatar imageUrl={user?.avatar} onChange={handleFileChange} />
+	          </Grid>
+	          <Grid item xs={7}>
+	            <Card title={formatMessage({ id: 'basicInformation' })}>
+	              <Grid container spacing={3.125}>
+	                <Grid item xs={6}>
+	                  <TextField
+	                    value={values.firstName}
+	                    label={formatMessage({ id: 'firstName' })}
+	                    name="firstName"
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.firstName?.error}
+	                    helperText={errorList.firstName?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={6}>
+	                  <TextField
+	                    value={values.lastName}
+	                    label={formatMessage({ id: 'lastName' })}
+	                    name="lastName"
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.lastName?.error}
+	                    helperText={errorList.lastName?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={12}>
+	                  <TextField
+	                    label={formatMessage({ id: 'emailAddress' })}
+	                    value={values.email}
+	                    fullWidth
+	                    name="email"
+	                    size="medium"
+	                    error={errorList.email?.error}
+	                    helperText={errorList.email?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={12}>
+	                  <TextField
+	                    label={formatMessage({ id: 'country' })}
+	                    name="country"
+	                    value={values.country}
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.country?.error}
+	                    helperText={errorList.country?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={6}>
+	                  <TextField
+	                    label={formatMessage({ id: 'phoneNumber' })}
+	                    name="phoneNumber"
+	                    value={values.phoneNumber}
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.phoneNumber?.error}
+	                    helperText={errorList.phoneNumber?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={6}>
+	                  <DatePicker
+	                    value={parse(values.birthDate, DATE_FORMAT, new Date())}
+	                    slots={{
+	                      textField: TextField
+	                    }}
+	                    onChange={(datetime) => {
+	                      if (isValid(datetime)) {
+	                        const dateStr = format(datetime as Date, DATE_FORMAT);
+	                        setFieldValue('birthDate', dateStr);
+	                      } else {
+	                        setFieldValue('birthDate', '');
+	                      }
+	                    }}
+	                    name="birthDate"
+	                    slotProps={{
+	                      textField: {
+	                        label: formatMessage({ id: 'birthDate' }),
+	                        fullWidth: true,
+	                        size: 'medium',
+	                        error: false
+	                      }
+	                    }}
+	                  />
+	                </Grid>
+	              </Grid>
+	            </Card>
+	            <Box marginBottom={2.5} />
+	            <Card title={formatMessage({ id: 'additionalInformation' })}>
+	              <Grid container spacing={3.125}>
+	                <Grid item xs={12}>
+	                  <TextField
+	                    value={values.address}
+	                    label={formatMessage({ id: 'address' })}
+	                    name="address"
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.address?.error}
+	                    helperText={errorList.address?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={6}>
+	                  <TextField
+	                    value={values.nameOfContact}
+	                    label={formatMessage({ id: 'nameOfContact' })}
+	                    name="nameOfContact"
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.nameOfContact?.error}
+	                    helperText={errorList.nameOfContact?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={6}>
+	                  <TextField
+	                    value={values.contactEmail}
+	                    label={formatMessage({ id: 'contactEmail' })}
+	                    name="contactEmail"
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.contactEmail?.error}
+	                    helperText={errorList.contactEmail?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={6}>
+	                  <TextField
+	                    value={values.contactPhoneNumber}
+	                    label={formatMessage({ id: 'contactPhoneNumber' })}
+	                    name="contactPhoneNumber"
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.contactPhoneNumber?.error}
+	                    helperText={errorList.contactPhoneNumber?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={6}>
+	                  <TextField
+	                    value={values.gst}
+	                    label={formatMessage({ id: 'gst' })}
+	                    name="gst"
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.gst?.error}
+	                    helperText={errorList.gst?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={6}>
+	                  <TextField
+	                    value={values.insurancePolicyNumber}
+	                    label={formatMessage({ id: 'insurancePolicyNumber' })}
+	                    name="insurancePolicyNumber"
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.insurancePolicyNumber?.error}
+	                    helperText={errorList.insurancePolicyNumber?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={6}>
+	                  <TextField
+	                    value={values.workSafeBCNumber}
+	                    label={formatMessage({ id: 'workSafeBCNumber' })}
+	                    name="workSafeBCNumber"
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.workSafeBCNumber?.error}
+	                    helperText={errorList.workSafeBCNumber?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	
+	                <Grid item xs={12}>
+	                  <Button loading={isSubmitting} color="error" disabled={isSubmitting} size="large" type="submit" variant="contained">
+	                    {formatMessage({ id: 'submit' })}
+	                  </Button>
+	                </Grid>
+	              </Grid>
+	            </Card>
+	          </Grid>
+	        </Grid>
+	      </form>
+	    </Card>
+	  );
+	}
+
+```
+
+src/components/account/Profile/components/Contractor/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.alert {
+	  display: flex;
+	  color: $highlightNormal;
+	  align-items: center;
+	  svg {
+	    margin-right: 10px;
+	  }
+	}
+
+```
+
+src/components/account/Profile/components/Builder/index.tsx```tsx
+	import { useState } from 'react';
+	import { Grid, Box } from '@mui/material';
+	import * as Yup from 'yup';
+	import { useIntl } from 'react-intl';
+	import { format, parse, isValid } from 'date-fns';
+	import { useFormik } from 'formik';
+	import { Warning } from '@phosphor-icons/react';
+	
+	// project import
+	import { useAsync } from 'hooks/useAsync';
+	import useUploadFile from '@/hooks/useUploadFile';
+	import useCommonValidates from 'hooks/useCommonValidates';
+	import { updateProfile } from 'utils/services/auth';
+	import { updateAvatar } from 'utils/services/auth';
+	import { getFieldErrors } from 'utils/form';
+	import { FolderName } from 'utils/enums';
+	import * as notify from 'utils/notify';
+	import { useDispatch } from 'store';
+	import { useAccountSelector, accountActions } from 'store/slices/account';
+	import { Button } from 'components/ui-component/buttons';
+	import WaitingApprove from '@/components/ui-component/WaitingApprove';
+	import Card from 'components/ui-component/Card';
+	import TextField from 'components/ui-component/TextField';
+	import DatePicker from 'components/ui-component/DatePicker';
+	import { DATE_FORMAT } from '@/constant';
+	
+	import Avatar from '../Avatar';
+	import styles from './styles.module.scss';
+	
+	export interface IBuilderProps {}
+	
+	export interface IFormValues {
+	  email: string;
+	  country: string;
+	  phoneNumber: string;
+	  birthDate: string;
+	  firstName: string;
+	  lastName: string;
+	  file?: File;
+	}
+	
+	export default function Builder(props: IBuilderProps) {
+	  const dispatch = useDispatch();
+	  const { formatMessage } = useIntl();
+	  const { request } = useAsync();
+	  const { triggerUpload } = useUploadFile();
+	  const { user } = useAccountSelector();
+	  const validates = useCommonValidates();
+	  const [waitingApprove, setWaitingApprove] = useState(false);
+	  const validationSchema = Yup.object().shape({
+	    email: validates.email({ isRequired: true }),
+	    lastName: validates.text({ isRequired: true }),
+	    firstName: validates.text({ isRequired: true })
+	  });
+	  const { handleSubmit, handleBlur, handleChange, errors, touched, values, isSubmitting, setFieldValue } = useFormik<IFormValues>({
+	    initialValues: {
+	      email: user?.email || '',
+	      country: user?.location || '',
+	      phoneNumber: user?.phone || '',
+	      birthDate: user?.birthdayText || '',
+	      firstName: user?.firstName || '',
+	      lastName: user?.lastName || ''
+	    },
+	    validationSchema: validationSchema,
+	    onSubmit: async (values: IFormValues) => {
+	      const result = await request(
+	        updateProfile({
+	          id: user?.id,
+	          firstName: values.firstName,
+	          lastName: values.lastName,
+	          email: values.email,
+	          location: values.country,
+	          birthdayText: values.birthDate,
+	          phone: values.phoneNumber
+	        })
+	      );
+	
+	      if (result.error) {
+	        notify.success(formatMessage({ id: 'profileUpdateFailed' }));
+	        return;
+	      }
+	
+	      let imageUrl = user?.avatar;
+	      if (values.file) {
+	        const fileResult = await triggerUpload({
+	          file: values.file,
+	          folder: FolderName.USERS
+	        });
+	
+	        if (fileResult?.error || !fileResult?.data) {
+	          notify.success(formatMessage({ id: 'profileUpdateFailed' }));
+	          return;
+	        }
+	
+	        const updateAvatarResult = await request(
+	          updateAvatar({
+	            id: user?.id || '',
+	            imageUrl: fileResult.data.url,
+	            firstName: values.firstName,
+	            lastName: values.lastName,
+	            email: values.email
+	          })
+	        );
+	
+	        if (updateAvatarResult.error) {
+	          notify.success(formatMessage({ id: 'profileUpdateFailed' }));
+	          return;
+	        }
+	
+	        imageUrl = fileResult.data.url;
+	      }
+	
+	      notify.success(formatMessage({ id: 'profileUpdatedSuccessful' }));
+	      dispatch(
+	        accountActions.updateUser({
+	          firstName: values.firstName,
+	          lastName: values.lastName,
+	          email: values.email,
+	          location: values.country,
+	          birthdayText: values.birthDate,
+	          phone: values.phoneNumber,
+	          avatar: imageUrl
+	        })
+	      );
+	
+	      setWaitingApprove(true);
+	    }
+	  });
+	  const errorList = getFieldErrors<IFormValues>({ errors, touched });
+	
+	  const handleFileChange = (file: File) => {
+	    setFieldValue('file', file);
+	  };
+	
+	  if (waitingApprove) {
+	    return <WaitingApprove message={formatMessage({ id: 'waittingApproveNote' })} />;
+	  }
+	
+	  return (
+	    <Card
+	      title={
+	        <Box className={styles.alert}>
+	          <Warning size={20} />
+	          {formatMessage({ id: 'alertUpdateInfo' })}
+	        </Box>
+	      }
+	    >
+	      <form onSubmit={handleSubmit}>
+	        <Grid container spacing={2.5}>
+	          <Grid item xs={5}>
+	            <Avatar imageUrl={user?.avatar} onChange={handleFileChange} />
+	          </Grid>
+	          <Grid item xs={7}>
+	            <Card title={formatMessage({ id: 'basicInformation' })}>
+	              <Grid container spacing={3.125}>
+	                <Grid item xs={6}>
+	                  <TextField
+	                    value={values.firstName}
+	                    label={formatMessage({ id: 'firstName' })}
+	                    name="firstName"
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.firstName?.error}
+	                    helperText={errorList.firstName?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={6}>
+	                  <TextField
+	                    value={values.lastName}
+	                    label={formatMessage({ id: 'lastName' })}
+	                    name="lastName"
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.lastName?.error}
+	                    helperText={errorList.lastName?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={12}>
+	                  <TextField
+	                    label={formatMessage({ id: 'emailAddress' })}
+	                    value={values.email}
+	                    fullWidth
+	                    name="email"
+	                    size="medium"
+	                    error={errorList.email?.error}
+	                    helperText={errorList.email?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={12}>
+	                  <TextField
+	                    label={formatMessage({ id: 'country' })}
+	                    name="country"
+	                    value={values.country}
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.country?.error}
+	                    helperText={errorList.country?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={6}>
+	                  <TextField
+	                    label={formatMessage({ id: 'phoneNumber' })}
+	                    name="phoneNumber"
+	                    value={values.phoneNumber}
+	                    fullWidth
+	                    size="medium"
+	                    error={errorList.phoneNumber?.error}
+	                    helperText={errorList.phoneNumber?.message}
+	                    onBlur={handleBlur}
+	                    onChange={handleChange}
+	                  />
+	                </Grid>
+	                <Grid item xs={6}>
+	                  <DatePicker
+	                    value={parse(values.birthDate, DATE_FORMAT, new Date())}
+	                    slots={{
+	                      textField: TextField
+	                    }}
+	                    onChange={(datetime) => {
+	                      if (isValid(datetime)) {
+	                        const dateStr = format(datetime as Date, DATE_FORMAT);
+	                        setFieldValue('birthDate', dateStr);
+	                      } else {
+	                        setFieldValue('birthDate', '');
+	                      }
+	                    }}
+	                    name="birthDate"
+	                    slotProps={{
+	                      textField: {
+	                        label: formatMessage({ id: 'birthDate' }),
+	                        fullWidth: true,
+	                        size: 'medium',
+	                        error: false
+	                      }
+	                    }}
+	                  />
+	                </Grid>
+	                <Grid item xs={12}>
+	                  <Button loading={isSubmitting} color="error" disabled={isSubmitting} size="large" type="submit" variant="contained">
+	                    {formatMessage({ id: 'submit' })}
+	                  </Button>
+	                </Grid>
+	              </Grid>
+	            </Card>
+	            <Box marginBottom={2.5} />
+	          </Grid>
+	        </Grid>
+	      </form>
+	    </Card>
+	  );
+	}
+
+```
+
+src/components/account/Profile/components/Builder/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.alert {
+	  display: flex;
+	  color: $highlightNormal;
+	  align-items: center;
+	  svg {
+	    margin-right: 10px;
+	  }
 	}
 
 ```
@@ -30100,6 +31650,252 @@ src/components/account/Profile/components/ProfilePicture/styles.module.scss```sc
 	  right: 0;
 	  opacity: 0;
 	  cursor: pointer;
+	}
+
+```
+
+src/components/account/Profile/components/Avatar/index.tsx```tsx
+	import { ChangeEvent, useState } from 'react';
+	import { Box } from '@mui/material';
+	import { useIntl } from 'react-intl';
+	
+	// projects import
+	import { MAX_FILE_SIZE } from '@/constant';
+	import Card from '@/components/ui-component/Card';
+	import Avatar from '@/components/ui-component/extended/Avatar';
+	import { AVATAR_DEFAULT_URL, IMAGE_TYPES } from '@/constant';
+	import * as notify from 'utils/notify';
+	
+	import styles from './styles.module.scss';
+	
+	export interface IProfilePictureProps {
+	  onChange?: (file: File) => void;
+	  imageUrl?: string;
+	  maxSize?: number;
+	}
+	
+	export default function ProfilePicture(props: IProfilePictureProps) {
+	  const { imageUrl = '', maxSize = MAX_FILE_SIZE, onChange } = props;
+	  const [src, setSrc] = useState<string>(imageUrl);
+	  const { formatMessage } = useIntl();
+	
+	  const handleChange = async (e: ChangeEvent<HTMLInputElement>) => {
+	    const file = e.currentTarget.files?.[0];
+	    if (!file) return;
+	    const { size } = file;
+	    const sizeMB = size / 1024 / 1024;
+	
+	    if (sizeMB > maxSize) {
+	      notify.error(formatMessage({ id: 'maxSizeFileUpload' }, { size: maxSize }));
+	      return;
+	    }
+	    setSrc(URL.createObjectURL(file));
+	    if (onChange) {
+	      onChange(file);
+	    }
+	  };
+	
+	  return (
+	    <Card title={formatMessage({ id: 'profilePicture' })}>
+	      <Box className={styles.wrapper}>
+	        <Box className={styles.button}>
+	          <Avatar src={src || AVATAR_DEFAULT_URL} size="xl" className={styles.avatar} />
+	          <input className={styles.file} accept={IMAGE_TYPES.join(',')} type="file" onChange={handleChange} />
+	        </Box>
+	      </Box>
+	    </Card>
+	  );
+	}
+
+```
+
+src/components/account/Profile/components/Avatar/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.wrapper {
+	  display: flex;
+	  flex-direction: column;
+	  align-items: center;
+	  justify-content: center;
+	}
+	
+	.avatar {
+	  margin: 0 auto;
+	}
+	
+	.button {
+	  position: relative;
+	}
+	
+	.file {
+	  position: absolute;
+	  top: 0;
+	  bottom: 0;
+	  left: 0;
+	  right: 0;
+	  opacity: 0;
+	  cursor: pointer;
+	}
+
+```
+
+src/components/resourceFields/index.ts```ts
+	export { default as ServiceDropdownField } from './ServiceDropdownField';
+	export { default as CompanyDropdownField } from './CompanyDropdownField';
+
+```
+
+src/components/resourceFields/CompanyDropdownField/index.tsx```tsx
+	import { useState, useEffect, useCallback } from 'react';
+	import { Box } from '@mui/material';
+	import { useIntl } from 'react-intl';
+	import NextImage from 'next/image';
+	
+	// projects import
+	import SelectField, { ISelectFieldProps, Option } from 'components/ui-component/SelectField';
+	import { useAsync } from 'hooks/useAsync';
+	import { ICompany } from 'types/resource/company';
+	import { IRequestFilter } from 'types/request';
+	import { getCompanies } from 'utils/services/company';
+	
+	import styles from './styles.module.scss';
+	
+	export type ICompanyDropdownFieldProps = ISelectFieldProps & {
+	  queryParams?: IRequestFilter;
+	  extraItems?: ICompany[];
+	};
+	
+	/**
+	 * @summary: Define a select component to resuse logic fetch companies from 'services/company'.
+	 * @queryParams : We can fetch companies follow a condition through 'queryParams' property
+	 * @extraItems : add extra items before list company
+	 */
+	export default function CompanyDropdownField(props: ICompanyDropdownFieldProps) {
+	  const { queryParams, extraItems = [], value, ...restProps } = props;
+	  const { formatMessage } = useIntl();
+	  const { request, isLoading } = useAsync();
+	  const [companies, setCompanies] = useState<ICompany[]>([]);
+	  const options = [...extraItems, ...companies];
+	
+	  const fetchServices = useCallback(
+	    async (params?: IRequestFilter) => {
+	      const result = await request(getCompanies(params));
+	      if (!result.error) {
+	        setCompanies(result?.data?.data || []);
+	      }
+	    },
+	    [request]
+	  );
+	
+	  useEffect(() => {
+	    fetchServices(queryParams);
+	  }, [fetchServices, queryParams]);
+	
+	  return (
+	    <SelectField
+	      fullWidth
+	      inputBgColor="light"
+	      label={formatMessage({ id: 'company' })}
+	      value={value}
+	      placeholder={formatMessage({ id: 'select' })}
+	      loading={isLoading}
+	      {...restProps}
+	    >
+	      {options.map((option) => (
+	        <Option key={option.id} value={option.id}>
+	          <Box className={styles.company}>
+	            {!!option.logo && (
+	              <Box className={styles.companyLogo}>
+	                <NextImage src={option.logo} fill alt={option.companyName} />
+	              </Box>
+	            )}
+	            {option.companyName}
+	          </Box>
+	        </Option>
+	      ))}
+	    </SelectField>
+	  );
+	}
+
+```
+
+src/components/resourceFields/CompanyDropdownField/styles.module.scss```scss
+	@import 'styles/variables.module';
+	
+	.company {
+	  display: flex;
+	  color: $textNotmal;
+	  font-weight: 500;
+	}
+	
+	.companyLogo {
+	  position: relative;
+	  width: 20px;
+	  height: 20px;
+	  margin-right: 5px;
+	}
+
+```
+
+src/components/resourceFields/ServiceDropdownField/index.tsx```tsx
+	import { useState, useEffect, useCallback } from 'react';
+	import { useIntl } from 'react-intl';
+	
+	// projects import
+	import SelectField, { ISelectFieldProps, Option } from 'components/ui-component/SelectField';
+	import { useAsync } from 'hooks/useAsync';
+	import { IService } from 'types/resource/service';
+	import { IRequestFilter } from 'types/request';
+	import { getServices } from 'utils/services/service';
+	
+	export type IServiceDropdownFieldProps = ISelectFieldProps & {
+	  queryParams?: IRequestFilter;
+	  extraItems?: IService[];
+	};
+	
+	/**
+	 * @summary: Define a select component to resuse logic fetch services from 'services/service'.
+	 * This component inherit all proties of TextField.
+	 * @queryParams : We can fetch services follow a condition through 'queryParams' property
+	 * @extraItems : add extra items before list service
+	 */
+	export default function ServiceDropdownField(props: IServiceDropdownFieldProps) {
+	  const { queryParams, extraItems = [], ...restProps } = props;
+	  const { formatMessage } = useIntl();
+	  const { request, isLoading } = useAsync();
+	  const [services, setServices] = useState<IService[]>([]);
+	  const options = [...extraItems, ...services];
+	
+	  const fetchServices = useCallback(
+	    async (params?: IRequestFilter) => {
+	      const result = await request(getServices(params));
+	      if (!result.error) {
+	        setServices(result?.data?.data || []);
+	      }
+	    },
+	    [request]
+	  );
+	
+	  useEffect(() => {
+	    fetchServices(queryParams);
+	  }, [fetchServices, queryParams]);
+	
+	  return (
+	    <SelectField
+	      fullWidth
+	      inputBgColor="light"
+	      label={formatMessage({ id: 'specialtiesServices' })}
+	      placeholder={formatMessage({ id: 'select' })}
+	      loading={isLoading}
+	      {...restProps}
+	    >
+	      {options.map((option) => (
+	        <Option key={option.id} value={option.id}>
+	          {option.serviceName}
+	        </Option>
+	      ))}
+	    </SelectField>
+	  );
 	}
 
 ```
@@ -33686,7 +35482,7 @@ lib/swagger/index.ts```ts
 lib/swagger/doc/auth/sendCode.ts```ts
 	/**
 	 * @swagger
-	 * /api/auth/code/send:
+	 * /api/public/auth/code/send:
 	 *   post:
 	 *     tags:
 	 *       - Auth
@@ -33757,7 +35553,7 @@ lib/swagger/doc/auth/sendCode.ts```ts
 lib/swagger/doc/auth/resetPassword.ts```ts
 	/**
 	 * @swagger
-	 * /api/auth/reset-password:
+	 * /api/public/auth/reset-password:
 	 *   post:
 	 *     tags:
 	 *       - Auth
@@ -33840,7 +35636,7 @@ lib/swagger/doc/auth/resetPassword.ts```ts
 lib/swagger/doc/auth/verifyCode.ts```ts
 	/**
 	 * @swagger
-	 * /api/auth/code/verify:
+	 * /api/public/auth/code/verify:
 	 *   post:
 	 *     tags:
 	 *       - Auth
@@ -33923,7 +35719,7 @@ lib/swagger/doc/auth/verifyCode.ts```ts
 lib/swagger/doc/auth/getToken.ts```ts
 	/**
 	 * @swagger
-	 * /api/auth/token/{email}:
+	 * /api/public/auth/token/{email}:
 	 *  get:
 	 *    description: Get user token by email
 	 *    tags:
@@ -33977,7 +35773,7 @@ lib/swagger/doc/auth/getToken.ts```ts
 lib/swagger/doc/auth/register.ts```ts
 	/**
 	 * @swagger
-	 * /api/auth/register:
+	 * /api/public/auth/register:
 	 *   post:
 	 *     description: Register a new user
 	 *     tags:
@@ -34055,7 +35851,7 @@ lib/swagger/doc/auth/register.ts```ts
 lib/swagger/doc/budget/post.ts```ts
 	/**
 	@swagger
-	* /api/budget:
+	* /api/private/budget:
 	*   post:
 	*     tags:
 	*       - Budget
@@ -34162,8 +35958,7 @@ lib/swagger/doc/budget/delete.ts```ts
 	// @ts-nocheck
 	/**
 	* @swagger
-	 
-	* /api/budget/{id}:
+	* /api/private/budget/{id}:
 	*   delete:
 	*     tags:
 	*       - Budget
@@ -34214,7 +36009,7 @@ lib/swagger/doc/budget/delete.ts```ts
 lib/swagger/doc/budget/get.ts```ts
 	/**
 	@swagger
-	* /api/budget:
+	* /api/private/budget:
 	*   get:
 	*     summary: Get list budgets
 	*     description: Get list budgets
@@ -34329,7 +36124,7 @@ lib/swagger/doc/budget/get.ts```ts
 lib/swagger/doc/profile/put.ts```ts
 	/**
 	 * @swagger
-	 * /api/profile/{id}:
+	 * /api/private/profile/{id}:
 	 *   put:
 	 *     description: Update user profile
 	 *     tags:
@@ -34427,7 +36222,7 @@ lib/swagger/doc/profile/put.ts```ts
 lib/swagger/doc/profile/changePassword.ts```ts
 	/**
 	 * @swagger
-	 * /api/change-password/{id}:
+	 * /api/private/change-password/{id}:
 	 *   put:
 	 *     description: Change user's password
 	 *     tags:
@@ -34505,7 +36300,7 @@ lib/swagger/doc/profile/changePassword.ts```ts
 lib/swagger/doc/profile/get.ts```ts
 	/**
 	 * @swagger
-	 * /api/profile:
+	 * /api/private/profile:
 	 *   get:
 	 *     description: Get user profile
 	 *     tags:
@@ -34596,7 +36391,7 @@ lib/swagger/doc/profile/get.ts```ts
 lib/swagger/doc/file/upload.ts```ts
 	/**
 	 * @swagger
-	 * /api/file/upload:
+	 * /api/private/file/upload:
 	 *  post:
 	 *    description: Upload a file to S3
 	 *    tags:
@@ -34652,8 +36447,7 @@ lib/swagger/doc/file/upload.ts```ts
 lib/swagger/doc/project/put.ts```ts
 	/**
 	* @swagger
-	 
-	* /api/project/{id}:
+	* /api/private/project/{id}:
 	*   put:
 	*     tags:
 	*       - Project
@@ -34739,8 +36533,8 @@ lib/swagger/doc/project/put.ts```ts
 
 lib/swagger/doc/project/post.ts```ts
 	/**
-	@swagger
-	* /api/project:
+	* @swagger
+	* /api/private/project:
 	*   post:
 	*     tags:
 	*       - Project
@@ -34822,8 +36616,7 @@ lib/swagger/doc/project/delete.ts```ts
 	// @ts-nocheck
 	/**
 	* @swagger
-	 
-	* /api/project/{id}:
+	* /api/private/project/{id}:
 	*   delete:
 	*     tags:
 	*       - Project
@@ -34874,8 +36667,7 @@ lib/swagger/doc/project/delete.ts```ts
 lib/swagger/doc/project/getDetail.ts```ts
 	/**
 	* @swagger
-	 
-	* /api/project/{id}:
+	* /api/private/project/{id}:
 	*   get:
 	*     tags:
 	*       - Project
@@ -34926,7 +36718,7 @@ lib/swagger/doc/project/getDetail.ts```ts
 lib/swagger/doc/project/get.ts```ts
 	/**
 	@swagger
-	* /api/project:
+	* /api/private/project:
 	*   get:
 	*     summary: Get list projects
 	*     description: Get list projects
@@ -35040,7 +36832,7 @@ lib/swagger/doc/project/get.ts```ts
 lib/swagger/doc/user/updateStatus.ts```ts
 	/**
 	 * @swagger
-	 * /user/{id}/status:
+	 * api/private/user/{id}/status:
 	 *   patch:
 	 *     summary: Update user status to activate or deactivate
 	 *     tags:
@@ -35119,7 +36911,7 @@ lib/swagger/doc/user/updateStatus.ts```ts
 lib/swagger/doc/user/delete.ts```ts
 	/**
 	 * @swagger
-	 * /user/{id}/delete:
+	 * api/private/user/{id}/delete:
 	 *   delete:
 	 *     summary: Delete a user
 	 *     tags:
@@ -35186,7 +36978,7 @@ lib/swagger/doc/user/delete.ts```ts
 lib/swagger/doc/user/getDetail.ts```ts
 	/**
 	 * @swagger
-	 * /user/{id}:
+	 * /api/private/user/{id}:
 	 *   get:
 	 *     summary: Get user detail
 	 *     description: Get user detail
@@ -35304,7 +37096,7 @@ lib/swagger/doc/user/getDetail.ts```ts
 lib/swagger/doc/user/archive.ts```ts
 	/**
 	 * @swagger
-	 * /user/{id}/archive:
+	 * /api/private/user/{id}/archive:
 	 *   patch:
 	 *     summary: Archive a user account which cannot logged-in anymore
 	 *     tags:
@@ -35371,7 +37163,7 @@ lib/swagger/doc/user/archive.ts```ts
 lib/swagger/doc/user/get.ts```ts
 	/**
 	 * @swagger
-	 * /api/user:
+	 * /api/private/user:
 	 *   get:
 	 *     summary: Get list of users
 	 *     description: Get list of users
@@ -35491,7 +37283,7 @@ lib/swagger/doc/user/get.ts```ts
 lib/swagger/doc/user/bulkControl.ts```ts
 	/**
 	 * @swagger
-	 * /user/bulk-control:
+	 * /api/private/user/bulk-control:
 	 *   patch:
 	 *     summary: Bulk control users update status to activate, deactivate, locked or delete by ids
 	 *     description: Bulk control users update status to activate, deactivate, locked or delete by ids
@@ -35569,7 +37361,7 @@ lib/swagger/doc/user/bulkControl.ts```ts
 lib/swagger/doc/contractor/put.ts```ts
 	/**
 	 * @swagger
-	 * /api/contractor/update/{id}:
+	 * /api/private/contractor/update/{id}:
 	 *   put:
 	 *     description: Update a contractor
 	 *     tags:
@@ -35702,7 +37494,7 @@ lib/swagger/doc/contractor/put.ts```ts
 lib/swagger/doc/contractor/post.ts```ts
 	/**
 	 * @swagger
-	 * /api/contractor/create:
+	 * /api/private/contractor/create:
 	 *   post:
 	 *     description: Create a contractor
 	 *     tags:
@@ -35790,7 +37582,7 @@ lib/swagger/doc/contractor/post.ts```ts
 lib/swagger/doc/contractor/delete.ts```ts
 	/**
 	 * @swagger
-	 * /api/contractor/delete/{id}:
+	 * /api/private/contractor/delete/{id}:
 	 *   delete:
 	 *     description: Delete a contractor
 	 *     tags:
@@ -35844,7 +37636,7 @@ lib/swagger/doc/contractor/delete.ts```ts
 lib/swagger/doc/contractor/get.ts```ts
 	/**
 	 * @swagger
-	 * /api/contractor/list:
+	 * /api/private/contractor/list:
 	 *   get:
 	 *     summary: List all contractors
 	 *     description: List all contractors
@@ -35977,8 +37769,7 @@ lib/swagger/doc/contractor/get.ts```ts
 lib/swagger/doc/builder/put.ts```ts
 	/**
 	* @swagger
-	 
-	* /api/builder/{id}:
+	* /api/private/builder/{id}:
 	*   put:
 	*     tags:
 	*       - Builder
@@ -36071,7 +37862,7 @@ lib/swagger/doc/builder/put.ts```ts
 lib/swagger/doc/builder/post.ts```ts
 	/**
 	@swagger
-	* /api/builder:
+	* /api/private/builder:
 	*   post:
 	*     tags:
 	*       - Builder
@@ -36186,8 +37977,7 @@ lib/swagger/doc/builder/delete.ts```ts
 	// @ts-nocheck
 	/**
 	* @swagger
-	 
-	* /api/builder/{id}:
+	* /api/private/builder/{id}:
 	*   delete:
 	*     tags:
 	*       - Builder
@@ -36238,8 +38028,7 @@ lib/swagger/doc/builder/delete.ts```ts
 lib/swagger/doc/builder/getDetail.ts```ts
 	/**
 	* @swagger
-	 
-	* /api/builder/{id}:
+	* /api/private/builder/{id}:
 	*   get:
 	*     tags:
 	*       - Builder
@@ -36323,7 +38112,7 @@ lib/swagger/doc/builder/getDetail.ts```ts
 lib/swagger/doc/builder/get.ts```ts
 	/**
 	@swagger
-	* /api/builder:
+	* /api/private/builder:
 	*   get:
 	*     summary: Get list builders
 	*     description: Get list builders

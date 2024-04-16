@@ -1,122 +1,127 @@
-j2c-app/src/backend/models/project.model.ts```ts
+project.model.ts```ts
+	import DateUTC from '@/utils/datetime/date.custom';
 	import mongoose from 'mongoose';
 	import { Project as ProjectType } from '@/utils/dtos/project.dto';
 	
 	/* ProjectSchema will correspond to the project collection in the MongoDB database. */
 	const ProjectSchema: mongoose.Schema<ProjectType> = new mongoose.Schema(
 	  {
-	    _id: {
-	      type: mongoose.Schema.Types.ObjectId,
-	      required: true
-	    },
 	    projectName: {
 	      type: String,
 	      required: true
 	    },
 	    address: {
 	      type: String,
-	      required: true
+	      required: false,
+	      default: ''
 	    },
 	    amount: {
-	      type: Number
+	      type: Number,
+	      required: false,
+	      default: 0
 	    },
 	    builderId: {
 	      type: String,
-	      required: true
+	      required: false,
+	      default: ''
 	    },
 	    category: {
 	      type: String,
-	      required: true
-	    },
-	    completionStatus: {
-	      type: String,
-	      required: true
+	      required: false,
+	      default: ''
 	    },
 	    creatorEmail: {
 	      type: String,
 	      required: true
 	    },
 	    creatorId: {
-	      type: String,
-	      required: true
+	      type: mongoose.Schema.Types.ObjectId,
+	      required: true,
+	      ref: 'User'
 	    },
 	    currency: {
 	      type: String,
 	      required: true
 	    },
 	    currentClaimNumber: {
-	      type: String,
-	      required: true
-	    },
-	    budgetSeperatorComma: {
-	      type: Boolean,
-	      required: true
-	    },
-	    budgetSeperatorSemiColon: {
-	      type: Boolean,
-	      required: true
-	    },
-	    budgetSeperatorTab: {
-	      type: Boolean,
-	      required: true
+	      type: Number,
+	      required: false,
+	      default: 0
 	    },
 	    date: {
 	      type: Date,
-	      required: true
+	      required: false,
+	      default: new DateUTC()
 	    },
 	    dateCreate: {
 	      type: Date,
-	      required: true
+	      required: false,
+	      default: new DateUTC()
 	    },
 	    dateModify: {
 	      type: Date,
-	      required: true
+	      required: false,
+	      default: null
 	    },
-	    imageBucket: {
-	      type: String,
-	      required: true
+	    startDate: {
+	      type: Date,
+	      required: false,
+	      default: new DateUTC()
 	    },
 	    items: {
 	      type: String,
-	      required: true
+	      required: false,
+	      default: ''
+	    },
+	    imageUrl: {
+	      type: String,
+	      required: false,
+	      default: ''
 	    },
 	    role0: {
-	      type: String
+	      type: String,
+	      required: false
 	    },
 	    role1: {
-	      type: String
+	      type: String,
+	      required: false,
+	      default: ''
 	    },
 	    role2: {
-	      type: String
+	      type: String,
+	      required: false,
+	      default: ''
 	    },
 	    role3: {
-	      type: String
+	      type: String,
+	      required: false,
+	      default: ''
 	    },
 	    role4: {
-	      type: String
+	      type: String,
+	      required: false,
+	      default: ''
 	    },
 	    roleProjectContractors: {
-	      type: String
+	      type: String,
+	      required: false,
+	      default: ''
 	    }
 	  },
-	  { _id: false }
+	  { _id: true }
 	);
 	
 	export default mongoose.models.Project || mongoose.model<ProjectType>('Project', ProjectSchema);
 
 ```
 
-j2c-app/src/backend/models/invoice.model.ts```ts
+invoice.model.ts```ts
 	import mongoose from 'mongoose';
 	import { Invoice as InvoiceType } from '@/utils/dtos/invoice.dto';
 	
 	/* InvoiceSchema will correspond to the invoice collection in the MongoDB database. */
 	const InvoiceSchema: mongoose.Schema<InvoiceType> = new mongoose.Schema(
 	  {
-	    _id: {
-	      type: mongoose.Schema.Types.ObjectId,
-	      required: true
-	    },
 	    budgetId: {
 	      type: String,
 	      required: true
@@ -234,14 +239,14 @@ j2c-app/src/backend/models/invoice.model.ts```ts
 	      required: false
 	    }
 	  },
-	  { _id: false }
+	  { _id: true }
 	);
 	
 	export default mongoose.models.Invoice || mongoose.model<InvoiceType>('Invoice', InvoiceSchema);
 
 ```
 
-j2c-app/src/backend/models/user.model.ts```ts
+user.model.ts```ts
 	import mongoose from 'mongoose';
 	import { User as UserType } from '@/utils/dtos/user.dto';
 	
@@ -253,7 +258,11 @@ j2c-app/src/backend/models/user.model.ts```ts
 	      required: true,
 	      unique: true
 	    },
-	    name: {
+	    firstName: {
+	      type: String,
+	      required: true
+	    },
+	    lastName: {
 	      type: String,
 	      required: true
 	    },
@@ -337,17 +346,13 @@ j2c-app/src/backend/models/user.model.ts```ts
 
 ```
 
-j2c-app/src/backend/models/builder.model.ts```ts
+builder.model.ts```ts
 	import mongoose from 'mongoose';
 	import { Builder as BuilderType } from '@/utils/dtos/builder.dto';
 	
 	/* BuilderSchema will correspond to the builder collection in the MongoDB database. */
 	const BuilderSchema: mongoose.Schema<BuilderType> = new mongoose.Schema(
 	  {
-	    _id: {
-	      type: mongoose.Schema.Types.ObjectId,
-	      required: true
-	    },
 	    creatorEmail: {
 	      type: String,
 	      required: true
@@ -430,38 +435,27 @@ j2c-app/src/backend/models/builder.model.ts```ts
 	      required: false
 	    }
 	  },
-	  { _id: false }
+	  { _id: true }
 	);
 	
 	export default mongoose.models.Builder || mongoose.model<BuilderType>('Builder', BuilderSchema);
 
 ```
 
-j2c-app/src/backend/models/budget.model.ts```ts
+budget.model.ts```ts
 	import mongoose from 'mongoose';
 	import { Budget as BudgetType } from '@/utils/dtos/budget.dto';
 	
 	/* BudgetSchema will correspond to the budget collection in the MongoDB database. */
 	export const BudgetSchema: mongoose.Schema<BudgetType> = new mongoose.Schema(
 	  {
-	    _id: {
-	      type: mongoose.Schema.Types.ObjectId,
-	      required: true
-	    },
 	    creatorId: {
-	      type: String,
-	      required: true
+	      type: mongoose.Schema.Types.ObjectId,
+	      required: true,
+	      ref: 'User'
 	    },
 	    projectId: {
 	      type: String,
-	      required: true
-	    },
-	    creatorEmail: {
-	      type: String,
-	      required: true
-	    },
-	    budgetAdditionalFields: {
-	      type: [String],
 	      required: true
 	    },
 	    budgetCategory: {
@@ -480,12 +474,13 @@ j2c-app/src/backend/models/budget.model.ts```ts
 	      type: Number,
 	      required: true
 	    },
-	    budgetDescription: {
-	      type: String
+	    budgetClaimedToDate: {
+	      type: Number,
+	      required: true
 	    },
 	    budgetIndex: {
 	      type: Number,
-	      required: true
+	      default: 0
 	    },
 	    budgetOriginalBudget: {
 	      type: Number,
@@ -499,15 +494,11 @@ j2c-app/src/backend/models/budget.model.ts```ts
 	      type: Number,
 	      required: true
 	    },
-	    budgetTotalClaimBeforeHoldback: {
-	      type: Number,
-	      required: true
-	    },
 	    budgetTotalClaimPercentage: {
 	      type: Number,
 	      required: true
 	    },
-	    budgetTotalHoldback: {
+	    budgetCostToComplete: {
 	      type: Number,
 	      required: true
 	    },
@@ -520,24 +511,20 @@ j2c-app/src/backend/models/budget.model.ts```ts
 	      required: true
 	    }
 	  },
-	  { _id: false }
+	  { _id: true }
 	);
 	
 	export default mongoose.models.Budget || mongoose.model<BudgetType>('Budget', BudgetSchema);
 
 ```
 
-j2c-app/src/backend/models/role.model.ts```ts
+role.model.ts```ts
 	import mongoose from 'mongoose';
 	import { Role as RoleType } from '@/utils/dtos/role.dto';
 	
 	/* RoleSchema will correspond to the role collection in the MongoDB database. */
 	const RoleSchema: mongoose.Schema<RoleType> = new mongoose.Schema(
 	  {
-	    _id: {
-	      type: mongoose.Schema.Types.ObjectId,
-	      required: true
-	    },
 	    dateCreate: {
 	      type: Date
 	    },
@@ -566,14 +553,14 @@ j2c-app/src/backend/models/role.model.ts```ts
 	      required: true
 	    }
 	  },
-	  { _id: false }
+	  { _id: true }
 	);
 	
 	export default mongoose.models.Role || mongoose.model('Role', RoleSchema);
 
 ```
 
-j2c-app/src/backend/models/contractor.model.ts```ts
+contractor.model.ts```ts
 	import mongoose from 'mongoose';
 	import { Contractor as ContractorType } from '@/utils/dtos/contractor.dto';
 	
