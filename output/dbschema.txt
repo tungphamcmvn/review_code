@@ -2,13 +2,21 @@ project.model.ts```ts
 	import DateUTC from '@/utils/datetime/date.custom';
 	import mongoose from 'mongoose';
 	import { Project as ProjectType } from '@/utils/dtos/project.dto';
+	import User from '@/backend/models/user.model';
+	import Company from '@/backend/models/company.model';
+	import Role from '@/backend/models/role.model';
 	
 	/* ProjectSchema will correspond to the project collection in the MongoDB database. */
 	const ProjectSchema: mongoose.Schema<ProjectType> = new mongoose.Schema(
 	  {
-	    projectName: {
+	    name: {
 	      type: String,
 	      required: true
+	    },
+	    key: {
+	      type: String,
+	      required: true,
+	      unique: true
 	    },
 	    address: {
 	      type: String,
@@ -35,9 +43,9 @@ project.model.ts```ts
 	      required: true
 	    },
 	    creatorId: {
-	      type: mongoose.Schema.Types.ObjectId,
+	      type: String,
 	      required: true,
-	      ref: 'User'
+	      ref: User.modelName
 	    },
 	    currency: {
 	      type: String,
@@ -106,6 +114,60 @@ project.model.ts```ts
 	      type: String,
 	      required: false,
 	      default: ''
+	    },
+	    participants: [
+	      {
+	        userId: {
+	          type: String,
+	          required: true,
+	          ref: User.modelName
+	        },
+	        companyId: {
+	          type: String,
+	          required: true,
+	          ref: Company.modelName
+	        },
+	        roleId: {
+	          type: String,
+	          required: true,
+	          ref: Role.modelName
+	        },
+	        inviteSource: {
+	          type: String,
+	          enum: ['company', 'external_email', 'internal_email'],
+	          required: true
+	        },
+	        inviteStatus: {
+	          type: String,
+	          enum: ['pending_signup', 'pending_accept', 'accepted', 'rejected'],
+	          required: true
+	        },
+	        inviteKey: {
+	          type: String,
+	          required: true,
+	          unique: true
+	        },
+	        inviteCreatedAt: {
+	          type: Date,
+	          required: false,
+	          default: new DateUTC()
+	        },
+	        inviteExpiration: {
+	          type: Date,
+	          required: false,
+	          default: new DateUTC()
+	        },
+	        inviteUpdatedAt: {
+	          type: Date,
+	          required: false,
+	          default: new DateUTC()
+	        }
+	      }
+	    ],
+	    status: {
+	      type: String,
+	      required: true,
+	      enum: ['active', 'inactive', 'completed', 'archived']
 	    }
 	  },
 	  { _id: true }
@@ -249,6 +311,7 @@ invoice.model.ts```ts
 user.model.ts```ts
 	import mongoose from 'mongoose';
 	import { User as UserType } from '@/utils/dtos/user.dto';
+	import Role from '@/backend/models/role.model';
 	
 	/* UserSchema will correspond to the user collection in the MongoDB database. */
 	export const UserSchema: mongoose.Schema<UserType> = new mongoose.Schema(
@@ -337,6 +400,11 @@ user.model.ts```ts
 	    dateModify: {
 	      type: Date,
 	      required: true
+	    },
+	    systemRole: {
+	      type: String,
+	      required: true,
+	      ref: Role.modelName
 	    }
 	  },
 	  { _id: true }
@@ -521,42 +589,166 @@ budget.model.ts```ts
 role.model.ts```ts
 	import mongoose from 'mongoose';
 	import { Role as RoleType } from '@/utils/dtos/role.dto';
+	import Permission from '@/backend/models/permission.model';
 	
 	/* RoleSchema will correspond to the role collection in the MongoDB database. */
 	const RoleSchema: mongoose.Schema<RoleType> = new mongoose.Schema(
 	  {
-	    dateCreate: {
-	      type: Date
-	    },
-	    dateModify: {
-	      type: Date
-	    },
-	    individualEmail: {
-	      type: String
-	    },
-	    individualId: {
-	      type: String
-	    },
-	    parentId: {
-	      type: String
-	    },
-	    roleLevelEnum: {
-	      type: Number,
-	      required: true
-	    },
-	    targetId: {
+	    name: {
 	      type: String,
 	      required: true
 	    },
-	    targetTypeEnum: {
-	      type: Number,
+	    key: {
+	      type: String,
+	      required: true,
+	      unique: true
+	    },
+	    type: {
+	      type: String,
+	      enum: ['Builder', 'Contractor', 'Super Admin', 'Admin', 'Generic'],
 	      required: true
+	    },
+	    permissionIds: [
+	      {
+	        permissionId: {
+	          type: String,
+	          ref: Permission.modelName,
+	          required: true
+	        }
+	      }
+	    ],
+	    dateCreate: {
+	      type: Date,
+	      default: new Date(),
+	      required: true
+	    },
+	    dateModify: {
+	      type: Date,
+	      required: false
 	    }
 	  },
 	  { _id: true }
 	);
 	
-	export default mongoose.models.Role || mongoose.model('Role', RoleSchema);
+	export default mongoose.models.Role || mongoose.model<RoleType>('Role', RoleSchema);
+
+```
+
+company.model.ts```ts
+	import mongoose from 'mongoose';
+	import { Company as CompanyType } from '@/utils/dtos/company.dto';
+	import Role from '@/backend/models/role.model';
+	import User from '@/backend/models/user.model';
+	
+	/* RoleSchema will correspond to the role collection in the MongoDB database. */
+	const CompanySchema: mongoose.Schema<CompanyType> = new mongoose.Schema(
+	  {
+	    name: {
+	      type: String,
+	      required: true
+	    },
+	    key: {
+	      type: String,
+	      required: true,
+	      unique: true
+	    },
+	    type: {
+	      type: String,
+	      required: true
+	    },
+	    imageUrl: {
+	      type: String,
+	      required: false
+	    },
+	    projectIds: [
+	      {
+	        projectId: {
+	          type: String,
+	          required: false
+	        }
+	      }
+	    ],
+	    members: [
+	      {
+	        roleId: {
+	          type: String,
+	          required: true,
+	          ref: Role.modelName
+	        },
+	        userId: {
+	          type: String,
+	          required: false,
+	          ref: User.modelName
+	        }
+	      }
+	    ],
+	    dateCreate: {
+	      type: Date,
+	      required: false
+	    },
+	    dateModify: {
+	      type: Date,
+	      required: false
+	    }
+	  },
+	  { _id: true }
+	);
+	
+	export default mongoose.models.Company || mongoose.model<CompanyType>('Company', CompanySchema);
+
+```
+
+permission.model.ts```ts
+	import mongoose from 'mongoose';
+	import { Permission as PermissionType } from '@/utils/dtos/permission.dto';
+	
+	/* RoleSchema will correspond to the role collection in the MongoDB database. */
+	const PermissionSchema: mongoose.Schema<PermissionType> = new mongoose.Schema(
+	  {
+	    name: {
+	      type: String,
+	      required: true
+	    },
+	    key: {
+	      type: String,
+	      required: true,
+	      unique: true
+	    },
+	    description: {
+	      type: String,
+	      required: false
+	    },
+	    urls: [
+	      {
+	        url: {
+	          type: String,
+	          required: true
+	        },
+	        method: {
+	          type: String,
+	          required: true
+	        }
+	      }
+	    ],
+	    roleIds: [
+	      {
+	        roleId: {
+	          type: String,
+	          required: false
+	        }
+	      }
+	    ],
+	    dateCreate: {
+	      type: Date
+	    },
+	    dateModify: {
+	      type: Date
+	    }
+	  },
+	  { _id: true }
+	);
+	
+	export default mongoose.models.Permission || mongoose.model<PermissionType>('Permission', PermissionSchema);
 
 ```
 

@@ -38,5 +38,6 @@ next-env.d.ts
 /j2c-app
 /code
 /client-report
+/output
 
 /__pycache__

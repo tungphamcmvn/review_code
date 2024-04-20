@@ -13,10 +13,10 @@ README.md```md
 	# MongoEx: http://localhost:8081
 	
 	# Start 
-	docker-compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+	docker-compose -f docker-compose.dev.yml up -d
 	
 	# Stop
-	docker-compose -f docker-compose.yml -f docker-compose.dev.yml stop
+	docker-compose -f docker-compose.dev.yml stop
 	```
 	
 	## Production Mode
@@ -26,10 +26,10 @@ README.md```md
 	# MongoDB:27017
 	
 	# Start 
-	docker-compose -f docker-compose.yml -f docker-compose.prod.yml up --build -d
+	docker-compose -f docker-compose.prod.yml up --build -d
 	
 	# Stop
-	docker-compose -f docker-compose.yml -f docker-compose.prod.yml stop
+	docker-compose -f docker-compose.prod.yml stop
 	```
 
 ```
@@ -105,8 +105,29 @@ next.config.js```js
 	    REACT_APP_AUTH0_DOMAIN: process.env.REACT_APP_AUTH0_DOMAIN,
 	    SENTRY_DSN: process.env.SENTRY_DSN,
 	    APP_ENV: process.env.APP_ENV
-	  }
+	  },
+	  async rewrites() {
+	    return [
+	      {
+	        source: '/:company_key/:project_key/admin/:slug*',
+	        destination: '/:slug*?company_key=:company_key&project_key=:project_key',
+	      },
+	      {
+	        source: '/:company_key/admin/:slug*',
+	        destination: '/:slug*?company_key=:company_key',
+	      },
+	    ]
+	  },
 	};
+
+```
+
+next-env.d.ts```ts
+	/// <reference types="next" />
+	/// <reference types="next/image-types/global" />
+	
+	// NOTE: This file should not be edited
+	// see https://nextjs.org/docs/basic-features/typescript for more information.
 
 ```
 
@@ -152,8 +173,9 @@ src/middleware.ts```ts
 	import { withAuth } from '@/backend/middlewares/auth.middleware';
 	import { withUnAuth } from '@/backend/middlewares/unauth.middleware';
 	import { withJwt } from '@/backend/middlewares/jwt.middleware';
+	import { withAuthorize } from '@/backend/middlewares/authorize.middleware';
 	
-	export default stackMiddlewares([withUnAuth, withAuth, withJwt]);
+	export default stackMiddlewares([withUnAuth, withAuth, withJwt, withAuthorize]);
 	
 	export const config = {
 	  // matcher: ['/((?!api/auth|_next/static|_next/image|images|icons|favicon.ico|style-guide).*)'],
@@ -395,9 +417,9 @@ src/auth.ts```ts
 	        const userRepository = new UserRepository(conn);
 	        let user = await userRepository.findOne({ email: params.token.email || '' });
 	
-	        if (!user) {
-	          const authService = new AuthService(conn);
+	        const authService = new AuthService(conn);
 	
+	        if (!user) {
 	          const newUser = await authService.getOrCreateNewUser(
 	            params.token.email as string,
 	            params.token.firstName as string,
@@ -667,21 +689,27 @@ src/backend/services/role.service.ts```ts
 	  ROLE_LEVEL_ENUM_GENERAL,
 	  ROLE_TARGET_TYPE_ENUM
 	} from '@/utils/common';
-	import mongoose from 'mongoose';
+	import mongoose, { Mongoose } from 'mongoose';
 	import RoleDto, { Role as RoleType } from '@/utils/dtos/role.dto';
 	import { Contractor as ContractorType } from '@/utils/dtos/contractor.dto';
 	import ContractorRepositoryInterface from '@/backend/repositories/interfaces/contractor.repository.interface';
 	import { isEmaillRoleTypeEnum } from '@/utils/helper';
 	import { ROLE_REGEX_SEPARATOR } from '@/utils/constant';
 	import { ObjectId } from 'bson';
+	import PermissionRepositoryInterface from '../repositories/interfaces/permission.repository.interface';
+	import ContractorRepository from '@/backend/repositories/mongodb/contractor.repository';
+	import RoleRepository from '@/backend/repositories/mongodb/role.repository';
+	import PermissionRepository from '@/backend/repositories/mongodb/permission.repository';
 	
 	export default class RoleService {
 	  protected roleRepository: RoleRepositoryInterface;
 	  protected contractorRepository: ContractorRepositoryInterface;
+	  protected permissionRepository: PermissionRepositoryInterface;
 	
-	  constructor(roleRepository: RoleRepositoryInterface, contractorRepository: ContractorRepositoryInterface) {
-	    this.roleRepository = roleRepository;
-	    this.contractorRepository = contractorRepository;
+	  constructor(conn: Mongoose) {
+	    this.roleRepository = new RoleRepository(conn);
+	    this.contractorRepository = new ContractorRepository(conn);
+	    this.permissionRepository = new PermissionRepository(conn);
 	  }
 	
 	  async getRolesByTargetId(targetId: string, targetTypeEnum: number): Promise<RoleType[]> {
@@ -1934,13 +1962,17 @@ src/backend/services/auth.service.ts```ts
 	import ForgotPasswordEmailTemplate from '@/views/mails/forgot-password-email-template';
 	import { NextRequest } from 'next/server';
 	import { getToken } from 'next-auth/jwt';
+	import UserRepositoryInterface from '@/backend/repositories/interfaces/user.repository.interface';
+	import PermissionLoaderFactory from '@/backend/services/permission/factory/permission.loader.factory';
 	
 	export default class AuthService {
 	  private confirmationEndpoint: string = 'auth/confirm-email';
-	  protected userRepository: UserRepository;
+	  protected userRepository: UserRepositoryInterface;
+	  protected conn: Mongoose;
 	
 	  constructor(conn: Mongoose) {
 	    this.userRepository = new UserRepository(conn);
+	    this.conn = conn;
 	  }
 	
 	  async getOrCreateNewUser(email: string, firstName: string, lastName: string, imageUrl: string | null = null): Promise<mongoose.Document> {
@@ -1992,7 +2024,7 @@ src/backend/services/auth.service.ts```ts
 	      dateModify: date
 	    });
 	
-	    return this.userRepository.create(userDto);
+	    return await this.userRepository.create(userDto);
 	  }
 	
 	  async sendEmailConfirmation(id: string, email: string, name: string): Promise<void> {
@@ -2123,6 +2155,40 @@ src/backend/services/auth.service.ts```ts
 	      }
 	    }
 	    throw new Error('User not found');
+	  }
+	
+	  async getRolesContext(userId: string, companyKey: string | null = null, projectKey: string | null = null): Promise<any> {
+	    const userLoader = PermissionLoaderFactory.createLoader('user', this.conn);
+	    // Get default user permissions
+	    userLoader.setUserId(userId);
+	    await userLoader.loadPermission();
+	    const userPermissions = userLoader.getPermissions();
+	
+	    if (!companyKey) {
+	      return [userPermissions, [], []];
+	    }
+	
+	    const companyLoader = PermissionLoaderFactory.createLoader('company', this.conn);
+	    const projectLoader = PermissionLoaderFactory.createLoader('project', this.conn);
+	    companyLoader.setUserId(userId);
+	    projectLoader.setUserId(userId);
+	
+	    await companyLoader.setCompanyIdByKey(companyKey);
+	    projectLoader.setCompanyId(companyLoader.getCompanyId());
+	
+	    if (projectKey) {
+	      await projectLoader.setProjectIdByKey(projectKey);
+	      projectLoader.setProjectId(projectLoader.getProjectId());
+	    }
+	
+	    // Load company and project permissions
+	    await companyLoader.loadPermission();
+	    await projectLoader.loadPermission();
+	
+	    const companyPermissions = companyLoader.getPermissions();
+	    const projectPermissions = projectLoader.getPermissions();
+	
+	    return [userPermissions, companyPermissions, projectPermissions];
 	  }
 	}
 
@@ -2708,6 +2774,628 @@ src/backend/services/storage/interface/storage.interface.ts```ts
 	  uploadFile(file: File, folderName: string): Promise<string>;
 	
 	  removeFile(fileUrl: string): Promise<void>;
+	}
+
+```
+
+src/backend/services/permission/chains/company.permission.chain.ts```ts
+	import BaseChain from '@/backend/services/permission/chains/base.chain';
+	import { Scope } from '@/utils/enums';
+	
+	export default class CompanyPermissionChain extends BaseChain {
+	  constructor() {
+	    super();
+	    this.isSupport = true;
+	    this.isUsingConfig = true;
+	  }
+	
+	  public scope(): string {
+	    return Scope.COMPANY;
+	  }
+	}
+
+```
+
+src/backend/services/permission/chains/base.chain.ts```ts
+	import { ContextItem } from '@/backend/services/permission/permission.handler';
+	
+	export default abstract class BaseChain {
+	  protected source: ContextItem | null = null;
+	  protected urlsCanAccess: { url: string; method: string; roleId: string }[] = [];
+	  public isSupport: boolean = false;
+	  protected isUsingConfig: boolean = true;
+	
+	  protected constructor() {}
+	
+	  abstract scope(): string;
+	
+	  public setSource(source: ContextItem): void {
+	    this.source = source;
+	  }
+	
+	  public getSource(): ContextItem {
+	    if (!this.source) {
+	      throw new Error('Source is required');
+	    }
+	
+	    return this.source;
+	  }
+	
+	  public validateAccess(urlAccess: string, method: string): boolean {
+	    this.defineAccessUrls();
+	
+	    let result = false;
+	    for (const urlItem of this.urlsCanAccess) {
+	      if (urlItem.method !== method) {
+	        continue;
+	      }
+	
+	      const regexPattern = this.generateRegexFromUrl(urlItem.url);
+	      const regex = new RegExp(regexPattern);
+	
+	      if (regex.test(urlAccess)) {
+	        result = true;
+	        break;
+	      }
+	    }
+	
+	    return result;
+	  }
+	
+	  public validateAccessWithProjectId(urlAccess: string, method: string, projectId: string): boolean {
+	    throw new Error('Method must be implemented.');
+	  }
+	
+	  protected generateRegexFromUrl(url: string): string {
+	    // Replace {} with :
+	    const colonReplacedUrl = url.replace(/\{(\w+)\}/g, ':$1');
+	
+	    // Escape special regex characters
+	    const escapedUrl = colonReplacedUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+	
+	    // Replace dynamic segments with regex groups
+	    const regexUrl = escapedUrl.replace(/:(\w+)/g, '([^/]+)');
+	
+	    // Add anchors to match the whole string
+	    return `^${regexUrl}$`;
+	  }
+	
+	  protected validateUrlSegment(url: string): boolean {
+	    // Define a regex pattern to match parameter placeholders
+	    const paramPattern = /(\{\w+\})|(:\w+)/g;
+	    let match;
+	
+	    // Arrays to store matches for each placeholder format
+	    const curlyBraceMatches = [];
+	    const colonMatches = [];
+	
+	    // Test if the URL contains parameter placeholders
+	    while ((match = paramPattern.exec(url)) !== null) {
+	      if (match[0].startsWith('{')) {
+	        curlyBraceMatches.push(match[0]);
+	      } else {
+	        colonMatches.push(match[0]);
+	      }
+	    }
+	
+	    // Check if both arrays have elements, indicating inconsistent placeholder formats
+	    if (curlyBraceMatches.length > 0 && colonMatches.length > 0) {
+	      return false;
+	    }
+	
+	    // URL is accepted if it doesn't contain parameter placeholders or if it contains consistent placeholders
+	    return true;
+	  }
+	
+	  protected defineAccessUrls(): void {
+	    if (this.isUsingConfig) {
+	      this.urlsCanAccess = this.loadPermissionFromConfig();
+	    } else {
+	      this.urlsCanAccess = this.loadPermissionFromSource();
+	    }
+	  }
+	
+	  protected loadPermissionFromConfig(): { url: string; method: string; roleId: string }[] {
+	    const permissions = require('@/backend/services/permission/fixture/j2cdev.permissions.json');
+	
+	    const roleIds = this.getSource().urlsCanAccess.map((role: any) => role.roleId);
+	    const permissionsMatched = permissions.filter((permission: any) => {
+	      return permission.roleIds.some((role: any) => roleIds.includes(role.roleId));
+	    });
+	
+	    // Return all urls
+	    const urls = [].concat(...permissionsMatched.map((permission: any) => permission.urls));
+	
+	    return urls.filter((url: string) => {
+	      return this.validateUrlSegment(url);
+	    });
+	  }
+	
+	  protected loadPermissionFromSource(): { url: string; method: string; roleId: string }[] {
+	    return this.getSource().urlsCanAccess;
+	  }
+	}
+
+```
+
+src/backend/services/permission/chains/user.permission.chain.ts```ts
+	import BaseChain from '@/backend/services/permission/chains/base.chain';
+	import { Scope } from '@/utils/enums';
+	
+	export default class UserPermissionChain extends BaseChain {
+	  protected policyName: string = 'user';
+	
+	  constructor() {
+	    super();
+	    this.isSupport = true;
+	    this.isUsingConfig = true;
+	  }
+	
+	  public scope(): string {
+	    return Scope.SYSTEM;
+	  }
+	}
+
+```
+
+src/backend/services/permission/chains/project.permission.chain.ts```ts
+	import BaseChain from '@/backend/services/permission/chains/base.chain';
+	import { Scope } from '@/utils/enums';
+	
+	export default class ProjectPermissionChain extends BaseChain {
+	  constructor() {
+	    super();
+	    this.isSupport = true;
+	    this.isUsingConfig = true;
+	  }
+	
+	  public scope(): string {
+	    return Scope.PROJECT;
+	  }
+	
+	  protected loadPermissionFromConfig(): { url: string; method: string; roleId: string }[] {
+	    const config = super.loadPermissionFromConfig();
+	
+	    return config.map((item: any) => {
+	      const index = this.getSource().urlsCanAccess.findIndex((urlItem: any) => {
+	        return urlItem.url === item.url && urlItem.method === item.method;
+	      });
+	      let roleId = 'mock-role-id';
+	      let projectId = 'mock-project-id';
+	      let projectKey = 'mock-project-key';
+	
+	      if (index === -1) {
+	        roleId = this.getSource().urlsCanAccess[index].roleId;
+	        projectId = this.getSource().urlsCanAccess[index].projectId as string;
+	        projectKey = this.getSource().urlsCanAccess[index].projectKey as string;
+	      }
+	
+	      return {
+	        ...item,
+	        roleId,
+	        projectId,
+	        projectKey
+	      };
+	    });
+	  }
+	
+	  public validateAccessWithProjectId(urlAccess: string, method: string, projectId: string): boolean {
+	    this.defineAccessUrls();
+	
+	    let result = false;
+	    for (const urlItem of this.urlsCanAccess) {
+	      if (urlItem.method !== method) {
+	        continue;
+	      }
+	
+	      const regexPattern = this.generateRegexFromUrl(urlItem.url);
+	      const regex = new RegExp(regexPattern);
+	
+	      if (regex.test(urlAccess)) {
+	        result = true;
+	        break;
+	      }
+	    }
+	
+	    return result;
+	  }
+	}
+
+```
+
+src/backend/services/permission/factory/permission.loader.factory.ts```ts
+	import UserPermissionLoader from '@/backend/services/permission/loader/user.permission.loader';
+	import CompanyPermissionLoader from '@/backend/services/permission/loader/company.permission.loader';
+	import ProjectPermissionLoader from '@/backend/services/permission/loader/project.permission.loader';
+	import { Mongoose } from 'mongoose';
+	import BasePermissionLoader from '@/backend/services/permission/loader/base.permission.loader';
+	
+	export default class PermissionLoaderFactory {
+	  public static createLoader(loader: string, conn: Mongoose): BasePermissionLoader {
+	    switch (loader) {
+	      case 'user':
+	        return new UserPermissionLoader(conn);
+	      case 'company':
+	        return new CompanyPermissionLoader(conn);
+	      case 'project':
+	        return new ProjectPermissionLoader(conn);
+	      default:
+	        throw new Error('Invalid loader');
+	    }
+	  }
+	}
+
+```
+
+src/backend/services/permission/loader/project.permission.loader.ts```ts
+	import PermissionLoaderInterface from '@/backend/services/permission/loader/permission.loader.interface';
+	import BasePermissionLoader from '@/backend/services/permission/loader/base.permission.loader';
+	import ProjectRepository from '@/backend/repositories/mongodb/project.repository';
+	import ProjectRepositoryInterface from '@/backend/repositories/interfaces/project.repository.interface';
+	import { Mongoose } from 'mongoose';
+	import NotFoundException from '@/backend/exceptions/notfound.exception';
+	import { Scope } from '@/utils/enums';
+	
+	export default class ProjectPermissionLoader extends BasePermissionLoader implements PermissionLoaderInterface {
+	  protected projectRepository: ProjectRepositoryInterface;
+	  private data: object[] | null = null;
+	
+	  constructor(conn: Mongoose) {
+	    super();
+	    this.projectRepository = new ProjectRepository(conn);
+	    this.setPermissions({
+	      scope: 'project',
+	      urlsCanAccess: []
+	    });
+	  }
+	
+	  public async loadPermission(): Promise<void> {
+	    const filter: any = {
+	      'participants.userId': this.getUserId(),
+	      'participants.companyId': this.getCompanyId()
+	    };
+	
+	    if (this.projectId) {
+	      filter._id = this.getProjectId();
+	    }
+	
+	    const projects = await this.projectRepository.find(filter);
+	
+	    if (!projects) {
+	      throw new NotFoundException('Project not found');
+	    }
+	
+	    const arr: any[] = [];
+	    projects.forEach(async (project: any) => {
+	      arr.push(
+	        project.populate({
+	          path: 'participants',
+	          populate: {
+	            path: 'roleId',
+	            populate: {
+	              path: 'permissionIds',
+	              populate: {
+	                path: 'permissionId'
+	              }
+	            }
+	          }
+	        })
+	      );
+	    });
+	
+	    this.data = await Promise.all(arr);
+	  }
+	
+	  public async setProjectIdByKey(projectKey: string | null): Promise<void> {
+	    if (!projectKey) {
+	      return;
+	    }
+	
+	    const project = await this.projectRepository.findOne({ key: projectKey });
+	    if (!project) {
+	      throw new NotFoundException('Project not found');
+	    }
+	
+	    this.setProjectId(project.get('_id').valueOf());
+	  }
+	
+	  public setProjectId(projectId: string): void {
+	    this.projectId = projectId;
+	  }
+	
+	  enrich(): void {
+	    if (!this.data || !this.data.length) {
+	      return;
+	    }
+	
+	    let urls: object[] = [];
+	    this.data.forEach((roleItem: Record<string, any>) => {
+	      roleItem.participants.forEach((item: Record<string, any>) => {
+	        item.roleId.permissionIds.forEach((permission: any) => {
+	          const newUrls = [].concat(
+	            ...permission.permissionId.urls.map((itemPermissions: { url: string; method: string }) => {
+	              return {
+	                url: itemPermissions.url,
+	                method: itemPermissions.method,
+	                roleId: item.roleId._id,
+	                projectId: roleItem._id,
+	                projectKey: roleItem.key
+	              };
+	            })
+	          );
+	          urls = urls.concat(newUrls);
+	        });
+	      });
+	    });
+	
+	    this.setPermissions({
+	      scope: Scope.PROJECT,
+	      urlsCanAccess: urls
+	    });
+	  }
+	}
+
+```
+
+src/backend/services/permission/loader/company.permission.loader.ts```ts
+	import PermissionLoaderInterface from '@/backend/services/permission/loader/permission.loader.interface';
+	import { Mongoose } from 'mongoose';
+	import CompanyRepositoryInterface from '@/backend/repositories/interfaces/company.repository.interface';
+	import CompanyRepository from '@/backend/repositories/mongodb/company.repository';
+	import BasePermissionLoader from '@/backend/services/permission/loader/base.permission.loader';
+	import { Scope } from '@/utils/enums';
+	import NotFoundException from '@/backend/exceptions/notfound.exception';
+	
+	export default class CompanyPermissionLoader extends BasePermissionLoader implements PermissionLoaderInterface {
+	  protected companyRepository: CompanyRepositoryInterface;
+	  private data: object[] = [];
+	  constructor(conn: Mongoose) {
+	    super();
+	    this.companyRepository = new CompanyRepository(conn);
+	  }
+	
+	  public async setCompanyIdByKey(companyKey: string): Promise<void> {
+	    const company = await this.companyRepository.findOne({ key: companyKey });
+	
+	    if (!company) {
+	      throw new NotFoundException(`Company with key ${companyKey} not found`);
+	    }
+	
+	    this.setCompanyId(company.get('_id').valueOf());
+	  }
+	
+	  public setProjectId(projectId: string): void {
+	    throw new Error('Method should not be called');
+	  }
+	
+	  public getProjectId(): string {
+	    throw new Error('Method should not be called');
+	  }
+	
+	  public async loadPermission(): Promise<void> {
+	    if (!this.getUserId() || !this.getCompanyId()) {
+	      return;
+	    }
+	
+	    const company = await this.companyRepository.findOne({
+	      'members.userId': this.getUserId(),
+	      _id: this.getCompanyId()
+	    });
+	
+	    if (!company) {
+	      return;
+	    }
+	
+	    const companyRoles = await company.populate({
+	      path: 'members',
+	      populate: {
+	        path: 'roleId',
+	        populate: {
+	          path: 'permissionIds',
+	          populate: {
+	            path: 'permissionId'
+	          }
+	        }
+	      }
+	    });
+	
+	    // Set permissions
+	    this.data = companyRoles.get('members').map((role: any) => role.roleId);
+	  }
+	
+	  enrich(): void {
+	    const permissions: { scope: string; urlsCanAccess: object[] } = {
+	      scope: Scope.COMPANY,
+	      urlsCanAccess: []
+	    };
+	
+	    let urls: object[] = [];
+	
+	    this.data.forEach((item: Record<string, any>) => {
+	      item.permissionIds.forEach((permission: any) => {
+	        const newUrls = [].concat(
+	          ...permission.permissionId.urls.map((itemPermissions: { url: string; method: string }) => {
+	            return {
+	              url: itemPermissions.url,
+	              method: itemPermissions.method,
+	              roleId: item._id
+	            };
+	          })
+	        );
+	
+	        urls = urls.concat(newUrls);
+	      });
+	    });
+	
+	    permissions.urlsCanAccess = urls;
+	
+	    this.setPermissions(permissions);
+	  }
+	}
+
+```
+
+src/backend/services/permission/loader/user.permission.loader.ts```ts
+	import PermissionLoaderInterface from '@/backend/services/permission/loader/permission.loader.interface';
+	import NotFoundException from '@/backend/exceptions/notfound.exception';
+	import UserRepositoryInterface from '@/backend/repositories/interfaces/user.repository.interface';
+	import UserRepository from '@/backend/repositories/mongodb/user.repository';
+	import { Mongoose } from 'mongoose';
+	import BasePermissionLoader from '@/backend/services/permission/loader/base.permission.loader';
+	import { Scope } from '@/utils/enums';
+	
+	export default class UserPermissionLoader extends BasePermissionLoader implements PermissionLoaderInterface {
+	  protected userRepository: UserRepositoryInterface;
+	  private data: { _id: string | object; permissionIds: object[] } | null = null;
+	  constructor(conn: Mongoose) {
+	    super();
+	    this.userRepository = new UserRepository(conn);
+	
+	    this.setPermissions({
+	      scope: 'user',
+	      urlsCanAccess: []
+	    });
+	  }
+	
+	  public async loadPermission(): Promise<void> {
+	    const user = await this.userRepository.findOne({ _id: this.getUserId() });
+	    if (!user) {
+	      throw new NotFoundException('User not found');
+	    }
+	
+	    const userRoles = await user.populate({
+	      path: 'systemRole',
+	      populate: {
+	        path: 'permissionIds',
+	        populate: {
+	          path: 'permissionId'
+	        }
+	      }
+	    });
+	
+	    // Set permissions
+	    this.data = userRoles.get('systemRole');
+	  }
+	
+	  public setCompanyId(companyId: string) {
+	    throw new Error('Method should not be called');
+	  }
+	
+	  public getCompanyId(): string {
+	    throw new Error('Method should not be called');
+	  }
+	
+	  public setProjectId(projectId: string): void {
+	    throw new Error('Method should not be called');
+	  }
+	
+	  public getProjectId(): string {
+	    throw new Error('Method should not be called');
+	  }
+	
+	  enrich(): void {
+	    const permissions: { scope: string; urlsCanAccess: object[] } = {
+	      scope: Scope.SYSTEM,
+	      urlsCanAccess: []
+	    };
+	
+	    // check null data
+	    if (!this.data) {
+	      this.setPermissions(permissions);
+	      return;
+	    }
+	
+	    this.data.permissionIds.forEach((permission: any) => {
+	      // User only have one role for system
+	      permissions.urlsCanAccess.push(
+	        ...permission.permissionId.urls.map((itemPermissions: { url: string; method: string }) => {
+	          return {
+	            url: itemPermissions.url,
+	            method: itemPermissions.method,
+	            roleId: this.data?._id
+	          };
+	        })
+	      );
+	    });
+	    this.setPermissions(permissions);
+	  }
+	}
+
+```
+
+src/backend/services/permission/loader/base.permission.loader.ts```ts
+	export default abstract class BasePermissionLoader {
+	  protected companyId: string | null = null;
+	  protected userId: string | null = null;
+	  protected permissions: { scope: string; urlsCanAccess: object[] } = { scope: '', urlsCanAccess: [] };
+	  protected projectId: string | null = null;
+	
+	  abstract enrich(): void;
+	
+	  public setUserId(id: string): void {
+	    this.userId = id;
+	  }
+	
+	  public getUserId(): string | null {
+	    return this.userId;
+	  }
+	
+	  public async loadPermission(): Promise<void> {
+	    throw new Error('Method not implemented.');
+	  }
+	
+	  public setCompanyId(companyId: string): void {
+	    this.companyId = companyId;
+	  }
+	
+	  public async setCompanyIdByKey(companyKey: string): Promise<void> {
+	    throw new Error('Method must be implemented.');
+	  }
+	
+	  public async setProjectIdByKey(projectKey: string | null): Promise<void> {
+	    throw new Error('Method must be implemented.');
+	  }
+	
+	  public getCompanyId(): string {
+	    if (!this.companyId) {
+	      throw new Error('Company ID is required');
+	    }
+	
+	    return this.companyId;
+	  }
+	
+	  public setProjectId(projectId: string): void {
+	    this.projectId = projectId;
+	  }
+	
+	  public getProjectId(): string {
+	    if (!this.projectId) {
+	      throw new Error('Project ID is required');
+	    }
+	
+	    return this.projectId;
+	  }
+	
+	  public setPermissions(permissions: { scope: string; urlsCanAccess: object[] }): void {
+	    this.permissions = permissions;
+	  }
+	
+	  public getPermissions(): { scope: string; urlsCanAccess: object[] } {
+	    return this.collectPermissions();
+	  }
+	
+	  public collectPermissions(): any {
+	    this.enrich();
+	
+	    return this.permissions;
+	  }
+	}
+
+```
+
+src/backend/services/permission/loader/permission.loader.interface.ts```ts
+	export default interface PermissionLoaderInterface {
+	  loadPermission(): void;
 	}
 
 ```
@@ -3405,13 +4093,21 @@ src/backend/models/project.model.ts```ts
 	import DateUTC from '@/utils/datetime/date.custom';
 	import mongoose from 'mongoose';
 	import { Project as ProjectType } from '@/utils/dtos/project.dto';
+	import User from '@/backend/models/user.model';
+	import Company from '@/backend/models/company.model';
+	import Role from '@/backend/models/role.model';
 	
 	/* ProjectSchema will correspond to the project collection in the MongoDB database. */
 	const ProjectSchema: mongoose.Schema<ProjectType> = new mongoose.Schema(
 	  {
-	    projectName: {
+	    name: {
 	      type: String,
 	      required: true
+	    },
+	    key: {
+	      type: String,
+	      required: true,
+	      unique: true
 	    },
 	    address: {
 	      type: String,
@@ -3438,9 +4134,9 @@ src/backend/models/project.model.ts```ts
 	      required: true
 	    },
 	    creatorId: {
-	      type: mongoose.Schema.Types.ObjectId,
+	      type: String,
 	      required: true,
-	      ref: 'User'
+	      ref: User.modelName
 	    },
 	    currency: {
 	      type: String,
@@ -3509,6 +4205,60 @@ src/backend/models/project.model.ts```ts
 	      type: String,
 	      required: false,
 	      default: ''
+	    },
+	    participants: [
+	      {
+	        userId: {
+	          type: String,
+	          required: true,
+	          ref: User.modelName
+	        },
+	        companyId: {
+	          type: String,
+	          required: true,
+	          ref: Company.modelName
+	        },
+	        roleId: {
+	          type: String,
+	          required: true,
+	          ref: Role.modelName
+	        },
+	        inviteSource: {
+	          type: String,
+	          enum: ['company', 'external_email', 'internal_email'],
+	          required: true
+	        },
+	        inviteStatus: {
+	          type: String,
+	          enum: ['pending_signup', 'pending_accept', 'accepted', 'rejected'],
+	          required: true
+	        },
+	        inviteKey: {
+	          type: String,
+	          required: true,
+	          unique: true
+	        },
+	        inviteCreatedAt: {
+	          type: Date,
+	          required: false,
+	          default: new DateUTC()
+	        },
+	        inviteExpiration: {
+	          type: Date,
+	          required: false,
+	          default: new DateUTC()
+	        },
+	        inviteUpdatedAt: {
+	          type: Date,
+	          required: false,
+	          default: new DateUTC()
+	        }
+	      }
+	    ],
+	    status: {
+	      type: String,
+	      required: true,
+	      enum: ['active', 'inactive', 'completed', 'archived']
 	    }
 	  },
 	  { _id: true }
@@ -3652,6 +4402,7 @@ src/backend/models/invoice.model.ts```ts
 src/backend/models/user.model.ts```ts
 	import mongoose from 'mongoose';
 	import { User as UserType } from '@/utils/dtos/user.dto';
+	import Role from '@/backend/models/role.model';
 	
 	/* UserSchema will correspond to the user collection in the MongoDB database. */
 	export const UserSchema: mongoose.Schema<UserType> = new mongoose.Schema(
@@ -3740,6 +4491,11 @@ src/backend/models/user.model.ts```ts
 	    dateModify: {
 	      type: Date,
 	      required: true
+	    },
+	    systemRole: {
+	      type: String,
+	      required: true,
+	      ref: Role.modelName
 	    }
 	  },
 	  { _id: true }
@@ -3924,42 +4680,166 @@ src/backend/models/budget.model.ts```ts
 src/backend/models/role.model.ts```ts
 	import mongoose from 'mongoose';
 	import { Role as RoleType } from '@/utils/dtos/role.dto';
+	import Permission from '@/backend/models/permission.model';
 	
 	/* RoleSchema will correspond to the role collection in the MongoDB database. */
 	const RoleSchema: mongoose.Schema<RoleType> = new mongoose.Schema(
 	  {
-	    dateCreate: {
-	      type: Date
-	    },
-	    dateModify: {
-	      type: Date
-	    },
-	    individualEmail: {
-	      type: String
-	    },
-	    individualId: {
-	      type: String
-	    },
-	    parentId: {
-	      type: String
-	    },
-	    roleLevelEnum: {
-	      type: Number,
-	      required: true
-	    },
-	    targetId: {
+	    name: {
 	      type: String,
 	      required: true
 	    },
-	    targetTypeEnum: {
-	      type: Number,
+	    key: {
+	      type: String,
+	      required: true,
+	      unique: true
+	    },
+	    type: {
+	      type: String,
+	      enum: ['Builder', 'Contractor', 'Super Admin', 'Admin', 'Generic'],
 	      required: true
+	    },
+	    permissionIds: [
+	      {
+	        permissionId: {
+	          type: String,
+	          ref: Permission.modelName,
+	          required: true
+	        }
+	      }
+	    ],
+	    dateCreate: {
+	      type: Date,
+	      default: new Date(),
+	      required: true
+	    },
+	    dateModify: {
+	      type: Date,
+	      required: false
 	    }
 	  },
 	  { _id: true }
 	);
 	
-	export default mongoose.models.Role || mongoose.model('Role', RoleSchema);
+	export default mongoose.models.Role || mongoose.model<RoleType>('Role', RoleSchema);
+
+```
+
+src/backend/models/company.model.ts```ts
+	import mongoose from 'mongoose';
+	import { Company as CompanyType } from '@/utils/dtos/company.dto';
+	import Role from '@/backend/models/role.model';
+	import User from '@/backend/models/user.model';
+	
+	/* RoleSchema will correspond to the role collection in the MongoDB database. */
+	const CompanySchema: mongoose.Schema<CompanyType> = new mongoose.Schema(
+	  {
+	    name: {
+	      type: String,
+	      required: true
+	    },
+	    key: {
+	      type: String,
+	      required: true,
+	      unique: true
+	    },
+	    type: {
+	      type: String,
+	      required: true
+	    },
+	    imageUrl: {
+	      type: String,
+	      required: false
+	    },
+	    projectIds: [
+	      {
+	        projectId: {
+	          type: String,
+	          required: false
+	        }
+	      }
+	    ],
+	    members: [
+	      {
+	        roleId: {
+	          type: String,
+	          required: true,
+	          ref: Role.modelName
+	        },
+	        userId: {
+	          type: String,
+	          required: false,
+	          ref: User.modelName
+	        }
+	      }
+	    ],
+	    dateCreate: {
+	      type: Date,
+	      required: false
+	    },
+	    dateModify: {
+	      type: Date,
+	      required: false
+	    }
+	  },
+	  { _id: true }
+	);
+	
+	export default mongoose.models.Company || mongoose.model<CompanyType>('Company', CompanySchema);
+
+```
+
+src/backend/models/permission.model.ts```ts
+	import mongoose from 'mongoose';
+	import { Permission as PermissionType } from '@/utils/dtos/permission.dto';
+	
+	/* RoleSchema will correspond to the role collection in the MongoDB database. */
+	const PermissionSchema: mongoose.Schema<PermissionType> = new mongoose.Schema(
+	  {
+	    name: {
+	      type: String,
+	      required: true
+	    },
+	    key: {
+	      type: String,
+	      required: true,
+	      unique: true
+	    },
+	    description: {
+	      type: String,
+	      required: false
+	    },
+	    urls: [
+	      {
+	        url: {
+	          type: String,
+	          required: true
+	        },
+	        method: {
+	          type: String,
+	          required: true
+	        }
+	      }
+	    ],
+	    roleIds: [
+	      {
+	        roleId: {
+	          type: String,
+	          required: false
+	        }
+	      }
+	    ],
+	    dateCreate: {
+	      type: Date
+	    },
+	    dateModify: {
+	      type: Date
+	    }
+	  },
+	  { _id: true }
+	);
+	
+	export default mongoose.models.Permission || mongoose.model<PermissionType>('Permission', PermissionSchema);
 
 ```
 
@@ -4176,6 +5056,24 @@ src/backend/structs/base.struct.ts```ts
 	
 	      return b[key] - a[key];
 	    });
+	  }
+	}
+
+```
+
+src/backend/repositories/mongodb/permission.repository.ts```ts
+	import mongoose, { Mongoose } from 'mongoose';
+	import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
+	import PermissionRepositoryInterface from '@/backend/repositories/interfaces/permission.repository.interface';
+	import Permission from '@/backend/models/permission.model';
+	
+	export default class PermissionRepository extends BaseRepositoryAbstract implements PermissionRepositoryInterface {
+	  constructor(connection: Mongoose) {
+	    super(connection);
+	  }
+	
+	  getModel(): mongoose.Model<mongoose.Document> {
+	    return Permission;
 	  }
 	}
 
@@ -4403,6 +5301,24 @@ src/backend/repositories/mongodb/contractor.repository.ts```ts
 
 ```
 
+src/backend/repositories/mongodb/company.repository.ts```ts
+	import mongoose, { Mongoose } from 'mongoose';
+	import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
+	import Company from '@/backend/models/company.model';
+	import CompanyRepositoryInterface from '@/backend/repositories/interfaces/company.repository.interface';
+	
+	export default class CompanyRepository extends BaseRepositoryAbstract implements CompanyRepositoryInterface {
+	  constructor(connection: Mongoose) {
+	    super(connection);
+	  }
+	
+	  getModel(): mongoose.Model<mongoose.Document> {
+	    return Company;
+	  }
+	}
+
+```
+
 src/backend/repositories/mongodb/base.repository.abstract.ts```ts
 	/**
 	 * @license
@@ -4584,6 +5500,13 @@ src/backend/repositories/interfaces/budget.repository.interface.ts```ts
 
 ```
 
+src/backend/repositories/interfaces/permission.repository.interface.ts```ts
+	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
+	
+	export default interface PermissionRepositoryInterface extends BaseRepositoryInterface {}
+
+```
+
 src/backend/repositories/interfaces/user.repository.interface.ts```ts
 	import UserDto from '@/utils/dtos/user.dto';
 	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
@@ -4669,6 +5592,13 @@ src/backend/repositories/interfaces/project.repository.interface.ts```ts
 
 ```
 
+src/backend/repositories/interfaces/company.repository.interface.ts```ts
+	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
+	
+	export default interface CompanyRepositoryInterface extends BaseRepositoryInterface {}
+
+```
+
 src/backend/repositories/interfaces/role.repository.interface.ts```ts
 	import { Role as RoleType } from '@/utils/dtos/role.dto';
 	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
@@ -4683,11 +5613,9 @@ src/backend/repositories/interfaces/role.repository.interface.ts```ts
 
 src/backend/middlewares/unauth.middleware.ts```ts
 	import { NextFetchEvent, NextMiddleware, NextRequest, NextResponse } from 'next/server';
-	import { MiddlewareFactory } from '@/backend/middlewares/type/middleware.type';
+	import { MiddlewareFactory, specialPublicPagesDefinition } from '@/backend/middlewares/type/middleware.type';
 	import { getCookie } from '@/utils/helper';
 	import routes from '@/routes';
-	
-	const routesList = ['/register', '/login'];
 	
 	export const withUnAuth: MiddlewareFactory = (next: NextMiddleware) => {
 	  return async (request: NextRequest, _next: NextFetchEvent) => {
@@ -4698,7 +5626,7 @@ src/backend/middlewares/unauth.middleware.ts```ts
 	
 	    const token = getCookie(cookieName, request.headers.get('cookie'));
 	
-	    if (token && routesList.some((path) => request.nextUrl.pathname.startsWith(path))) {
+	    if (token && specialPublicPagesDefinition.some((path) => request.nextUrl.pathname.startsWith(path))) {
 	      return NextResponse.redirect(new URL(routes.dashboard.getUrl(), request.url));
 	    }
 	
@@ -4727,16 +5655,14 @@ src/backend/middlewares/stack.middleware.ts```ts
 
 src/backend/middlewares/auth.middleware.ts```ts
 	import { NextFetchEvent, NextMiddleware, NextRequest, NextResponse } from 'next/server';
-	import { MiddlewareFactory } from '@/backend/middlewares/type/middleware.type';
+	import { MiddlewareFactory, privatePagesDefinition } from '@/backend/middlewares/type/middleware.type';
 	import { decode } from 'next-auth/jwt';
 	import routes from '@/routes';
 	import { getCookie } from '@/utils/helper';
 	
-	export const routeList = [routes.dashboard.getUrl(), routes.myAccount.getUrl(), '/contractor', '/project', '/builder'];
-	
 	export const withAuth: MiddlewareFactory = (next: NextMiddleware) => {
 	  return async (request: NextRequest, _next: NextFetchEvent) => {
-	    if (!routeList.some((path) => request.nextUrl.pathname.startsWith(path))) {
+	    if (!privatePagesDefinition.some((path) => request.nextUrl.pathname.startsWith(path))) {
 	      return next(request, _next);
 	    }
 	
@@ -4793,12 +5719,12 @@ src/backend/middlewares/jwt.middleware.ts```ts
 	  }
 	
 	  return apiGroup === PUBLIC_GROUP;
-	}
+	};
 	
 	export const withJwt: MiddlewareFactory = (next: NextMiddleware) => {
 	  return async (request: NextRequest, _next: NextFetchEvent) => {
-	    const isPublicApi = specialPublicApisDefinition.some((path) => request.nextUrl.pathname.startsWith(path))
-	      || isPublicGroupApi(request.nextUrl.pathname);
+	    const isPublicApi =
+	      specialPublicApisDefinition.some((path) => request.nextUrl.pathname.startsWith(path)) || isPublicGroupApi(request.nextUrl.pathname);
 	
 	    // Skip if the request path is not starting with /api (not an API request)
 	    // If the API is public, we don't need to check for JWT
@@ -4828,8 +5754,110 @@ src/backend/middlewares/jwt.middleware.ts```ts
 
 ```
 
+src/backend/middlewares/authorize.middleware.ts```ts
+	import { NextFetchEvent, NextMiddleware, NextRequest, NextResponse } from 'next/server';
+	import { MiddlewareFactory } from '@/backend/middlewares/type/middleware.type';
+	import { headers } from 'next/headers';
+	import { decode } from 'next-auth/jwt';
+	import PermissionHandler from '@/utils/permission/permission.handler';
+	import { Scope } from '@/utils/enums';
+	
+	const PRIVATE_GROUP = 'private';
+	
+	const isPrivateGroupApi = (pathname: string) => {
+	  // Assuming API routes are structured like /api/groupName/endpoint
+	  const pathSegments = pathname.split('/');
+	  let apiGroup = '';
+	
+	  if (pathSegments[1] === 'api' && pathSegments.length > 2) {
+	    apiGroup = pathSegments[2]; // This should be the API group part of the path
+	  }
+	
+	  return apiGroup === PRIVATE_GROUP;
+	};
+	
+	export const withAuthorize: MiddlewareFactory = (next: NextMiddleware) => {
+	  return async (request: NextRequest, _next: NextFetchEvent) => {
+	    // Skip if the request path is not private group API
+	    if (!isPrivateGroupApi(request.nextUrl.pathname)) {
+	      return next(request, _next);
+	    }
+	
+	    const headersList = headers();
+	    const token = headersList.get('authorization')?.split(' ');
+	
+	    // Reject if the token is not provided or invalid
+	    if (!token || token.length !== 2 || token[0].toLowerCase() !== 'bearer') {
+	      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+	    }
+	
+	    try {
+	      const data = await decode({
+	        token: token[1] as string,
+	        secret: process.env.NEXTAUTH_SECRET as string
+	      });
+	
+	      if (!data || !data.id) {
+	        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+	      }
+	
+	      const apiFetchRoleEndpoint = `/api/private/user/${data.id}/get-role-permission`;
+	      // Skip if the request is to get role permission
+	      if (request.nextUrl.pathname === apiFetchRoleEndpoint) {
+	        return next(request, _next);
+	      }
+	
+	      const urlSearchParams = new URLSearchParams(request.nextUrl.search);
+	      const companyKey: string | null = urlSearchParams.get('companyKey');
+	      const projectKey: string | null = urlSearchParams.get('projectKey');
+	
+	      const response = await fetch(`${request.nextUrl.origin}${apiFetchRoleEndpoint}`, {
+	        method: 'POST',
+	        headers: {
+	          Authorization: `Bearer ${token[1]}`
+	        },
+	        body: JSON.stringify({ companyKey, projectKey })
+	      });
+	      const rolePermissionData = (await response.json()) as any;
+	
+	      if (!rolePermissionData) {
+	        return NextResponse.json({ error: 'Role permission not found' }, { status: 401 });
+	      }
+	
+	      let scope = Scope.SYSTEM;
+	
+	      if (companyKey && !projectKey) {
+	        scope = Scope.COMPANY;
+	      }
+	
+	      if (companyKey && projectKey) {
+	        scope = Scope.PROJECT;
+	      }
+	
+	      const isAllow = new PermissionHandler().handleRequestPermission(
+	        request.nextUrl.pathname,
+	        request.method,
+	        rolePermissionData.data,
+	        scope,
+	        projectKey
+	      );
+	
+	      if (!isAllow) {
+	        return NextResponse.json({ error: 'Resource is forbidden' }, { status: 403 });
+	      }
+	    } catch (error) {
+	      return NextResponse.json({ error: 'Token expired' }, { status: 401 });
+	    }
+	
+	    return next(request, _next);
+	  };
+	};
+
+```
+
 src/backend/middlewares/type/middleware.type.ts```ts
 	import { NextMiddleware } from 'next/server';
+	import routes from '@/routes';
 	
 	export type MiddlewareFactory = (middleware: NextMiddleware) => NextMiddleware;
 	
@@ -4840,6 +5868,23 @@ src/backend/middlewares/type/middleware.type.ts```ts
 	  '/api/auth/signin',
 	  '/api/auth/signout',
 	  '/api/auth/providers'
+	];
+	
+	export const privatePagesDefinition = [
+	  routes.dashboard.getUrl(),
+	  routes.myAccount.getUrl(),
+	  routes.contractor.getUrl(),
+	  routes.projects.getUrl(),
+	  routes.apiDocs.getUrl(),
+	  routes.user.getUrl()
+	];
+	
+	export const specialPublicPagesDefinition = [
+	  routes.login.getUrl(),
+	  routes.register.getUrl(),
+	  routes.verifyEmail.getUrl(),
+	  routes.resetPassword.getUrl(),
+	  routes.err500.getUrl()
 	];
 
 ```
@@ -17220,7 +18265,7 @@ src/app/api/private/invoice/upsert/route.ts```ts
 
 ```
 
-src/app/api/private/budget/route.ts```ts
+src/app/api/private/budget/create/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import AuthService from '@/backend/services/auth.service';
@@ -17229,10 +18274,6 @@ src/app/api/private/budget/route.ts```ts
 	import { Budget } from '@/utils/dtos/budget.dto';
 	import mongoose from 'mongoose';
 	import NotFoundException from '@/backend/exceptions/notfound.exception';
-	import ProjectService from '@/backend/services/project.service';
-	import ResponseStruct from '@/backend/structs/response.struct';
-	import { getListingQuery } from '../listing';
-	import ObjectIdValidator from '@/backend/validator/objectId.validator';
 	import Logger from '@/utils/logger';
 	
 	export async function POST(request: NextRequest) {
@@ -17274,6 +18315,59 @@ src/app/api/private/budget/route.ts```ts
 	    return NextResponse.json({ errors: [error.message] }, { status: 400 });
 	  }
 	}
+
+```
+
+src/app/api/private/budget/delete/[id]/route.ts```ts
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import { NextRequest, NextResponse } from 'next/server';
+	import ObjectIdValidator from '@/backend/validator/objectId.validator';
+	import BudgetService from '@/backend/services/budget.service';
+	import Logger from '@/utils/logger';
+	
+	export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+	  const { id } = params;
+	
+	  try {
+	    const objectIdValidator = new ObjectIdValidator({ id });
+	    await objectIdValidator.validate();
+	
+	    if (objectIdValidator.getErrors().length > 0) {
+	      return NextResponse.json({ errors: ['Invalid budget id'] }, { status: 400 });
+	    }
+	
+	    const conn = await MongoConnect();
+	    const budgetService = new BudgetService(conn);
+	
+	    const budget = await budgetService.getBudget(id);
+	    if (!budget) {
+	      return NextResponse.json({ errors: ['Budget not found'] }, { status: 400 });
+	    }
+	
+	    await budgetService.deleteBudget(id);
+	
+	    return NextResponse.json({ success: true }, { status: 200 });
+	  } catch (error: any) {
+	    Logger.error(error.message, {
+	      status: 500,
+	      stack: error.stack
+	    });
+	    return NextResponse.json({ errors: [error?.message] }, { status: 400 });
+	  }
+	}
+
+```
+
+src/app/api/private/budget/list/route.ts```ts
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import { NextRequest, NextResponse } from 'next/server';
+	import BudgetService from '@/backend/services/budget.service';
+	import NotFoundException from '@/backend/exceptions/notfound.exception';
+	import ProjectService from '@/backend/services/project.service';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import { getListingQuery } from '../../listing';
+	import ObjectIdValidator from '@/backend/validator/objectId.validator';
+	import Logger from '@/utils/logger';
 	
 	export async function GET(request: NextRequest) {
 	  const responseStruct = new ResponseStruct(true);
@@ -17316,46 +18410,6 @@ src/app/api/private/budget/route.ts```ts
 	    });
 	    responseStruct.pushError(error.message);
 	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-	  }
-	}
-
-```
-
-src/app/api/private/budget/[id]/route.ts```ts
-	import MongoConnect from '@/backend/connection/mongo.connection';
-	import { NextRequest, NextResponse } from 'next/server';
-	import ObjectIdValidator from '@/backend/validator/objectId.validator';
-	import BudgetService from '@/backend/services/budget.service';
-	import Logger from '@/utils/logger';
-	
-	export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
-	  const { id } = params;
-	
-	  try {
-	    const objectIdValidator = new ObjectIdValidator({ id });
-	    await objectIdValidator.validate();
-	
-	    if (objectIdValidator.getErrors().length > 0) {
-	      return NextResponse.json({ errors: ['Invalid budget id'] }, { status: 400 });
-	    }
-	
-	    const conn = await MongoConnect();
-	    const budgetService = new BudgetService(conn);
-	
-	    const budget = await budgetService.getBudget(id);
-	    if (!budget) {
-	      return NextResponse.json({ errors: ['Budget not found'] }, { status: 400 });
-	    }
-	
-	    await budgetService.deleteBudget(id);
-	
-	    return NextResponse.json({ success: true }, { status: 200 });
-	  } catch (error: any) {
-	    Logger.error(error.message, {
-	      status: 500,
-	      stack: error.stack
-	    });
-	    return NextResponse.json({ errors: [error?.message] }, { status: 400 });
 	  }
 	}
 
@@ -17591,15 +18645,13 @@ src/app/api/private/file/upload/route.ts```ts
 
 ```
 
-src/app/api/private/project/route.ts```ts
+src/app/api/private/project/create/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import AuthService from '@/backend/services/auth.service';
 	import { parsePayloadProjectToCreateData } from '@/utils/helper';
-	import ResponseStruct from '@/backend/structs/response.struct';
 	import ProjectService from '@/backend/services/project.service';
 	import ProjectValidator from '@/backend/validator/project.validator';
-	import { getListingQuery } from '../listing';
 	
 	export async function POST(request: NextRequest) {
 	  const formData = await request.formData();
@@ -17626,198 +18678,15 @@ src/app/api/private/project/route.ts```ts
 	    return NextResponse.json({ errors: [error.message] }, { status: 400 });
 	  }
 	}
-	export async function GET(request: NextRequest) {
-	  const conn = await MongoConnect();
-	  const responseStruct = new ResponseStruct(true);
-	
-	  try {
-	    const { limit: limitValue, page: pageValue, order: orderValue, search } = getListingQuery(request);
-	    const projectService = new ProjectService(conn);
-	
-	    const data = await projectService.listProjects(limitValue, pageValue, orderValue, search);
-	    responseStruct.setData({
-	      meta: data.pagination,
-	      data: data.collection
-	    });
-	    responseStruct.setStatus(200);
-	  } catch (error: any) {
-	    responseStruct.pushError(error.message);
-	    responseStruct.setStatus(500);
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
-	  }
-	  return NextResponse.json(responseStruct.getResponse(), { status: 200 });
-	}
 
 ```
 
-src/app/api/private/project/list/route.ts```ts
-	import { NextResponse } from 'next/server';
-	
-	export async function GET() {
-	  const projects = [
-	    {
-	      id: 'P001',
-	      projectName: "Stargazer's Nook",
-	      startDate: '2024-02-01T14:42:43.530+00:00',
-	      address: 'Joshua Tree, CA 92252',
-	      amount: 18000,
-	      currentClaimNumber: 90000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P002',
-	      projectName: 'Sunlit Sanctuary',
-	      startDate: '2024-01-10T14:42:43.530+00:00',
-	      address: '123 Main St, Anytown, CA 90210',
-	      amount: 500000,
-	      currentClaimNumber: 250000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P003',
-	      projectName: 'The Zen Garden',
-	      startDate: '2024-01-15T14:42:43.530+00:00',
-	      address: 'Zenbrook, CA 90210',
-	      amount: 250000,
-	      currentClaimNumber: 125000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P004',
-	      projectName: "Writer's Retreat",
-	      startDate: '2024-01-28T14:42:43.530+00:00',
-	      address: 'Carmel-by-the-Sea, CA 93923',
-	      amount: 320000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P005',
-	      projectName: 'The Music Room',
-	      startDate: '2024-01-20T14:42:43.530+00:00',
-	      address: 'New Orleans, LA 70113',
-	      amount: 220000,
-	      currentClaimNumber: 65000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P006',
-	      projectName: 'The Game Room',
-	      startDate: '2024-01-10T14:42:43.530+00:00',
-	      address: '123 Main St, Anytown, CA 90210',
-	      amount: 500000,
-	      currentClaimNumber: 250000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P007',
-	      projectName: "Writer's Retreat",
-	      startDate: '2024-01-28T14:42:43.530+00:00',
-	      address: 'Carmel-by-the-Sea, CA 93923',
-	      amount: 320000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P008',
-	      projectName: 'Hilltop Hideaway',
-	      startDate: '2024-01-10T14:42:43.530+00:00',
-	      address: 'Palm Springs, CA 92262',
-	      amount: 500000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P009',
-	      projectName: 'Project Listing',
-	      startDate: '2024-01-10T14:42:43.530+00:00',
-	      address: 'Palm Springs, CA 92262',
-	      amount: 500000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P010',
-	      projectName: 'The Music Room',
-	      startDate: '2024-01-20T14:42:43.530+00:00',
-	      address: 'Palm Springs, CA 92262',
-	      amount: 500000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    },
-	    {
-	      id: 'P011',
-	      projectName: 'The Game Room',
-	      startDate: '2024-01-20T14:42:43.530+00:00',
-	      address: 'Palm Springs, CA 92262',
-	      amount: 500000,
-	      currentClaimNumber: 160000,
-	      imageUrl: ''
-	    }
-	  ];
-	
-	  return NextResponse.json({ projects, totalItems: projects.length }, { status: 200 });
-	}
-
-```
-
-src/app/api/private/project/[id]/route.ts```ts
+src/app/api/private/project/delete/[id]/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
-	import { parsePayloadProjectToCreateData } from '@/utils/helper';
 	import ObjectIdValidator from '@/backend/validator/objectId.validator';
 	import StorageFactory from '@/backend/services/storage/storage.factory';
 	import ProjectService from '@/backend/services/project.service';
-	import ProjectValidator from '@/backend/validator/project.validator';
-	
-	export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
-	  const { id } = params;
-	  if (!id) {
-	    return NextResponse.json({ errors: ['Project id not found'] }, { status: 400 });
-	  }
-	  const conn = await MongoConnect();
-	  const projectService = new ProjectService(conn);
-	  try {
-	    const project = await projectService.getProject(id);
-	    if (!project) {
-	      return NextResponse.json({ errors: ['Project not found'] }, { status: 400 });
-	    }
-	
-	    return NextResponse.json({ success: true, project }, { status: 200 });
-	  } catch (error) {
-	    return NextResponse.json({ errors: [error] }, { status: 400 });
-	  }
-	}
-	
-	export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-	  const { id } = params;
-	  const objectIdValidator = new ObjectIdValidator({ id });
-	  await objectIdValidator.validate();
-	
-	  if (objectIdValidator.getErrors().length > 0) {
-	    return NextResponse.json({ errors: ['Invalid project id'] }, { status: 400 });
-	  }
-	  const formData = await request.formData();
-	
-	  const conn = await MongoConnect();
-	  const projectService = new ProjectService(conn);
-	
-	  try {
-	    const data = parsePayloadProjectToCreateData(formData);
-	    const projectValidator = new ProjectValidator(data);
-	    await projectValidator.validate();
-	
-	    if (projectValidator.getErrors().length > 0) {
-	      return NextResponse.json({ errors: projectValidator.getErrors() }, { status: 400 });
-	    }
-	
-	    await projectService.updateProject(id, formData);
-	    return NextResponse.json({ success: true }, { status: 200 });
-	  } catch (error) {
-	    return NextResponse.json({ errors: [error] }, { status: 400 });
-	  }
-	}
 	
 	export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
 	  const { id } = params;
@@ -17846,6 +18715,64 @@ src/app/api/private/project/[id]/route.ts```ts
 	      await storageFactory.getStorage().removeFile(imageUrl);
 	    }
 	    return NextResponse.json({ success: true }, { status: 200 });
+	  } catch (error) {
+	    return NextResponse.json({ errors: [error] }, { status: 400 });
+	  }
+	}
+
+```
+
+src/app/api/private/project/list/route.ts```ts
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import { NextRequest, NextResponse } from 'next/server';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import ProjectService from '@/backend/services/project.service';
+	import { getListingQuery } from '../../listing';
+	
+	export async function GET(request: NextRequest) {
+	  const conn = await MongoConnect();
+	  const responseStruct = new ResponseStruct(true);
+	
+	  try {
+	    const { limit: limitValue, page: pageValue, order: orderValue, search } = getListingQuery(request);
+	    const projectService = new ProjectService(conn);
+	
+	    const data = await projectService.listProjects(limitValue, pageValue, orderValue, search);
+	    responseStruct.setData({
+	      meta: data.pagination,
+	      data: data.collection
+	    });
+	    responseStruct.setStatus(200);
+	  } catch (error: any) {
+	    responseStruct.pushError(error.message);
+	    responseStruct.setStatus(500);
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: 500 });
+	  }
+	  return NextResponse.json(responseStruct.getResponse(), { status: 200 });
+	}
+
+```
+
+src/app/api/private/project/[id]/route.ts```ts
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import { NextRequest, NextResponse } from 'next/server';
+	import ProjectService from '@/backend/services/project.service';
+	
+	export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
+	  const { id } = params;
+	  if (!id) {
+	    return NextResponse.json({ errors: ['Project id not found'] }, { status: 400 });
+	  }
+	  const conn = await MongoConnect();
+	  const projectService = new ProjectService(conn);
+	  try {
+	    const project = await projectService.getProject(id);
+	    if (!project) {
+	      return NextResponse.json({ errors: ['Project not found'] }, { status: 400 });
+	    }
+	
+	    return NextResponse.json({ success: true, project }, { status: 200 });
 	  } catch (error) {
 	    return NextResponse.json({ errors: [error] }, { status: 400 });
 	  }
@@ -18165,6 +19092,45 @@ src/app/api/private/project/[id]/roles/route.ts```ts
 
 ```
 
+src/app/api/private/project/update/[id]/route.ts```ts
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import { NextRequest, NextResponse } from 'next/server';
+	import ObjectIdValidator from '@/backend/validator/objectId.validator';
+	import ProjectService from '@/backend/services/project.service';
+	import { parsePayloadProjectToCreateData } from '@/utils/helper';
+	import ProjectValidator from '@/backend/validator/project.validator';
+	
+	export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+	  const { id } = params;
+	  const objectIdValidator = new ObjectIdValidator({ id });
+	  await objectIdValidator.validate();
+	
+	  if (objectIdValidator.getErrors().length > 0) {
+	    return NextResponse.json({ errors: ['Invalid project id'] }, { status: 400 });
+	  }
+	  const formData = await request.formData();
+	
+	  const conn = await MongoConnect();
+	  const projectService = new ProjectService(conn);
+	
+	  try {
+	    const data = parsePayloadProjectToCreateData(formData);
+	    const projectValidator = new ProjectValidator(data);
+	    await projectValidator.validate();
+	
+	    if (projectValidator.getErrors().length > 0) {
+	      return NextResponse.json({ errors: projectValidator.getErrors() }, { status: 400 });
+	    }
+	
+	    await projectService.updateProject(id, formData);
+	    return NextResponse.json({ success: true }, { status: 200 });
+	  } catch (error) {
+	    return NextResponse.json({ errors: [error] }, { status: 400 });
+	  }
+	}
+
+```
+
 src/app/api/private/user/create/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
@@ -18185,11 +19151,141 @@ src/app/api/private/user/create/route.ts```ts
 
 src/app/api/private/user/delete/[id]/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import UserRepository from '@/backend/repositories/mongodb/user.repository';
+	import UserService from '@/backend/services/user.service';
+	import { Actions } from '@/utils/enums';
+	import NotFoundException from '@/backend/exceptions/notfound.exception';
+	import { headers } from 'next/headers';
+	import { decode, JWT } from 'next-auth/jwt';
+	import Logger from '@/utils/logger';
 	
-	export async function DELETE(request: NextRequest, { params }: { params: { id: string } }) {
-	  const { id } = params;
+	export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+	  const token = headers().get('authorization')?.split(' ')[1];
+	  const dataDecode: JWT | null = await decode({
+	    token: token as string,
+	    secret: (process.env.NEXTAUTH_SECRET as string) || ''
+	  });
+	  const responseStruct = new ResponseStruct(true);
 	
-	  return NextResponse.json({ success: { id } }, { status: 200 });
+	  if (!params.id) {
+	    responseStruct.setStatus(400);
+	    responseStruct.pushError('User id is required.');
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
+	  }
+	
+	  if (dataDecode && dataDecode.id === params.id) {
+	    responseStruct.setStatus(400);
+	    responseStruct.pushError('You cannot delete yourself.');
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
+	  }
+	
+	  const conn = await MongoConnect();
+	  const userRepository = new UserRepository(conn);
+	  const userService = new UserService(userRepository);
+	  try {
+	    await userService.singleUpdateOrDelete(params.id, Actions.DELETE);
+	
+	    responseStruct.setStatus(200);
+	  } catch (error: NotFoundException | any) {
+	    responseStruct.setStatus(500);
+	
+	    if (error instanceof NotFoundException) {
+	      responseStruct.setStatus(404);
+	    }
+	
+	    responseStruct.pushError(error.message);
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	  }
+	
+	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	}
+
+```
+
+src/app/api/private/user/status/[id]/route.ts```ts
+	import { NextRequest, NextResponse } from 'next/server';
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import UserRepository from '@/backend/repositories/mongodb/user.repository';
+	import UserDto from '@/utils/dtos/user.dto';
+	import NotFoundException from '@/backend/exceptions/notfound.exception';
+	import { headers } from 'next/headers';
+	import { decode, JWT } from 'next-auth/jwt';
+	import { Actions, UserStatus } from '@/utils/enums';
+	import DateCustom from '@/utils/datetime/date.custom';
+	import Logger from '@/utils/logger';
+	
+	export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
+	  const token = headers().get('authorization')?.split(' ')[1];
+	  const dataDecode: JWT | null = await decode({
+	    token: token as string,
+	    secret: (process.env.NEXTAUTH_SECRET as string) || ''
+	  });
+	
+	  const data: { status: Actions } = await request.json();
+	  const responseStruct = new ResponseStruct(true);
+	
+	  if (!params.id) {
+	    responseStruct.setStatus(400);
+	    responseStruct.pushError('User id is required.');
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
+	  }
+	
+	  if (dataDecode && dataDecode.id === params.id) {
+	    responseStruct.setStatus(400);
+	    responseStruct.pushError('You cannot update yourself.');
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
+	  }
+	
+	  if (data.status !== Actions.ACTIVATE && data.status !== Actions.DEACTIVATE) {
+	    responseStruct.setStatus(400);
+	    responseStruct.pushError('Allowed status are activate or deactivate.');
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
+	  }
+	
+	  const conn = await MongoConnect();
+	  const userRepository = new UserRepository(conn);
+	  try {
+	    const user: UserDto = await userRepository.findUserId(params.id);
+	
+	    if (!user) {
+	      throw new NotFoundException('User not found.');
+	    }
+	
+	    await userRepository.update(params.id, {
+	      status: data.status === Actions.ACTIVATE ? UserStatus.ACTIVE : UserStatus.INACTIVE,
+	      dateModify: new DateCustom(),
+	      failedLoginAttempts: data.status === Actions.ACTIVATE ? 0 : user.failedLoginAttempts
+	    });
+	
+	    responseStruct.setStatus(200);
+	  } catch (error: any) {
+	    responseStruct.setStatus(500);
+	
+	    if (error instanceof NotFoundException) {
+	      responseStruct.setStatus(404);
+	    }
+	
+	    responseStruct.pushError(error.message);
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	  }
+	
+	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
 	}
 
 ```
@@ -18247,6 +19343,67 @@ src/app/api/private/user/bulk-control/route.ts```ts
 	    if (error instanceof IdsNotFoundException) {
 	      responseStruct.setStatus(400);
 	    }
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	  }
+	
+	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	}
+
+```
+
+src/app/api/private/user/archive/[id]/route.ts```ts
+	import { NextRequest, NextResponse } from 'next/server';
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import UserRepository from '@/backend/repositories/mongodb/user.repository';
+	import UserService from '@/backend/services/user.service';
+	import { Actions } from '@/utils/enums';
+	import NotFoundException from '@/backend/exceptions/notfound.exception';
+	import { headers } from 'next/headers';
+	import { decode, JWT } from 'next-auth/jwt';
+	import Logger from '@/utils/logger';
+	
+	export async function PATCH(_: NextRequest, { params }: { params: { id: string } }) {
+	  const token = headers().get('authorization')?.split(' ')[1];
+	  const dataDecode: JWT | null = await decode({
+	    token: token as string,
+	    secret: (process.env.NEXTAUTH_SECRET as string) || ''
+	  });
+	  const responseStruct = new ResponseStruct(true);
+	
+	  if (!params.id) {
+	    responseStruct.setStatus(400);
+	    responseStruct.pushError('User id is required.');
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
+	  }
+	
+	  if (dataDecode && dataDecode.id === params.id) {
+	    responseStruct.setStatus(400);
+	    responseStruct.pushError('You cannot lock yourself.');
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
+	  }
+	
+	  const conn = await MongoConnect();
+	  const userRepository = new UserRepository(conn);
+	  const userService = new UserService(userRepository);
+	  try {
+	    await userService.singleUpdateOrDelete(params.id, Actions.ARCHIVE);
+	
+	    responseStruct.setStatus(200);
+	  } catch (error: NotFoundException | any) {
+	    responseStruct.setStatus(500);
+	
+	    if (error instanceof NotFoundException) {
+	      responseStruct.setStatus(404);
+	    }
+	
+	    responseStruct.pushError(error.message);
 	
 	    Logger.error(error.message, {
 	      status: responseStruct.getValue('status'),
@@ -18363,135 +19520,39 @@ src/app/api/private/user/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/user/[id]/delete/route.ts```ts
+src/app/api/private/user/[id]/get-role-permission/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ResponseStruct from '@/backend/structs/response.struct';
 	import UserRepository from '@/backend/repositories/mongodb/user.repository';
-	import UserService from '@/backend/services/user.service';
-	import { Actions } from '@/utils/enums';
-	import NotFoundException from '@/backend/exceptions/notfound.exception';
-	import { headers } from 'next/headers';
-	import { decode, JWT } from 'next-auth/jwt';
 	import Logger from '@/utils/logger';
+	import AuthService from '@/backend/services/auth.service';
 	
-	export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
-	  const token = headers().get('authorization')?.split(' ')[1];
-	  const dataDecode: JWT | null = await decode({
-	    token: token as string,
-	    secret: (process.env.NEXTAUTH_SECRET as string) || ''
-	  });
+	export async function POST(request: NextRequest, { params }: { params: { id: string } }) {
+	  const data: { companyKey: string | null; projectKey: string | null } = await request.json();
+	  const conn = await MongoConnect();
 	  const responseStruct = new ResponseStruct(true);
 	
-	  if (!params.id) {
-	    responseStruct.setStatus(400);
-	    responseStruct.pushError('User id is required.');
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-	  }
-	
-	  if (dataDecode && dataDecode.id === params.id) {
-	    responseStruct.setStatus(400);
-	    responseStruct.pushError('You cannot delete yourself.');
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-	  }
-	
-	  const conn = await MongoConnect();
-	  const userRepository = new UserRepository(conn);
-	  const userService = new UserService(userRepository);
 	  try {
-	    await userService.singleUpdateOrDelete(params.id, Actions.DELETE);
+	    const userRepository = new UserRepository(conn);
+	    const authService = new AuthService(conn);
 	
-	    responseStruct.setStatus(200);
-	  } catch (error: NotFoundException | any) {
-	    responseStruct.setStatus(500);
+	    const existUser = await userRepository.findOne({ _id: params.id });
 	
-	    if (error instanceof NotFoundException) {
+	    if (!existUser) {
 	      responseStruct.setStatus(404);
+	      responseStruct.setErrors(['User not found']);
+	
+	      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
 	    }
 	
-	    responseStruct.pushError(error.message);
-	
-	    Logger.error(error.message, {
-	      status: responseStruct.getValue('status'),
-	      stack: error.stack
-	    });
-	  }
-	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	}
-
-```
-
-src/app/api/private/user/[id]/status/route.ts```ts
-	import { NextRequest, NextResponse } from 'next/server';
-	import MongoConnect from '@/backend/connection/mongo.connection';
-	import ResponseStruct from '@/backend/structs/response.struct';
-	import UserRepository from '@/backend/repositories/mongodb/user.repository';
-	import UserDto from '@/utils/dtos/user.dto';
-	import NotFoundException from '@/backend/exceptions/notfound.exception';
-	import { headers } from 'next/headers';
-	import { decode, JWT } from 'next-auth/jwt';
-	import { Actions, UserStatus } from '@/utils/enums';
-	import DateCustom from '@/utils/datetime/date.custom';
-	import Logger from '@/utils/logger';
-	
-	export async function PATCH(request: NextRequest, { params }: { params: { id: string } }) {
-	  const token = headers().get('authorization')?.split(' ')[1];
-	  const dataDecode: JWT | null = await decode({
-	    token: token as string,
-	    secret: (process.env.NEXTAUTH_SECRET as string) || ''
-	  });
-	
-	  const data: { status: Actions } = await request.json();
-	  const responseStruct = new ResponseStruct(true);
-	
-	  if (!params.id) {
-	    responseStruct.setStatus(400);
-	    responseStruct.pushError('User id is required.');
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-	  }
-	
-	  if (dataDecode && dataDecode.id === params.id) {
-	    responseStruct.setStatus(400);
-	    responseStruct.pushError('You cannot update yourself.');
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-	  }
-	
-	  if (data.status !== Actions.ACTIVATE && data.status !== Actions.DEACTIVATE) {
-	    responseStruct.setStatus(400);
-	    responseStruct.pushError('Allowed status are activate or deactivate.');
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-	  }
-	
-	  const conn = await MongoConnect();
-	  const userRepository = new UserRepository(conn);
-	  try {
-	    const user: UserDto = await userRepository.findUserId(params.id);
-	
-	    if (!user) {
-	      throw new NotFoundException('User not found.');
-	    }
-	
-	    await userRepository.update(params.id, {
-	      status: data.status === Actions.ACTIVATE ? UserStatus.ACTIVE : UserStatus.INACTIVE,
-	      dateModify: new DateCustom(),
-	      failedLoginAttempts: data.status === Actions.ACTIVATE ? 0 : user.failedLoginAttempts
-	    });
+	    const rolePermissions = await authService.getRolesContext(params.id, data.companyKey, data.projectKey);
 	
 	    responseStruct.setStatus(200);
+	    responseStruct.setData({ data: rolePermissions });
 	  } catch (error: any) {
-	    responseStruct.setStatus(500);
-	
-	    if (error instanceof NotFoundException) {
-	      responseStruct.setStatus(404);
-	    }
-	
 	    responseStruct.pushError(error.message);
+	    responseStruct.setStatus(500);
 	
 	    Logger.error(error.message, {
 	      status: responseStruct.getValue('status'),
@@ -18500,90 +19561,6 @@ src/app/api/private/user/[id]/status/route.ts```ts
 	  }
 	
 	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	}
-
-```
-
-src/app/api/private/user/[id]/archive/route.ts```ts
-	import { NextRequest, NextResponse } from 'next/server';
-	import MongoConnect from '@/backend/connection/mongo.connection';
-	import ResponseStruct from '@/backend/structs/response.struct';
-	import UserRepository from '@/backend/repositories/mongodb/user.repository';
-	import UserService from '@/backend/services/user.service';
-	import { Actions } from '@/utils/enums';
-	import NotFoundException from '@/backend/exceptions/notfound.exception';
-	import { headers } from 'next/headers';
-	import { decode, JWT } from 'next-auth/jwt';
-	import Logger from '@/utils/logger';
-	
-	export async function PATCH(_: NextRequest, { params }: { params: { id: string } }) {
-	  const token = headers().get('authorization')?.split(' ')[1];
-	  const dataDecode: JWT | null = await decode({
-	    token: token as string,
-	    secret: (process.env.NEXTAUTH_SECRET as string) || ''
-	  });
-	  const responseStruct = new ResponseStruct(true);
-	
-	  if (!params.id) {
-	    responseStruct.setStatus(400);
-	    responseStruct.pushError('User id is required.');
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-	  }
-	
-	  if (dataDecode && dataDecode.id === params.id) {
-	    responseStruct.setStatus(400);
-	    responseStruct.pushError('You cannot lock yourself.');
-	
-	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-	  }
-	
-	  const conn = await MongoConnect();
-	  const userRepository = new UserRepository(conn);
-	  const userService = new UserService(userRepository);
-	  try {
-	    await userService.singleUpdateOrDelete(params.id, Actions.ARCHIVE);
-	
-	    responseStruct.setStatus(200);
-	  } catch (error: NotFoundException | any) {
-	    responseStruct.setStatus(500);
-	
-	    if (error instanceof NotFoundException) {
-	      responseStruct.setStatus(404);
-	    }
-	
-	    responseStruct.pushError(error.message);
-	
-	    Logger.error(error.message, {
-	      status: responseStruct.getValue('status'),
-	      stack: error.stack
-	    });
-	  }
-	
-	  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-	}
-
-```
-
-src/app/api/private/user/update/[id]/route.ts```ts
-	import { NextRequest, NextResponse } from 'next/server';
-	
-	type RequestData = {
-	  contractorName?: string;
-	  category?: string;
-	  address?: string;
-	  completionStatus?: string;
-	  image?: File;
-	};
-	type RequestType = {
-	  id: string;
-	  data: RequestData;
-	};
-	export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-	  const { id } = params;
-	  const data: RequestType = await request.json();
-	
-	  return NextResponse.json({ success: { id, data } }, { status: 200 });
 	}
 
 ```
@@ -18695,18 +19672,15 @@ src/app/api/private/contractor/delete/[id]/route.ts```ts
 src/app/api/private/contractor/update-contractor-role/route.ts```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
-	import ContractorRepository from '@/backend/repositories/mongodb/contractor.repository';
-	import RoleRepository from '@/backend/repositories/mongodb/role.repository';
 	import ContractorService from '@/backend/services/contractor.service';
 	import { ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
 	import RoleService from '@/backend/services/role.service';
 	
 	export async function PUT(request: NextRequest) {
 	  const conn = await MongoConnect();
-	  const contractorRepository = new ContractorRepository(conn);
-	  const roleRepository = new RoleRepository(conn);
+	  
 	  const contractorService = new ContractorService(conn);
-	  const roleService = new RoleService(roleRepository, contractorRepository);
+	  const roleService = new RoleService(conn);
 	
 	  const data = await request.json();
 	
@@ -18837,15 +19811,13 @@ src/app/api/private/contractor/update/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/builder/route.ts```ts
+src/app/api/private/builder/create/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import BuilderValidator from '@/backend/validator/builder.validator';
 	import { NextRequest, NextResponse } from 'next/server';
 	import BuilderService from '@/backend/services/builder.service';
 	import AuthService from '@/backend/services/auth.service';
 	import { parsePayloadBuilderToCreateData } from '@/utils/helper';
-	import ResponseStruct from '@/backend/structs/response.struct';
-	import { getListingQuery } from '@/app/api/private/listing';
 	import Logger from '@/utils/logger';
 	
 	export async function POST(request: NextRequest) {
@@ -18878,6 +19850,63 @@ src/app/api/private/builder/route.ts```ts
 	    return NextResponse.json({ errors: [error.message] }, { status: 400 });
 	  }
 	}
+
+```
+
+src/app/api/private/builder/delete/[id]/route.ts```ts
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import { NextRequest, NextResponse } from 'next/server';
+	import BuilderService from '@/backend/services/builder.service';
+	import ObjectIdValidator from '@/backend/validator/objectId.validator';
+	import StorageFactory from '@/backend/services/storage/storage.factory';
+	import Logger from '@/utils/logger';
+	
+	export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
+	  const { id } = params;
+	  const objectIdValidator = new ObjectIdValidator({ id });
+	  await objectIdValidator.validate();
+	
+	  if (objectIdValidator.getErrors().length > 0) {
+	    return NextResponse.json({ errors: ['Invalid builder id'] }, { status: 400 });
+	  }
+	
+	  const conn = await MongoConnect();
+	  const builderService = new BuilderService(conn);
+	
+	  try {
+	    const builder = await builderService.getBuilder(id);
+	    if (!builder) {
+	      return NextResponse.json({ errors: ['Builder not found'] }, { status: 400 });
+	    }
+	
+	    await builderService.deleteBuilder(id);
+	
+	    const imageUrl = builder.get('imageUrl') as string;
+	    const storageFactory = new StorageFactory('s3');
+	
+	    if (!!imageUrl.trim()) {
+	      await storageFactory.getStorage().removeFile(imageUrl);
+	    }
+	    return NextResponse.json({ success: true }, { status: 200 });
+	  } catch (error: any) {
+	    Logger.error(error.message, {
+	      status: 500,
+	      stack: error.stack
+	    });
+	
+	    return NextResponse.json({ errors: [error] }, { status: 400 });
+	  }
+	}
+
+```
+
+src/app/api/private/builder/list/route.ts```ts
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import { NextRequest, NextResponse } from 'next/server';
+	import BuilderService from '@/backend/services/builder.service';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import { getListingQuery } from '@/app/api/private/listing';
+	import Logger from '@/utils/logger';
 	
 	export async function GET(request: NextRequest) {
 	  const conn = await MongoConnect();
@@ -18911,12 +19940,8 @@ src/app/api/private/builder/route.ts```ts
 
 src/app/api/private/builder/[id]/route.ts```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
-	import BuilderValidator from '@/backend/validator/builder.validator';
 	import { NextRequest, NextResponse } from 'next/server';
 	import BuilderService from '@/backend/services/builder.service';
-	import { parsePayloadBuilderToCreateData } from '@/utils/helper';
-	import ObjectIdValidator from '@/backend/validator/objectId.validator';
-	import StorageFactory from '@/backend/services/storage/storage.factory';
 	import Logger from '@/utils/logger';
 	
 	export async function GET(_: NextRequest, { params }: { params: { id: string } }) {
@@ -18942,6 +19967,17 @@ src/app/api/private/builder/[id]/route.ts```ts
 	    return NextResponse.json({ errors: [error] }, { status: 400 });
 	  }
 	}
+
+```
+
+src/app/api/private/builder/update/[id]/route.ts```ts
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import BuilderValidator from '@/backend/validator/builder.validator';
+	import { NextRequest, NextResponse } from 'next/server';
+	import BuilderService from '@/backend/services/builder.service';
+	import { parsePayloadBuilderToCreateData } from '@/utils/helper';
+	import ObjectIdValidator from '@/backend/validator/objectId.validator';
+	import Logger from '@/utils/logger';
 	
 	export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
 	  const { id } = params;
@@ -18966,43 +20002,6 @@ src/app/api/private/builder/[id]/route.ts```ts
 	    }
 	
 	    await builderService.updateBuilder(id, formData);
-	    return NextResponse.json({ success: true }, { status: 200 });
-	  } catch (error: any) {
-	    Logger.error(error.message, {
-	      status: 500,
-	      stack: error.stack
-	    });
-	
-	    return NextResponse.json({ errors: [error] }, { status: 400 });
-	  }
-	}
-	
-	export async function DELETE(_: NextRequest, { params }: { params: { id: string } }) {
-	  const { id } = params;
-	  const objectIdValidator = new ObjectIdValidator({ id });
-	  await objectIdValidator.validate();
-	
-	  if (objectIdValidator.getErrors().length > 0) {
-	    return NextResponse.json({ errors: ['Invalid builder id'] }, { status: 400 });
-	  }
-	
-	  const conn = await MongoConnect();
-	  const builderService = new BuilderService(conn);
-	
-	  try {
-	    const builder = await builderService.getBuilder(id);
-	    if (!builder) {
-	      return NextResponse.json({ errors: ['Builder not found'] }, { status: 400 });
-	    }
-	
-	    await builderService.deleteBuilder(id);
-	
-	    const imageUrl = builder.get('imageUrl') as string;
-	    const storageFactory = new StorageFactory('s3');
-	
-	    if (!!imageUrl.trim()) {
-	      await storageFactory.getStorage().removeFile(imageUrl);
-	    }
 	    return NextResponse.json({ success: true }, { status: 200 });
 	  } catch (error: any) {
 	    Logger.error(error.message, {
@@ -19692,8 +20691,48 @@ src/utils/enums.ts```ts
 	}
 	
 	export enum Roles {
-	  BUILDER = 'BUILDER',
-	  CONTRACTOR = 'CONTRACTOR'
+	  BUILDER_ADMIN = 'Builder/Admin',
+	  BUILDER_PROJECT_MANAGER = 'Builder/Project Manager',
+	  BUILDER_SITE_SUPERVISOR = 'Builder/Site Supervisor',
+	  BUILDER_ACCOUNT_PAYABLE = 'Builder/Account Payable',
+	  CONTRACTOR_ADMIN = 'Contractor/Admin',
+	  CONTRACTOR_BASIC = 'Contractor/Basic',
+	  CONTRACTOR_WORKER = 'Contractor/Worker'
+	}
+	
+	export enum Permission {
+	  VIEW_BUILDER = 'View Builder Profile',
+	  EDIT_BUILDER = 'Edit Builder Profile',
+	  EDIT_BUILDER_ROLES = 'Edit Builder Roles',
+	  VIEW_BUILDER_LIST_OF_PROJECTS = 'View Builder List of Projects',
+	  CREATE_PROJECT = 'Create Project Profile',
+	  VIEW_PROJECT = 'View Project Profile',
+	  EDIT_PROJECT = 'Edit Project Profile',
+	  DELETE_PROJECT = 'Delete Project Profile',
+	  EDIT_PROJECT_ROLES = 'Edit Project Roles',
+	  VIEW_PROJECT_INVOICES = 'View Project Invoices',
+	  EDIT_PROJECT_INVOICES = 'Edit Project Invoices',
+	  VIEW_PROJECT_BUDGETS = 'View Project Budgets',
+	  EDIT_CONTRACTOR = 'Edit Contractor Profile',
+	  VIEW_CONTRACTOR_LIST_OF_PROJECTS = 'View Contractor’s List of Projects',
+	  EDIT_CONTRACTOR_ROLES = 'Edit Contractor Roles',
+	  EDIT_CONTRACTOR_INVOICES = 'Edit Contractor’s Invoices on Project page',
+	  VIEW_CONTRACTOR = 'View Contractor Profile',
+	  VIEW_ASSIGNED_PROJECT = 'View assigned Project'
+	}
+	
+	export enum RoleType {
+	  BUILDER = 'Builder',
+	  CONTRACTOR = 'Contractor',
+	  SUPER_ADMIN = 'Super Admin',
+	  ADMIN = 'Admin',
+	  GENERIC = 'Generic'
+	}
+	
+	export enum Scope {
+	  PROJECT = 'project',
+	  COMPANY = 'company',
+	  SYSTEM = 'system'
 	}
 
 ```
@@ -19835,46 +20874,64 @@ src/utils/common.ts```ts
 
 src/utils/api.ts```ts
 	const APIS = {
-	  GET_BUILDER_PROJECTS: 'private/projects',
+	  /** AUTH */
+	  REGISTER: 'public/auth/register',
+	  SEND_CODE: 'public/auth/code/send',
+	  VERIFY_CODE: 'public/auth/code/verify',
+	  RESET_PASSWORD: 'public/auth/reset-password',
+	
+	  /** BUDGET */
+	  GET_BUDGETS: 'private/budget/list',
+	  CREATE_BUDGET: 'private/budget/create',
+	  DELETE_BUDGET: 'private/budget/delete',
+	
+	  /** BUILDER */
+	  GET_BUILDERS: 'private/builder/list',
+	  CREATE_BUILDER: 'private/builder/create',
+	  UPDATE_BUILDER: 'private/builder/update',
+	  DELETE_BUILDER: 'private/builder/delete',
+	
+	  /** CONTRACTOR */
 	  GET_CONTRACTORS: 'private/contractor/list',
 	  CREATE_CONTRACTOR: 'private/contractor/create',
 	  UPDATE_CONTRACTOR: 'private/contractor/update',
 	  DELETE_CONTRACTOR: 'private/contractor/delete',
-	  UPSERT_PROJECT: 'private/projects/upsert',
-	  PROJECT_ADD_BUDGET: 'private/projects/add-budget',
-	  BUILDERS: 'private/builder',
+	
+	  /** PROJECT */
+	  GET_PROJECTS: 'private/project/list',
+	  CREATE_PROJECT: 'private/project/create',
+	  GET_PROJECT_DETAIL: 'private/project/:id',
+	  UPDATE_PROJECT: 'private/project/update',
+	  DELETE_PROJECT: 'private/project/delete',
+	
+	  /** PROFILE */
+	  UPDATE_PROFILE: 'private/profile/update/:id',
+	  CHANGE_PASSWORD: 'private/profile/change-password/:id',
+	  GET_PROFILE: 'private/profile',
+	
+	  /** UPLOAD */
+	  UPLOAD_FILE: 'private/file/upload',
+	
+	  /** USER */
 	  GET_USERS: 'private/user/list',
 	  GET_USER_DETAIL: 'private/user/:id',
 	  CREATE_USER: 'private/user/create',
 	  BULK_CONTROL_USER: 'private/user/bulk-control',
-	  UPDATE_USER: 'private/user/:id/update',
-	  DELETE_USER: 'private/user/:id/delete',
+	  UPDATE_USER: 'private/user/update',
+	  DELETE_USER: 'private/user/delete',
+	
+	  /** MOCK API */
 	  UPDATE_PROJECT_ROLES: 'private/projects/update-project-roles',
 	  IMPORT_PROJECT_BUDGET: 'private/projects/import-project-budget',
-	  UPDATE_CONTRACTOR_ROLE: 'private/contractors/update-contractor-role',
 	  UPSERT_INVOICE: 'private/invoices/upsert',
 	  UPDATE_PROJECT_CONTRACTORS: 'private/projects/update-project-contractors',
-	  REGISTER: 'public/auth/register',
-	  UPDATE_PROFILE: 'private/profile/update/:id',
-	  CHANGE_PASSWORD: 'private/profile/change-password/:id',
-	  GET_PROFILE: 'private/profile',
-	  SEND_CODE: 'public/auth/code/send',
-	  VERIFY_CODE: 'public/auth/code/verify',
-	  RESET_PASSWORD: 'public/auth/reset-password',
-	  UPLOAD_FILE: 'private/file/upload',
-	  PROJECT: 'private/project',
 	  GET_PROJECT_ROLES: 'private/project/:id/roles',
 	  GET_PROJECT_CONTRACTORS: 'private/project/:id/contractors',
-	  CREATE_PROJECT: 'private/project/create',
-	  GET_PROJECT: 'private/project/:id',
-	  UPDATE_PROJECT: 'private/project/:id',
-	  DELETE_PROJECT: 'private/project/:id',
 	  GET_CONTRACTOR_PROJECTS: 'private/contractor-project/list',
 	  CREATE_CONTRACTOR_PROJECT: 'private/contractor-project/create',
 	  GET_CONTRACTOR_PROJECT: 'private/contractor-project/:id',
 	  GET_CONTRACTOR_PROJECT_INVOICES: 'private/contractor-project/:id/invoices',
 	  GET_PROJECT_INVOICES: 'private/project/:id/invoices',
-	  BUDGET: 'private/budget',
 	  GET_COMPANIES: '/company/list',
 	  CREATE_COMPANY: '/company/create',
 	  GET_SERVICES: '/service/list'
@@ -20207,6 +21264,8 @@ src/utils/constant.ts```ts
 	  limit: PAGINATE_PAGE_SIZE,
 	  page: PAGINATE_OFFSET
 	};
+	
+	export type URL_METHODS = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 ```
 
@@ -20347,7 +21406,7 @@ src/utils/services/builder.ts```ts
 	
 	/** API get list budgets */
 	export const getBuilders = async (params?: IRequestFilter) => {
-	  const query = params ? generateQueryFromFilter(endPoints.BUILDERS, params) : endPoints.BUILDERS;
+	  const query = params ? generateQueryFromFilter(endPoints.GET_BUILDERS, params) : endPoints.GET_BUILDERS;
 	  return await axiosServices.get<IResponseListBuilders>(query);
 	};
 	/** API create a budgets */
@@ -20358,7 +21417,7 @@ src/utils/services/builder.ts```ts
 	  formData.append('completionStatus', payload.completionStatus);
 	  formData.append('category', payload.category);
 	  !!payload?.image && formData.append('image', payload.image);
-	  return await axiosServices.post<IResponseCreateBuilder>(endPoints.BUILDERS, formData);
+	  return await axiosServices.post<IResponseCreateBuilder>(endPoints.CREATE_BUILDER, formData);
 	};
 	/** API update a budget by id */
 	export const updateBuilder = async (id: string, payload: IRequestUpdateBuilder) => {
@@ -20368,11 +21427,11 @@ src/utils/services/builder.ts```ts
 	  !!payload?.completionStatus && formData.append('completionStatus', payload.completionStatus);
 	  !!payload?.category && formData.append('category', payload.category);
 	  !!payload?.image && formData.append('image', payload.image);
-	  return await axiosServices.put<IResponseUpdateBuilder>(`${endPoints.BUILDERS}/${id}`, formData);
+	  return await axiosServices.put<IResponseUpdateBuilder>(`${endPoints.UPDATE_BUILDER}/${id}`, formData);
 	};
 	/** API delete a budget by id */
 	export const deleteBuilder = async (id: string) => {
-	  return await axiosServices.delete<IResponseDeleteBuilder>(`${endPoints.BUILDERS}/${id}`);
+	  return await axiosServices.delete<IResponseDeleteBuilder>(`${endPoints.DELETE_BUILDER}/${id}`);
 	};
 
 ```
@@ -20518,16 +21577,16 @@ src/utils/services/budget.ts```ts
 	
 	/** API get budgets by project */
 	export const getBudgetsByProject = async (params?: IRequestFilterBudget) => {
-	  const query = params ? generateQueryFromFilter(endPoints.BUDGET, params) : endPoints.BUDGET;
+	  const query = params ? generateQueryFromFilter(endPoints.GET_BUDGETS, params) : endPoints.GET_BUDGETS;
 	  return await axios.get<IResponseListBudgets>(query);
 	};
 	/** API create a budget */
 	export const createBudget = async (data: IRequestCreateBudget) => {
-	  return await axios.post<IResponseCreateBudget>(endPoints.BUDGET, data);
+	  return await axios.post<IResponseCreateBudget>(endPoints.CREATE_BUDGET, data);
 	};
 	/** API delete a budget by id */
 	export const deleteBudget = async (id: string) => {
-	  return await axios.delete<IResponseDeleteBudget>(`${endPoints.BUDGET}/${id}`);
+	  return await axios.delete<IResponseDeleteBudget>(`${endPoints.DELETE_BUDGET}/${id}`);
 	};
 
 ```
@@ -20561,7 +21620,7 @@ src/utils/services/user.ts```ts
 	};
 	/** API delete a user by id */
 	export const deleteUser = async (id: string) => {
-	  return await axiosServices.delete<IResponseDeleteUser>(endPoints.DELETE_USER.replace(':id', id));
+	  return await axiosServices.delete<IResponseDeleteUser>(`${endPoints.DELETE_USER}/${id}`);
 	};
 	/** API get detail a user by id */
 	export const getUserDetail = async (id: string) => {
@@ -20715,7 +21774,7 @@ src/utils/services/project.ts```ts
 	 * @summary: (method: GET) Get a project list
 	 */
 	export const getProjects = async (params?: IRequestFilter): Promise<IResponseProjects> => {
-	  const query = params ? generateQueryFromFilter(endPoints.PROJECT, params) : endPoints.PROJECT;
+	  const query = params ? generateQueryFromFilter(endPoints.GET_PROJECTS, params) : endPoints.GET_PROJECTS;
 	  return axios.get(query);
 	};
 	
@@ -20730,14 +21789,14 @@ src/utils/services/project.ts```ts
 	  formData.append('startDate', payload.startDate);
 	  !!payload?.image && formData.append('image', payload.image);
 	
-	  return axios.post<IResponseCreateBuilder>(endPoints.PROJECT, formData);
+	  return axios.post<IResponseCreateBuilder>(endPoints.CREATE_PROJECT, formData);
 	};
 	
 	/**
 	 * @summary: (method: POST) get a project detail by id
 	 */
 	export const getProject = async (id: string): Promise<IProject> => {
-	  return axios.get(`${endPoints.PROJECT}/${id}`);
+	  return axios.get(endPoints.GET_PROJECT_DETAIL.replace(':id', id));
 	};
 	
 	/**
@@ -20750,14 +21809,14 @@ src/utils/services/project.ts```ts
 	  !!payload?.currentClaimNumber && formData.append('currentClaimNumber', payload.currentClaimNumber + '');
 	  !!payload?.startDate && formData.append('startDate', payload.startDate);
 	  !!payload?.image && formData.append('image', payload.image);
-	  return axios.put<IResponseUpdateProject>(`${endPoints.PROJECT}/${id}`, formData);
+	  return axios.put<IResponseUpdateProject>(`${endPoints.UPDATE_PROJECT}/${id}`, formData);
 	};
 	
 	/**
 	 * @summary: (method: DELETE) remove a project detail by id
 	 */
 	export const deleteProject = async (id: string): Promise<IResponseDeleteProject> => {
-	  return axios.delete(`${endPoints.PROJECT}/${id}`);
+	  return axios.delete(`${endPoints.DELETE_PROJECT}/${id}`);
 	};
 	
 	/**
@@ -20783,6 +21842,95 @@ src/utils/services/project.ts```ts
 
 ```
 
+src/utils/permission/permission.handler.ts```ts
+	import BaseChain from '@/backend/services/permission/chains/base.chain';
+	import ProjectPermissionChain from '@/backend/services/permission/chains/project.permission.chain';
+	import CompanyPermissionChain from '@/backend/services/permission/chains/company.permission.chain';
+	import UserPermissionChain from '@/backend/services/permission/chains/user.permission.chain';
+	import { Scope } from '@/utils/enums';
+	
+	export type ContextItem = {
+	  scope: 'project' | 'company' | 'user';
+	  urlsCanAccess: { url: string; method: string; roleId: string; projectId?: string; projectKey?: string }[];
+	};
+	
+	export type Context = ContextItem[];
+	
+	export default class PermissionHandler {
+	  protected chains: BaseChain[] = [];
+	  constructor() {}
+	
+	  public addChain(chain: BaseChain): void {
+	    this.chains.push(chain);
+	  }
+	
+	  public getAvailableChain(): BaseChain[] {
+	    this.chains = [new ProjectPermissionChain(), new CompanyPermissionChain(), new UserPermissionChain()];
+	
+	    return this.chains.filter((chain: BaseChain) => {
+	      return chain.isSupport;
+	    });
+	  }
+	
+	  public handleRequestPermission(
+	    requestUrl: string,
+	    method: string,
+	    context: Context,
+	    scope: string,
+	    projectId: string | null = null
+	  ): boolean {
+	    if (!scope) {
+	      scope = Scope.SYSTEM;
+	    }
+	
+	    const acceptedScopes: Record<string, boolean | null> = {};
+	
+	    for (const chain of this.getAvailableChain()) {
+	      const matchScope = context.filter((item: any) => item.scope === chain.scope());
+	      const contextItem = matchScope[0] as ContextItem;
+	
+	      acceptedScopes[chain.scope()] = null;
+	
+	      if (matchScope.length === 0 || !contextItem.urlsCanAccess.length) {
+	        continue;
+	      }
+	
+	      chain.setSource(contextItem);
+	
+	      acceptedScopes[chain.scope()] = chain.validateAccess(requestUrl, method);
+	
+	      if (projectId && chain.scope() === Scope.PROJECT) {
+	        acceptedScopes[chain.scope()] = chain.validateAccessWithProjectId(requestUrl, method, projectId);
+	      }
+	    }
+	
+	    return this.getResultByScope(acceptedScopes, scope);
+	  }
+	
+	  protected getResultByScope(acceptedScopes: Record<string, boolean | null>, scope: string): boolean {
+	    switch (scope) {
+	      case Scope.COMPANY:
+	        if (acceptedScopes[Scope.COMPANY] !== null) {
+	          return acceptedScopes[Scope.COMPANY];
+	        }
+	
+	        return !!acceptedScopes[Scope.SYSTEM];
+	      case Scope.PROJECT:
+	        if (acceptedScopes[Scope.PROJECT] !== null) {
+	          return acceptedScopes[Scope.PROJECT];
+	        }
+	
+	        return !!acceptedScopes[Scope.COMPANY] || !!acceptedScopes[Scope.SYSTEM];
+	      case Scope.SYSTEM:
+	        return !!acceptedScopes[Scope.SYSTEM];
+	      default:
+	        return false;
+	    }
+	  }
+	}
+
+```
+
 src/utils/dtos/role.dto.ts```ts
 	/**
 	 * @license
@@ -20790,38 +21938,31 @@ src/utils/dtos/role.dto.ts```ts
 	 */
 	
 	import BaseDto from '@/utils/dtos/base.dto';
-	import { ROLE_LEVEL_ENUM_BUILDER, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
 	
 	export type Role = {
+	  name: string;
+	  key: String;
+	  type: 'Builder' | 'Contractor';
+	  permissionIds: object[] | string[] | undefined[];
 	  dateCreate?: Date;
 	  dateModify?: Date;
-	  individualEmail?: string;
-	  individualId?: string;
-	  parentId?: string;
-	  roleLevelEnum: number;
-	  targetId: string;
-	  targetTypeEnum: number;
-	  roleName?: string;
-	  roleEmails: string | undefined | null;
 	};
 	
 	export default class RoleDto extends BaseDto {
+	  name: string;
+	  key: String;
+	  type: 'Builder' | 'Contractor';
+	  permissionIds: object[] | string[];
+	  permissions: (object | undefined | null)[] = [];
 	  dateCreate?: Date;
 	  dateModify?: Date;
-	  individualEmail?: string;
-	  individualId?: string;
-	  parentId?: string;
-	  roleLevelEnum: number;
-	  targetId: string;
-	  targetTypeEnum: number;
-	  roleName?: string;
-	  roleEmails?: string | undefined | null;
 	
 	  constructor() {
 	    super();
-	    this.roleLevelEnum = ROLE_LEVEL_ENUM_BUILDER.none;
-	    this.targetId = '';
-	    this.targetTypeEnum = ROLE_TARGET_TYPE_ENUM.none;
+	    this.name = '';
+	    this.key = '';
+	    this.type = 'Builder';
+	    this.permissionIds = [];
 	  }
 	
 	  public static fromObject(obj: Role): RoleDto {
@@ -21131,6 +22272,7 @@ src/utils/dtos/user.dto.ts```ts
 	  lastLogin: Date | null;
 	  dateCreate: Date;
 	  dateModify: Date;
+	  systemRole: string;
 	};
 	
 	export default class UserDto extends BaseDto {
@@ -21155,6 +22297,7 @@ src/utils/dtos/user.dto.ts```ts
 	  lastLogin: Date | null = null;
 	  dateCreate: Date = new DateCustom();
 	  dateModify: Date = new DateCustom();
+	  systemRole: string | null = null;
 	
 	  constructor() {
 	    super();
@@ -21187,6 +22330,8 @@ src/utils/dtos/project.dto.ts```ts
 	import { CURRENCY } from '@/constant';
 	
 	export type Project = {
+	  name: string;
+	  key: string;
 	  address: string;
 	  amount?: number;
 	  builderId: string;
@@ -21209,6 +22354,18 @@ src/utils/dtos/project.dto.ts```ts
 	  role3?: string;
 	  role4?: string;
 	  roleProjectContractors?: string;
+	  participants: {
+	    userId: string;
+	    companyId: string;
+	    roleId: string;
+	    inviteSource: string;
+	    inviteStatus: string;
+	    inviteKey: string;
+	    inviteCreatedAt: Date;
+	    inviteExpiration: Date;
+	    inviteUpdatedAt: Date;
+	  }[];
+	  status: string;
 	};
 	
 	export type ProjectRequestType = {
@@ -21220,6 +22377,8 @@ src/utils/dtos/project.dto.ts```ts
 	};
 	
 	export default class ProjectDto extends BaseDto {
+	  name: string = '';
+	  key: string = '';
 	  address: string;
 	  amount?: number;
 	  builderId: string;
@@ -21243,6 +22402,18 @@ src/utils/dtos/project.dto.ts```ts
 	  role3?: string;
 	  role4?: string;
 	  roleProjectContractors?: string;
+	  participants: {
+	    userId: string;
+	    companyId: string;
+	    roleId: string;
+	    inviteSource: string;
+	    inviteStatus: string;
+	    inviteKey: string;
+	    inviteCreatedAt: Date;
+	    inviteExpiration: Date;
+	    inviteUpdatedAt: Date;
+	  }[] = [];
+	  status: string = 'active';
 	
 	  constructor() {
 	    super();
@@ -21263,6 +22434,7 @@ src/utils/dtos/project.dto.ts```ts
 	    this.items = '';
 	    this.projectName = '';
 	    this.imageUrl = '';
+	    this.participants = [];
 	  }
 	
 	  public static fromObject(obj: Project): ProjectDto {
@@ -21355,6 +22527,103 @@ src/utils/dtos/base.dto.ts```ts
 	    }
 	
 	    return dto;
+	  }
+	}
+
+```
+
+src/utils/dtos/permission.dto.ts```ts
+	/**
+	 * @license
+	 * Copyright 2024 J2C
+	 */
+	
+	import BaseDto from '@/utils/dtos/base.dto';
+	
+	export type Permission = {
+	  name: string;
+	  key: string;
+	  description: string;
+	  urls: object[] | undefined[] | null;
+	  roleIds: object[] | string[] | undefined[];
+	  dateCreate?: Date;
+	  dateModify?: Date;
+	};
+	
+	export default class PermissionDto extends BaseDto {
+	  name: string;
+	  key: string;
+	  description: string;
+	  urls: object[] | undefined[] | null = [];
+	  roleIds: object[] | string[] | undefined[] = [];
+	  roles: (object | undefined | null)[] = [];
+	  dateCreate?: Date;
+	  dateModify?: Date;
+	
+	  constructor() {
+	    super();
+	    this.name = '';
+	    this.key = '';
+	    this.description = '';
+	  }
+	
+	  public static fromObject(obj: Permission): PermissionDto {
+	    const permissionDto = new PermissionDto();
+	
+	    permissionDto.setData(obj);
+	
+	    return permissionDto;
+	  }
+	
+	  public static fromJSON(json: string): PermissionDto {
+	    return PermissionDto.fromObject(JSON.parse(json));
+	  }
+	}
+
+```
+
+src/utils/dtos/company.dto.ts```ts
+	import BaseDto from '@/utils/dtos/base.dto';
+	
+	export type Company = {
+	  name: string;
+	  key: string;
+	  type: 'Builder' | 'Contractor';
+	  projectIds: object[] | string[] | undefined[];
+	  members: { roleId: string; userId: string }[];
+	  imageUrl?: string;
+	  dateCreate?: Date;
+	  dateModify?: Date;
+	};
+	
+	export default class CompanyDto extends BaseDto {
+	  name: string;
+	  key: string;
+	  type: 'Builder' | 'Contractor';
+	  projectIds: object[] | string[];
+	  members: { roleId: string; userId: string }[] = [];
+	  imageUrl?: string = '';
+	  dateCreate?: Date;
+	  dateModify?: Date;
+	
+	  constructor() {
+	    super();
+	    this.name = '';
+	    this.key = '';
+	    this.type = 'Builder';
+	    this.projectIds = [];
+	  }
+	
+	  public static fromObject(obj: Company): CompanyDto {
+	    const companyDto = new CompanyDto();
+	
+	    companyDto.setData(obj);
+	
+	    return companyDto;
+	  }
+	
+	  public static fromJSON(json: string): CompanyDto {
+	    return CompanyDto.fromObject(JSON.parse(json));
 	  }
 	}
 
@@ -21487,8 +22756,10 @@ src/utils/dtos/types/dto.type.ts```ts
 	import Invoice from '@/utils/dtos/invoice.dto';
 	import Role from '@/utils/dtos/role.dto';
 	import User from '@/utils/dtos/user.dto';
+	import Company from '@/utils/dtos/company.dto';
+	import Permission from '@/utils/dtos/permission.dto';
 	
-	export type DTO = Budget | Builder | Contractor | Project | Invoice | Role | User;
+	export type DTO = Company | Budget | Builder | Contractor | Project | Invoice | Role | User | Permission;
 
 ```
 
@@ -29801,7 +31072,7 @@ src/components/authentication/auth-forms/RegisterRoleForm/index.tsx```tsx
 	
 	// projects import
 	import { ICompany } from 'types/resource/company';
-	import { Roles } from 'utils/enums';
+	import { RoleType } from 'utils/enums';
 	
 	import FormContainer from '../FormContainer';
 	import Slides from '../Slides';
@@ -29894,7 +31165,7 @@ src/components/authentication/auth-forms/RegisterRoleForm/index.tsx```tsx
 	      <Box className={styles.loginForm}>
 	        {step === STEPS.SELECT_ROLE && <SelectRoles onSubmit={handleSelectRole} />}
 	        {step === STEPS.SELECT_COMPANY && (
-	          <SelectCompany showCreateNewOption={values.role === Roles.CONTRACTOR} onSubmit={handleSelectCompany} />
+	          <SelectCompany showCreateNewOption={values.role === RoleType.CONTRACTOR} onSubmit={handleSelectCompany} />
 	        )}
 	        {step === STEPS.CREATE_NEW_COMPANY && <CreateCompany onSuccess={handCreateNewCompanySuccess} />}
 	      </Box>
@@ -30144,7 +31415,7 @@ src/components/authentication/auth-forms/RegisterRoleForm/components/SelectRoles
 	
 	// projects import
 	import { Button } from 'ui-component/buttons';
-	import { Roles } from 'utils/enums';
+	import { RoleType } from 'utils/enums';
 	
 	import styles from './styles.module.scss';
 	
@@ -30161,12 +31432,12 @@ src/components/authentication/auth-forms/RegisterRoleForm/components/SelectRoles
 	  const [selectedRole, setSelectedRole] = useState('');
 	  const roles = [
 	    {
-	      key: Roles.BUILDER,
+	      key: RoleType.BUILDER,
 	      label: formatMessage({ id: 'builderRole' }),
 	      icon: <NextImage src="/assets/images/icons/builder.svg" fill alt={formatMessage({ id: 'builderRole' })} />
 	    },
 	    {
-	      key: Roles.CONTRACTOR,
+	      key: RoleType.CONTRACTOR,
 	      label: formatMessage({ id: 'contractorRole' }),
 	      icon: <NextImage src="/assets/images/icons/contractor.svg" fill alt={formatMessage({ id: 'contractorRole' })} />
 	    }
@@ -30474,7 +31745,7 @@ src/components/account/Profile/index.tsx```tsx
 	import { useSearchParams } from 'next/navigation';
 	
 	// projects import
-	import { Roles } from 'utils/enums';
+	import { RoleType } from 'utils/enums';
 	import Breadcrumbs from '@/components/Breadcrumbs';
 	import ProfilePicture from './components/ProfilePicture';
 	import ChangePassword from './components/ChangePassword';
@@ -30490,8 +31761,8 @@ src/components/account/Profile/index.tsx```tsx
 	  return (
 	    <>
 	      <Breadcrumbs />
-	      {role === Roles.BUILDER && <Builder />}
-	      {role === Roles.CONTRACTOR && <Contractor />}
+	      {role === RoleType.BUILDER && <Builder />}
+	      {role === RoleType.CONTRACTOR && <Contractor />}
 	      {!role && (
 	        <Grid container spacing={2.5}>
 	          <Grid item xs={5}>
@@ -35439,6 +36710,8 @@ types/next-auth.d.ts```ts
 	      token: string;
 	      password: string | null;
 	      provider: string;
+	      selectedCompanyId: string | null;
+	      selectedProjectId: string | null;
 	    } & DefaultSession['user'];
 	  }
 	}
@@ -35851,7 +37124,7 @@ lib/swagger/doc/auth/register.ts```ts
 lib/swagger/doc/budget/post.ts```ts
 	/**
 	@swagger
-	* /api/private/budget:
+	* /api/private/budget/create:
 	*   post:
 	*     tags:
 	*       - Budget
@@ -35957,51 +37230,51 @@ lib/swagger/doc/budget/post.ts```ts
 lib/swagger/doc/budget/delete.ts```ts
 	// @ts-nocheck
 	/**
-	* @swagger
-	* /api/private/budget/{id}:
-	*   delete:
-	*     tags:
-	*       - Budget
-	*     description: Delete a budget
-	*     summary: Delete a budget
-	*     security:
-	*       - bearerAuth: []
-	*     parameters:
-	*       - in: path
-	*         name: id
-	*         schema:
-	*           type: string
-	*         required: true
-	*         description: The Budget's id
-	*     requestBody:
-	*       required: false
-	*       content:
-	*         application/json:
-	*     responses:
-	*       200:
-	*         description: Budget deleted
-	*         content:
-	*           application/json:
-	*             schema:
-	*               type: object
-	*               properties:
-	*                 success:
-	*                   type: boolean
-	*                   description: Budget deleted
-	*       400:
-	*         description: Bad request
-	*         content:
-	*           application/json:
-	*             schema:
-	*               type: object
-	*               properties:
-	*                 errors:
-	*                   type: array
-	*                   items:
-	*                     type: string
-	* @param request
-	* @constructor
-	*/
+	 * @swagger
+	 * /api/private/budget/delete/{id}:
+	 *   delete:
+	 *     tags:
+	 *       - Budget
+	 *     description: Delete a budget
+	 *     summary: Delete a budget
+	 *     security:
+	 *       - bearerAuth: []
+	 *     parameters:
+	 *       - in: path
+	 *         name: id
+	 *         schema:
+	 *           type: string
+	 *         required: true
+	 *         description: The Budget's id
+	 *     requestBody:
+	 *       required: false
+	 *       content:
+	 *         application/json:
+	 *     responses:
+	 *       200:
+	 *         description: Budget deleted
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               type: object
+	 *               properties:
+	 *                 success:
+	 *                   type: boolean
+	 *                   description: Budget deleted
+	 *       400:
+	 *         description: Bad request
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               type: object
+	 *               properties:
+	 *                 errors:
+	 *                   type: array
+	 *                   items:
+	 *                     type: string
+	 * @param request
+	 * @constructor
+	 */
 	export {};
 
 ```
@@ -36009,7 +37282,7 @@ lib/swagger/doc/budget/delete.ts```ts
 lib/swagger/doc/budget/get.ts```ts
 	/**
 	@swagger
-	* /api/private/budget:
+	* /api/private/budget/list:
 	*   get:
 	*     summary: Get list budgets
 	*     description: Get list budgets
@@ -36446,87 +37719,87 @@ lib/swagger/doc/file/upload.ts```ts
 
 lib/swagger/doc/project/put.ts```ts
 	/**
-	* @swagger
-	* /api/private/project/{id}:
-	*   put:
-	*     tags:
-	*       - Project
-	*     description: Edit a project
-	*     summary: Edit a project
-	*     security:
-	*       - bearerAuth: []
-	*     parameters:
-	*       - in: path
-	*         name: id
-	*         schema:
-	*           type: string
-	*         required: true
-	*         description: The Project's id
-	*     requestBody:
-	*       required: false
-	*       content:
-	*         multipart/form-data:
-	*           schema:
-	*             $ref: '#/components/schemas/ProjectEdited'
-	*     responses:
-	*       200:
-	*         description: Project updated
-	*         content:
-	*           application/json:
-	*             schema:
-	*               $ref: '#/components/schemas/ProjectResponse'
-	*       400:
-	*         description: Bad request
-	*         content:
-	*           application/json:
-	*             schema:
-	*               type: object
-	*               properties:
-	*                 errors:
-	*                   type: array
-	*                   items:
-	*                     type: string
-	* components:
-	*   schemas:
-	*     ProjectEdited:
-	*       type: object
-	*       properties:
-	*         projectName:
-	*           type: string
-	*           format: projectName
-	*           description: Project's name
-	*           example: Horizon Development Group
-	*           required: true
-	*         startDate:
-	*           type: string
-	*           format: category
-	*           description: Project's start date
-	*           example: Residential
-	*           required: true
-	*         address:
-	*           type: string
-	*           format: address
-	*           description: Project's address
-	*           example: Anytown, CA 90210
-	*           required: true
-	*         currentClaimNumber:
-	*           type: string
-	*           format: currentClaimNumber
-	*           description: Project's current claim number
-	*           example: Active
-	*           required: true
-	*         image:
-	*           type: string
-	*           format: binary
-	*     ProjectResponse:
-	*       type: object
-	*       properties:
-	*         success:
-	*           type: boolean
-	*           description: Project updated
-	* @param request
-	* @constructor
-	*/
+	 * @swagger
+	 * /api/private/project/update/{id}:
+	 *   put:
+	 *     tags:
+	 *       - Project
+	 *     description: Edit a project
+	 *     summary: Edit a project
+	 *     security:
+	 *       - bearerAuth: []
+	 *     parameters:
+	 *       - in: path
+	 *         name: id
+	 *         schema:
+	 *           type: string
+	 *         required: true
+	 *         description: The Project's id
+	 *     requestBody:
+	 *       required: false
+	 *       content:
+	 *         multipart/form-data:
+	 *           schema:
+	 *             $ref: '#/components/schemas/ProjectEdited'
+	 *     responses:
+	 *       200:
+	 *         description: Project updated
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               $ref: '#/components/schemas/ProjectResponse'
+	 *       400:
+	 *         description: Bad request
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               type: object
+	 *               properties:
+	 *                 errors:
+	 *                   type: array
+	 *                   items:
+	 *                     type: string
+	 * components:
+	 *   schemas:
+	 *     ProjectEdited:
+	 *       type: object
+	 *       properties:
+	 *         projectName:
+	 *           type: string
+	 *           format: projectName
+	 *           description: Project's name
+	 *           example: Horizon Development Group
+	 *           required: true
+	 *         startDate:
+	 *           type: string
+	 *           format: category
+	 *           description: Project's start date
+	 *           example: Residential
+	 *           required: true
+	 *         address:
+	 *           type: string
+	 *           format: address
+	 *           description: Project's address
+	 *           example: Anytown, CA 90210
+	 *           required: true
+	 *         currentClaimNumber:
+	 *           type: string
+	 *           format: currentClaimNumber
+	 *           description: Project's current claim number
+	 *           example: Active
+	 *           required: true
+	 *         image:
+	 *           type: string
+	 *           format: binary
+	 *     ProjectResponse:
+	 *       type: object
+	 *       properties:
+	 *         success:
+	 *           type: boolean
+	 *           description: Project updated
+	 * @param request
+	 * @constructor
+	 */
 	export {};
 
 ```
@@ -36534,7 +37807,7 @@ lib/swagger/doc/project/put.ts```ts
 lib/swagger/doc/project/post.ts```ts
 	/**
 	* @swagger
-	* /api/private/project:
+	* /api/private/project/create:
 	*   post:
 	*     tags:
 	*       - Project
@@ -36615,102 +37888,102 @@ lib/swagger/doc/project/post.ts```ts
 lib/swagger/doc/project/delete.ts```ts
 	// @ts-nocheck
 	/**
-	* @swagger
-	* /api/private/project/{id}:
-	*   delete:
-	*     tags:
-	*       - Project
-	*     description: Delete a project
-	*     summary: Delete a project
-	*     security:
-	*       - bearerAuth: []
-	*     parameters:
-	*       - in: path
-	*         name: id
-	*         schema:
-	*           type: string
-	*         required: true
-	*         description: The Project's id
-	*     requestBody:
-	*       required: false
-	*       content:
-	*         application/json:
-	*     responses:
-	*       200:
-	*         description: Project deleted
-	*         content:
-	*           application/json:
-	*             schema:
-	*               type: object
-	*               properties:
-	*                 success:
-	*                   type: boolean
-	*                   description: Project deleted
-	*       400:
-	*         description: Bad request
-	*         content:
-	*           application/json:
-	*             schema:
-	*               type: object
-	*               properties:
-	*                 errors:
-	*                   type: array
-	*                   items:
-	*                     type: string
-	* @param request
-	* @constructor
-	*/
+	 * @swagger
+	 * /api/private/project/delete/{id}:
+	 *   delete:
+	 *     tags:
+	 *       - Project
+	 *     description: Delete a project
+	 *     summary: Delete a project
+	 *     security:
+	 *       - bearerAuth: []
+	 *     parameters:
+	 *       - in: path
+	 *         name: id
+	 *         schema:
+	 *           type: string
+	 *         required: true
+	 *         description: The Project's id
+	 *     requestBody:
+	 *       required: false
+	 *       content:
+	 *         application/json:
+	 *     responses:
+	 *       200:
+	 *         description: Project deleted
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               type: object
+	 *               properties:
+	 *                 success:
+	 *                   type: boolean
+	 *                   description: Project deleted
+	 *       400:
+	 *         description: Bad request
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               type: object
+	 *               properties:
+	 *                 errors:
+	 *                   type: array
+	 *                   items:
+	 *                     type: string
+	 * @param request
+	 * @constructor
+	 */
 	export {};
 
 ```
 
 lib/swagger/doc/project/getDetail.ts```ts
 	/**
-	* @swagger
-	* /api/private/project/{id}:
-	*   get:
-	*     tags:
-	*       - Project
-	*     description: Get a project
-	*     summary: Get a project
-	*     security:
-	*       - bearerAuth: []
-	*     parameters:
-	*       - in: path
-	*         name: id
-	*         schema:
-	*           type: string
-	*         required: true
-	*         description: The Project's id
-	*     responses:
-	*       200:
-	*         description: Project updated
-	*         content:
-	*           application/json:
-	*             schema:
-	*               $ref: '#/components/schemas/ProjectResponse'
-	*       400:
-	*         description: Bad request
-	*         content:
-	*           application/json:
-	*             schema:
-	*               type: object
-	*               properties:
-	*                 errors:
-	*                   type: array
-	*                   items:
-	*                     type: string
-	* components:
-	*   schemas:
-	*     ProjectResponse:
-	*       type: object
-	*       properties:
-	*         success:
-	*           type: boolean
-	*           description: Project updated
-	* @param request
-	* @constructor
-	*/
+	 * @swagger
+	 * /api/private/project/{id}:
+	 *   get:
+	 *     tags:
+	 *       - Project
+	 *     description: Get a project
+	 *     summary: Get a project
+	 *     security:
+	 *       - bearerAuth: []
+	 *     parameters:
+	 *       - in: path
+	 *         name: id
+	 *         schema:
+	 *           type: string
+	 *         required: true
+	 *         description: The Project's id
+	 *     responses:
+	 *       200:
+	 *         description: Project updated
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               $ref: '#/components/schemas/ProjectResponse'
+	 *       400:
+	 *         description: Bad request
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               type: object
+	 *               properties:
+	 *                 errors:
+	 *                   type: array
+	 *                   items:
+	 *                     type: string
+	 * components:
+	 *   schemas:
+	 *     ProjectResponse:
+	 *       type: object
+	 *       properties:
+	 *         success:
+	 *           type: boolean
+	 *           description: Project updated
+	 * @param request
+	 * @constructor
+	 */
 	export {};
 
 ```
@@ -36718,7 +37991,7 @@ lib/swagger/doc/project/getDetail.ts```ts
 lib/swagger/doc/project/get.ts```ts
 	/**
 	@swagger
-	* /api/private/project:
+	* /api/private/project/list:
 	*   get:
 	*     summary: Get list projects
 	*     description: Get list projects
@@ -36832,7 +38105,7 @@ lib/swagger/doc/project/get.ts```ts
 lib/swagger/doc/user/updateStatus.ts```ts
 	/**
 	 * @swagger
-	 * api/private/user/{id}/status:
+	 * api/private/user/status/{id}:
 	 *   patch:
 	 *     summary: Update user status to activate or deactivate
 	 *     tags:
@@ -36911,7 +38184,7 @@ lib/swagger/doc/user/updateStatus.ts```ts
 lib/swagger/doc/user/delete.ts```ts
 	/**
 	 * @swagger
-	 * api/private/user/{id}/delete:
+	 * api/private/user/delete/{id}:
 	 *   delete:
 	 *     summary: Delete a user
 	 *     tags:
@@ -37093,10 +38366,130 @@ lib/swagger/doc/user/getDetail.ts```ts
 
 ```
 
+lib/swagger/doc/user/getRolePermissions.ts```ts
+	/**
+	 * @swagger
+	 * /api/private/user/{id}/get-role-permission:
+	 *   post:
+	 *     summary: Get role permission
+	 *     description: Get role permission
+	 *     tags:
+	 *       - User
+	 *     security:
+	 *        - bearerAuth: []
+	 *     parameters:
+	 *       - in: path
+	 *         name: id
+	 *         required: true
+	 *     requestBody:
+	 *       content:
+	 *         application/json:
+	 *           schema:
+	 *             type: object
+	 *             properties:
+	 *               companyKey:
+	 *                 type: string
+	 *                 required: false
+	 *               projectKey:
+	 *                 type: string
+	 *                 required: false
+	 *     responses:
+	 *       404:
+	 *         description: User not found
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               $ref: '#/components/schemas/UserResponseError404And500'
+	 *       500:
+	 *         description: Internal server error
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               $ref: '#/components/schemas/UserResponseError404And500'
+	 *       401:
+	 *         description: Unauthorized
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               $ref: '#/components/schemas/UserResponseError401'
+	 *       200:
+	 *         description: Role permission
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               $ref: '#/components/schemas/UserResponse'
+	 * components:
+	 *   schemas:
+	 *     RolePermissionItem:
+	 *       type: object
+	 *       properties:
+	 *         scope:
+	 *           type: string
+	 *           oneOf: [system, company, project]
+	 *           required: true
+	 *         urlsCanAccess:
+	 *           type: array
+	 *           required: true
+	 *           items:
+	 *             type: object
+	 *             properties:
+	 *               url:
+	 *                 type: string
+	 *                 required: true
+	 *               method:
+	 *                 type: string
+	 *                 oneOf: [GET, POST, PUT, DELETE]
+	 *                 required: true
+	 *               roleId:
+	 *                 type: string
+	 *                 required: true
+	 *               projectId:
+	 *                 type: string
+	 *                 required: false
+	 *               projectKey:
+	 *                 type: string
+	 *                 required: false
+	 *     UserResponseError404And500:
+	 *       type: object
+	 *       properties:
+	 *         success:
+	 *           type: boolean
+	 *           example: false
+	 *         status:
+	 *           type: number
+	 *         errors:
+	 *           type: array
+	 *           items:
+	 *             type: string
+	 *             example: User not found
+	 *     UserResponseError401:
+	 *       type: object
+	 *       properties:
+	 *         error:
+	 *           type: string
+	 *     UserResponse:
+	 *       type: object
+	 *       properties:
+	 *         success:
+	 *           type: boolean
+	 *           example: true
+	 *         status:
+	 *           type: number
+	 *           example: 200
+	 *         data:
+	 *           type: array
+	 *           items:
+	 *             type: object
+	 *             $ref: '#/components/schemas/RolePermissionItem'
+	 */
+	export {};
+
+```
+
 lib/swagger/doc/user/archive.ts```ts
 	/**
 	 * @swagger
-	 * /api/private/user/{id}/archive:
+	 * /api/private/user/archive/{id}:
 	 *   patch:
 	 *     summary: Archive a user account which cannot logged-in anymore
 	 *     tags:
@@ -37163,7 +38556,7 @@ lib/swagger/doc/user/archive.ts```ts
 lib/swagger/doc/user/get.ts```ts
 	/**
 	 * @swagger
-	 * /api/private/user:
+	 * /api/private/user/list:
 	 *   get:
 	 *     summary: Get list of users
 	 *     description: Get list of users
@@ -37768,93 +39161,93 @@ lib/swagger/doc/contractor/get.ts```ts
 
 lib/swagger/doc/builder/put.ts```ts
 	/**
-	* @swagger
-	* /api/private/builder/{id}:
-	*   put:
-	*     tags:
-	*       - Builder
-	*     description: Edit a builder
-	*     summary: Edit a builder
-	*     security:
-	*       - bearerAuth: []
-	*     parameters:
-	*       - in: path
-	*         name: id
-	*         schema:
-	*           type: string
-	*         required: true
-	*         description: The Builder's id
-	*     requestBody:
-	*       required: false
-	*       content:
-	*         multipart/form-data:
-	*           schema:
-	*             $ref: '#/components/schemas/BuilderEdited'
-	*     responses:
-	*       200:
-	*         description: Builder updated
-	*         content:
-	*           application/json:
-	*             schema:
-	*               $ref: '#/components/schemas/BuilderResponse'
-	*       400:
-	*         description: Bad request
-	*         content:
-	*           application/json:
-	*             schema:
-	*               type: object
-	*               properties:
-	*                 errors:
-	*                   type: array
-	*                   items:
-	*                     type: string
-	* components:
-	*   schemas:
-	*     BuilderEdited:
-	*       type: object
-	*       properties:
-	*         builderName:
-	*           type: string
-	*           format: builderName
-	*           description: Builder's name
-	*           example: Horizon Development Group
-	*           required: true
-	*         category:
-	*           type: string
-	*           format: category
-	*           description: Builder's category
-	*           example: Residential
-	*           required: true
-	*         address:
-	*           type: string
-	*           format: address
-	*           description: Builder's address
-	*           example: Anytown, CA 90210
-	*           required: true
-	*         completionStatus:
-	*           type: string
-	*           format: completionStatus
-	*           description: Builder's status
-	*           example: Active
-	*           required: true
-	*         imageFolderName:
-	*           type: string
-	*           format: folderName
-	*           description: Folder Name
-	*           example: Builder
-	*           required: true
-	*         image:
-	*           type: string
-	*           format: binary
-	*     BuilderResponse:
-	*       type: object
-	*       properties:
-	*         success:
-	*           type: boolean
-	*           description: Builder updated
-	* @param request
-	* @constructor
-	*/
+	 * @swagger
+	 * /api/private/builder/update/{id}:
+	 *   put:
+	 *     tags:
+	 *       - Builder
+	 *     description: Edit a builder
+	 *     summary: Edit a builder
+	 *     security:
+	 *       - bearerAuth: []
+	 *     parameters:
+	 *       - in: path
+	 *         name: id
+	 *         schema:
+	 *           type: string
+	 *         required: true
+	 *         description: The Builder's id
+	 *     requestBody:
+	 *       required: false
+	 *       content:
+	 *         multipart/form-data:
+	 *           schema:
+	 *             $ref: '#/components/schemas/BuilderEdited'
+	 *     responses:
+	 *       200:
+	 *         description: Builder updated
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               $ref: '#/components/schemas/BuilderResponse'
+	 *       400:
+	 *         description: Bad request
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               type: object
+	 *               properties:
+	 *                 errors:
+	 *                   type: array
+	 *                   items:
+	 *                     type: string
+	 * components:
+	 *   schemas:
+	 *     BuilderEdited:
+	 *       type: object
+	 *       properties:
+	 *         builderName:
+	 *           type: string
+	 *           format: builderName
+	 *           description: Builder's name
+	 *           example: Horizon Development Group
+	 *           required: true
+	 *         category:
+	 *           type: string
+	 *           format: category
+	 *           description: Builder's category
+	 *           example: Residential
+	 *           required: true
+	 *         address:
+	 *           type: string
+	 *           format: address
+	 *           description: Builder's address
+	 *           example: Anytown, CA 90210
+	 *           required: true
+	 *         completionStatus:
+	 *           type: string
+	 *           format: completionStatus
+	 *           description: Builder's status
+	 *           example: Active
+	 *           required: true
+	 *         imageFolderName:
+	 *           type: string
+	 *           format: folderName
+	 *           description: Folder Name
+	 *           example: Builder
+	 *           required: true
+	 *         image:
+	 *           type: string
+	 *           format: binary
+	 *     BuilderResponse:
+	 *       type: object
+	 *       properties:
+	 *         success:
+	 *           type: boolean
+	 *           description: Builder updated
+	 * @param request
+	 * @constructor
+	 */
 	export {};
 
 ```
@@ -37862,7 +39255,7 @@ lib/swagger/doc/builder/put.ts```ts
 lib/swagger/doc/builder/post.ts```ts
 	/**
 	@swagger
-	* /api/private/builder:
+	* /api/private/builder/create:
 	*   post:
 	*     tags:
 	*       - Builder
@@ -37976,135 +39369,135 @@ lib/swagger/doc/builder/post.ts```ts
 lib/swagger/doc/builder/delete.ts```ts
 	// @ts-nocheck
 	/**
-	* @swagger
-	* /api/private/builder/{id}:
-	*   delete:
-	*     tags:
-	*       - Builder
-	*     description: Delete a builder
-	*     summary: Delete a builder
-	*     security:
-	*       - bearerAuth: []
-	*     parameters:
-	*       - in: path
-	*         name: id
-	*         schema:
-	*           type: string
-	*         required: true
-	*         description: The Builder's id
-	*     requestBody:
-	*       required: false
-	*       content:
-	*         application/json:
-	*     responses:
-	*       200:
-	*         description: Builder deleted
-	*         content:
-	*           application/json:
-	*             schema:
-	*               type: object
-	*               properties:
-	*                 success:
-	*                   type: boolean
-	*                   description: Builder deleted
-	*       400:
-	*         description: Bad request
-	*         content:
-	*           application/json:
-	*             schema:
-	*               type: object
-	*               properties:
-	*                 errors:
-	*                   type: array
-	*                   items:
-	*                     type: string
-	* @param request
-	* @constructor
-	*/
+	 * @swagger
+	 * /api/private/builder/delete/{id}:
+	 *   delete:
+	 *     tags:
+	 *       - Builder
+	 *     description: Delete a builder
+	 *     summary: Delete a builder
+	 *     security:
+	 *       - bearerAuth: []
+	 *     parameters:
+	 *       - in: path
+	 *         name: id
+	 *         schema:
+	 *           type: string
+	 *         required: true
+	 *         description: The Builder's id
+	 *     requestBody:
+	 *       required: false
+	 *       content:
+	 *         application/json:
+	 *     responses:
+	 *       200:
+	 *         description: Builder deleted
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               type: object
+	 *               properties:
+	 *                 success:
+	 *                   type: boolean
+	 *                   description: Builder deleted
+	 *       400:
+	 *         description: Bad request
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               type: object
+	 *               properties:
+	 *                 errors:
+	 *                   type: array
+	 *                   items:
+	 *                     type: string
+	 * @param request
+	 * @constructor
+	 */
 	export {};
 
 ```
 
 lib/swagger/doc/builder/getDetail.ts```ts
 	/**
-	* @swagger
-	* /api/private/builder/{id}:
-	*   get:
-	*     tags:
-	*       - Builder
-	*     description: Get a builder
-	*     summary: Get a builder
-	*     security:
-	*       - bearerAuth: []
-	*     parameters:
-	*       - in: path
-	*         name: id
-	*         schema:
-	*           type: string
-	*         required: true
-	*         description: The Builder's id
-	*     responses:
-	*       200:
-	*         description: Builder updated
-	*         content:
-	*           application/json:
-	*             schema:
-	*               $ref: '#/components/schemas/BuilderResponse'
-	*       400:
-	*         description: Bad request
-	*         content:
-	*           application/json:
-	*             schema:
-	*               type: object
-	*               properties:
-	*                 errors:
-	*                   type: array
-	*                   items:
-	*                     type: string
-	* components:
-	*   schemas:
-	*     BuilderResponse:
-	*       type: object
-	*       properties:
-	*         success:
-	*           type: boolean
-	*           description: Builder updated
-	*         builder:
-	*           type: object
-	*           properties:
-	*             id:
-	*               type: string      
-	*             builderName:
-	*               type: string
-	*             category:
-	*               type: string
-	*             address:
-	*               type: string
-	*             completionStatus:
-	*               type: string
-	*             imageUrl:
-	*               type: string
-	*             date:
-	*               type: string
-	*             dateCreate:
-	*               type: string
-	*             dateModify:
-	*               type: string
-	*             generalContractor:
-	*               type: string
-	*             budgetSeperatorComma:
-	*               type: string
-	*             budgetSeperatorSemiColon:
-	*               type: string
-	*             budgetSeperatorTab:
-	*               type: string
-	*             creatorId:
-	*               type: string
-	*             creatorEmail:
-	*               type: string
-	* @param request
-	* @constructor
-	*/
+	 * @swagger
+	 * /api/private/builder/{id}:
+	 *   get:
+	 *     tags:
+	 *       - Builder
+	 *     description: Get a builder
+	 *     summary: Get a builder
+	 *     security:
+	 *       - bearerAuth: []
+	 *     parameters:
+	 *       - in: path
+	 *         name: id
+	 *         schema:
+	 *           type: string
+	 *         required: true
+	 *         description: The Builder's id
+	 *     responses:
+	 *       200:
+	 *         description: Builder updated
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               $ref: '#/components/schemas/BuilderResponse'
+	 *       400:
+	 *         description: Bad request
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               type: object
+	 *               properties:
+	 *                 errors:
+	 *                   type: array
+	 *                   items:
+	 *                     type: string
+	 * components:
+	 *   schemas:
+	 *     BuilderResponse:
+	 *       type: object
+	 *       properties:
+	 *         success:
+	 *           type: boolean
+	 *           description: Builder updated
+	 *         builder:
+	 *           type: object
+	 *           properties:
+	 *             id:
+	 *               type: string
+	 *             builderName:
+	 *               type: string
+	 *             category:
+	 *               type: string
+	 *             address:
+	 *               type: string
+	 *             completionStatus:
+	 *               type: string
+	 *             imageUrl:
+	 *               type: string
+	 *             date:
+	 *               type: string
+	 *             dateCreate:
+	 *               type: string
+	 *             dateModify:
+	 *               type: string
+	 *             generalContractor:
+	 *               type: string
+	 *             budgetSeperatorComma:
+	 *               type: string
+	 *             budgetSeperatorSemiColon:
+	 *               type: string
+	 *             budgetSeperatorTab:
+	 *               type: string
+	 *             creatorId:
+	 *               type: string
+	 *             creatorEmail:
+	 *               type: string
+	 * @param request
+	 * @constructor
+	 */
 	export {};
 
 ```
@@ -38112,7 +39505,7 @@ lib/swagger/doc/builder/getDetail.ts```ts
 lib/swagger/doc/builder/get.ts```ts
 	/**
 	@swagger
-	* /api/private/builder:
+	* /api/private/builder/list:
 	*   get:
 	*     summary: Get list builders
 	*     description: Get list builders
