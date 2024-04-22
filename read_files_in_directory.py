@@ -18,6 +18,6 @@ def read_files_in_directory(output_file, input_directory, allowed_extensions=[],
                 
                 with open(file_path, 'r') as in_file:
                     rel_file_path = os.path.relpath(file_path, input_directory)
-                    out_file.write(f"{rel_file_path}```{file_ext.lower()[1:]}\n")
+                    out_file.write(f"// ./{rel_file_path}\n```{file_ext.lower()[1:]}\n")
                     out_file.write("".join(["\t" + line for line in in_file.readlines()]))
                     out_file.write('\n```\n\n')

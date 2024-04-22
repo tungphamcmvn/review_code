@@ -1,0 +1,29 @@
+After reviewing the pull request, here are the issues and concerns identified:
+
+1. **Environment Variable for Seeding (`.env.development` & `.env.production`)**:
+   - The addition of `NEXT_SEEDING=true` to both development and production environment files suggests that seeding is enabled by default, which could pose a security risk if sensitive data is included in seed files. Typically, seeding should be a controlled process, especially in production environments.
+
+2. **Permission Key Change (`j2cdev.permissions.json`)**:
+   - The permission key change from `"key": "view_profile"` to `"key": "update_profile_role"` could have implications on the application's permission checks. Ensure all references to this permission key in the codebase are updated to prevent authorization issues.
+
+3. **Addition of Seeding Endpoint (`seed-data/route.ts`)**:
+   - Introducing a public API route for seeding data can be a significant security risk, particularly if this route is accessible in a production environment. It's crucial to ensure that this route is adequately protected to prevent unauthorized use.
+   - The seeding process directly reads from JSON files and inserts data into the database without any form of input validation, which could lead to data integrity issues or unintentional data overwrite.
+   - Using `require` to load JSON data (`const permissions = require('@/backend/services/permission/fixture/j2cdev.permissions.json')`) inside an async function may lead to unexpected behavior or performance issues. Consider dynamically importing JSON files or using a different approach to load seed data.
+
+4. **Cryptographic Practices**:
+   - The seeding script uses `bcrypt` for hashing passwords, which is a good practice. However, the salt rounds are not explicitly defined in the seeding script (`await bcrypt.hash(password, 10)`). It's advisable to define salt rounds as a constant or configuration to ensure consistency and security across the application.
+
+5. **Data Handling in DTOs (`base.dto.ts`)**:
+   - The addition of a `toObjectWithId` method in `BaseDto` class to convert DTOs to objects including the `id` field suggests a workaround for handling `_id` fields. While this approach can work, it's important to ensure that it aligns with the application's overall strategy for DTO transformation and doesn't introduce inconsistencies.
+   - The new `recursiveCovertToDtoWithId` method seems to replicate much of the functionality from `recursiveCovertToDto`. Consider refactoring to avoid code duplication and maintainability issues.
+
+6. **Use of Development-Specific Data in Production**:
+   - The seed data routes and related changes seem to rely on development-specific files (e.g., `j2cdev.permissions.json`). If these changes are meant for production use, consider how environment-specific data will be handled to avoid accidentally using development data in production environments.
+
+7. **General Best Practices and Code Quality**:
+   - Ensure that all new dependencies (e.g., the introduction of new modules or utilities like `@mui/material`) are necessary and correctly integrated into the project's dependency management system.
+   - The seeding logic could benefit from more robust error handling and logging to facilitate debugging and ensure the reliability of the seeding process.
+   - The direct modification of environment files and the introduction of new features such as seeding through an endpoint warrant thorough testing to avoid unintended side effects.
+
+Before merging this pull request, it's crucial to address these concerns, especially those related to security and data integrity, to maintain the application's overall quality and security posture.

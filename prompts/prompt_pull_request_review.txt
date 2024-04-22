@@ -1,5 +1,44 @@
 Please analyze the 'diff.txt' file to understand the recent modifications in a complex application built using Next.js, React.js, and MongoDB, as detailed in the 'codebase.txt' file. The application's architecture is described below, including directories and functionalities:
 
+The corrected directory structure based on the codebase:
+
+```
+./
+├── lib/
+│   └── swagger/
+├── types/
+├── src/
+│   ├── app/
+│   │   ├── adminPanel/
+│   │   └── publicPages/
+│   ├── app/api/
+│   ├── backend/
+│   │   ├── model/
+│   │   ├── repositories/
+│   │   ├── storage/
+│   │   ├── observer/
+│   │   ├── structs/
+│   │   └── validator/
+│   ├── components/
+│   ├── constant/
+│   ├── contexts/
+│   ├── hooks/
+│   ├── layout/
+│   ├── menu-items/ 
+│   ├── scss/
+│   ├── store/
+│   ├── theme/
+│   ├── types/
+│   └── utils/
+│       ├── datetime/
+│       ├── dtos/
+│       └── enums/
+├── src/views/
+├── public/
+├── pages/
+└── styles/
+```
+
 1. README.md:
    - Provides guidelines for setting up and running the application in development and production environments using Docker Compose.
    - Specifies the required environment variables to be set in the .env file before starting the application.
@@ -39,39 +78,51 @@ Please analyze the 'diff.txt' file to understand the recent modifications in a c
    - Implements callbacks for handling authentication flow, including 'jwt' and 'session' callbacks.
    - Specifies the custom sign-in page URL.
 
-7. src/backend/exceptions:
-   - Contains custom exception classes for handling specific error scenarios.
-   - Includes 'IdsNotFoundException' for handling cases where IDs are not found.
-   - Defines 'NotFoundException' for handling cases where resources are not found.
-
-8. src/backend/services:
-   - Contains service classes that handle business logic and interact with repositories.
-   - Includes 'UserService' for managing user-related operations such as CRUD operations, profile management, and password reset.
-   - Defines 'RoleService' for managing role-related operations (content truncated in the provided 'codebase.txt').
-
-9. Additional Directories and Files:
-   - lib/swagger/: Used for generating OpenAPI Specifications for API endpoints.
-   - types/: Contains custom field definitions for next-auth.
-   - src/app/: Includes web page route handlers for server-side rendering.
-   - src/app/(dashboard)/: Contains dashboard interface components.
-   - src/app/(minimal)/: Includes screens for authentication and user verification.
-   - src/app/api/: Defines backend API endpoints categorized by model or functionality.
-   - src/backend/model/: Contains MongoDB schema definitions.
-   - src/backend/repositories/: Includes database interaction methods.
-   - src/backend/storage/: Defines S3 configuration for file storage.
-   - src/backend/observer/: Contains notification configuration.
-   - src/backend/structs/: Defines common API response formats.
-   - src/backend/validator/: Includes input validation classes and rules.
-   - src/components/: Contains UI components for views.
-   - src/constant/: Defines application-wide constants.
-   - src/contexts/: Manages session context.
-   - src/hook/: Includes client-side logic.
-   - src/layout, menu-items scss, store, theme/: Contains UI layout components.
-   - src/types/: Defines TypeScript object types.
-   - src/utils/: Includes utility functions and constants.
-   - src/utils/datetime/: Contains UTC time conversion class.
-   - src/utils/dtos/: Defines data transfer object conversions.
-   - src/views/: Contains client-side rendering components.
+7. Additional Directories and Files:
+   // ./src/app/
+   - Contains code specific to the application like pages and APIs.
+   // ./src/app/adminPanel/
+   - Admin dashboard pages protected behind authentication. Likely contains pages for managing users, projects, invoices etc.
+   // ./src/app/publicPages/  
+   - Public pages accessible without authentication like homepage, login, register etc.
+   // ./src/app/api/ 
+   - API routes built with Next.js API routes. Provides backend API endpoints.
+   // ./src/backend/
+   - Contains reusable backend code and domain logic.
+   // ./src/backend/model/
+   - MongoDB models define the data structures.
+   // ./src/backend/repositories/ 
+   - Repository pattern to abstract data layer. Query and persist data using models.
+   // ./src/backend/storage/
+   - Upload and storage implementations like S3. Abstraction over storage providers.
+   // ./src/backend/observer/
+   - Observer pattern implementation for notifications like emails. 
+   // ./src/backend/structs/
+   - Common data structures used in the backend code.
+   // ./src/backend/validator/
+   - Input validation for API requests.
+   // ./src/components/
+   - Reusable React components and UI elements.
+   // ./src/contexts/
+   - React contexts like authentication and configuration.
+   // ./src/hooks/
+   - Custom React hooks for common use cases.
+   // ./src/layout/
+   Layout components like main layout, header, footer etc.
+   // ./src/menu-items/
+   Menu configuration for navigation.
+   // ./src/store/ 
+   Application state management using Redux Toolkit.
+   // ./src/theme/
+   Theme configuration and customization.
+   // ./src/utils/
+   Common utility functions.
+   // ./pages/
+   Next.js page components rendered on routes.
+   // ./public/
+   Static assets served by Next.js.
+   // ./styles/ 
+   Global CSS styles.
 
 Your analysis should result in an HTML document titled "Pull Request Analysis" with six distinct sections that:
 

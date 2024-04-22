@@ -1,4 +1,5 @@
-README.md```md
+// ./README.md
+```md
 	# Guideline
 	
 	## ENV
@@ -34,7 +35,8 @@ README.md```md
 
 ```
 
-next.config.js```js
+// ./next.config.js
+```js
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -54,7 +56,7 @@ next.config.js```js
 	  eslint: {
 	    // Warning: This allows production builds to successfully complete even if
 	    // your project has ESLint errors.
-	    ignoreDuringBuilds: false,
+	    ignoreDuringBuilds: process.env.NODE_ENV === 'production',
 	    dirs: ['src', 'pages', 'components', 'lib', 'utils']
 	  },
 	  sassOptions: {
@@ -122,7 +124,8 @@ next.config.js```js
 
 ```
 
-next-env.d.ts```ts
+// ./next-env.d.ts
+```ts
 	/// <reference types="next" />
 	/// <reference types="next/image-types/global" />
 	
@@ -131,7 +134,8 @@ next-env.d.ts```ts
 
 ```
 
-src/config.ts```ts
+// ./src/config.ts
+```ts
 	import { LAYOUT_CONST } from 'constant';
 	
 	// third party
@@ -168,7 +172,8 @@ src/config.ts```ts
 
 ```
 
-src/middleware.ts```ts
+// ./src/middleware.ts
+```ts
 	import stackMiddlewares from '@/backend/middlewares/stack.middleware';
 	import { withAuth } from '@/backend/middlewares/auth.middleware';
 	import { withUnAuth } from '@/backend/middlewares/unauth.middleware';
@@ -186,7 +191,8 @@ src/middleware.ts```ts
 
 ```
 
-src/routes.ts```ts
+// ./src/routes.ts
+```ts
 	const routes = {
 	  dashboard: {
 	    label: 'Builders',
@@ -274,7 +280,8 @@ src/routes.ts```ts
 
 ```
 
-src/auth.ts```ts
+// ./src/auth.ts
+```ts
 	import NextAuth, { Account, Awaitable, Profile, Session, User, AuthOptions, DefaultSession } from 'next-auth';
 	import CredentialsConfig from 'next-auth/providers/credentials';
 	import MongoConnect from '@/backend/connection/mongo.connection';
@@ -466,7 +473,8 @@ src/auth.ts```ts
 
 ```
 
-src/backend/exceptions/idsnotfound.exception.ts```ts
+// ./src/backend/exceptions/idsnotfound.exception.ts
+```ts
 	export default class IdsNotFoundException extends Error {
 	  constructor(message: string) {
 	    super(message);
@@ -476,7 +484,8 @@ src/backend/exceptions/idsnotfound.exception.ts```ts
 
 ```
 
-src/backend/exceptions/notfound.exception.ts```ts
+// ./src/backend/exceptions/notfound.exception.ts
+```ts
 	export default class NotFoundException extends Error {
 	  constructor(
 	    message: string,
@@ -490,7 +499,8 @@ src/backend/exceptions/notfound.exception.ts```ts
 
 ```
 
-src/backend/services/user.service.ts```ts
+// ./src/backend/services/user.service.ts
+```ts
 	import UserRepositoryInterface from '@/backend/repositories/interfaces/user.repository.interface';
 	import UserDto from '@/utils/dtos/user.dto';
 	import mongoose from 'mongoose';
@@ -680,7 +690,8 @@ src/backend/services/user.service.ts```ts
 
 ```
 
-src/backend/services/role.service.ts```ts
+// ./src/backend/services/role.service.ts
+```ts
 	import RoleRepositoryInterface from '@/backend/repositories/interfaces/role.repository.interface';
 	import {
 	  ROLE_ARRAY_BUILDER,
@@ -878,7 +889,8 @@ src/backend/services/role.service.ts```ts
 
 ```
 
-src/backend/services/invoice.service.ts```ts
+// ./src/backend/services/invoice.service.ts
+```ts
 	import InvoiceRepositoryInterface from '@/backend/repositories/interfaces/invoice.repository.interface';
 	import InvoiceDto, { Invoice as InvoiceType } from '@/utils/dtos/invoice.dto';
 	import mongoose from 'mongoose';
@@ -1081,7 +1093,8 @@ src/backend/services/invoice.service.ts```ts
 
 ```
 
-src/backend/services/project.service.ts```ts
+// ./src/backend/services/project.service.ts
+```ts
 	import ProjectRepositoryInterface from '@/backend/repositories/interfaces/project.repository.interface';
 	import RoleRepositoryInterface from '@/backend/repositories/interfaces/role.repository.interface';
 	import { ROLE_LEVEL_ENUM_BUILDER, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
@@ -1415,7 +1428,8 @@ src/backend/services/project.service.ts```ts
 
 ```
 
-src/backend/services/budget.service.ts```ts
+// ./src/backend/services/budget.service.ts
+```ts
 	import BudgetRepositoryInterface from '@/backend/repositories/interfaces/budget.repository.interface';
 	import mongoose, { Mongoose, SortOrder } from 'mongoose';
 	import BudgetDto, { Budget, Budget as BudgetType } from '@/utils/dtos/budget.dto';
@@ -1607,7 +1621,8 @@ src/backend/services/budget.service.ts```ts
 
 ```
 
-src/backend/services/contractor.service.ts```ts
+// ./src/backend/services/contractor.service.ts
+```ts
 	import mongoose, { Mongoose } from 'mongoose';
 	import { CSV_COMPANY_ENUM, ROLE_TARGET_TYPE_ENUM } from '@/utils/common';
 	import { Role as RoleType } from '@/utils/dtos/role.dto';
@@ -1949,7 +1964,8 @@ src/backend/services/contractor.service.ts```ts
 
 ```
 
-src/backend/services/auth.service.ts```ts
+// ./src/backend/services/auth.service.ts
+```ts
 	import UserRepository from '@/backend/repositories/mongodb/user.repository';
 	import mongoose, { Mongoose } from 'mongoose';
 	import UserDto from '@/utils/dtos/user.dto';
@@ -2194,7 +2210,8 @@ src/backend/services/auth.service.ts```ts
 
 ```
 
-src/backend/services/notification.service.ts```ts
+// ./src/backend/services/notification.service.ts
+```ts
 	import NotificationInterface from '@/backend/services/observer/interfaces/notification.interface';
 	
 	export default class NotificationService {
@@ -2217,7 +2234,8 @@ src/backend/services/notification.service.ts```ts
 
 ```
 
-src/backend/services/builder.service.ts```ts
+// ./src/backend/services/builder.service.ts
+```ts
 	import { ObjectId } from 'bson';
 	import StorageFactory from '@/backend/services/storage/storage.factory';
 	import BuilderRepository from '@/backend/repositories/mongodb/builder.repository';
@@ -2516,7 +2534,8 @@ src/backend/services/builder.service.ts```ts
 
 ```
 
-src/backend/services/observer/providers/smtp.provider.ts```ts
+// ./src/backend/services/observer/providers/smtp.provider.ts
+```ts
 	import MailNotificationInterface from '@/backend/services/observer/interfaces/mail.notification.interface';
 	
 	export default class SmtpProvider implements MailNotificationInterface {
@@ -2575,7 +2594,8 @@ src/backend/services/observer/providers/smtp.provider.ts```ts
 
 ```
 
-src/backend/services/observer/providers/mailjet.provider.ts```ts
+// ./src/backend/services/observer/providers/mailjet.provider.ts
+```ts
 	import MailNotificationInterface from '@/backend/services/observer/interfaces/mail.notification.interface';
 	import axiosServices from '@/utils/axios';
 	
@@ -2648,14 +2668,16 @@ src/backend/services/observer/providers/mailjet.provider.ts```ts
 
 ```
 
-src/backend/services/observer/interfaces/notification.interface.ts```ts
+// ./src/backend/services/observer/interfaces/notification.interface.ts
+```ts
 	export default interface NotificationInterface {
 	  sendNotification(): void;
 	}
 
 ```
 
-src/backend/services/observer/interfaces/mail.notification.interface.ts```ts
+// ./src/backend/services/observer/interfaces/mail.notification.interface.ts
+```ts
 	import NotificationInterface from '@/backend/services/observer/interfaces/notification.interface';
 	
 	export default interface MailNotificationInterface extends NotificationInterface {
@@ -2670,7 +2692,8 @@ src/backend/services/observer/interfaces/mail.notification.interface.ts```ts
 
 ```
 
-src/backend/services/storage/s3.storage.ts```ts
+// ./src/backend/services/storage/s3.storage.ts
+```ts
 	import { DeleteObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 	import StorageInterface from '@/backend/services/storage/interface/storage.interface';
 	import Logger from '@/utils/logger';
@@ -2735,7 +2758,8 @@ src/backend/services/storage/s3.storage.ts```ts
 
 ```
 
-src/backend/services/storage/storage.factory.ts```ts
+// ./src/backend/services/storage/storage.factory.ts
+```ts
 	import StorageInterface from '@/backend/services/storage/interface/storage.interface';
 	import S3Storage from '@/backend/services/storage/s3.storage';
 	
@@ -2769,7 +2793,8 @@ src/backend/services/storage/storage.factory.ts```ts
 
 ```
 
-src/backend/services/storage/interface/storage.interface.ts```ts
+// ./src/backend/services/storage/interface/storage.interface.ts
+```ts
 	export default interface StorageInterface {
 	  uploadFile(file: File, folderName: string): Promise<string>;
 	
@@ -2778,7 +2803,8 @@ src/backend/services/storage/interface/storage.interface.ts```ts
 
 ```
 
-src/backend/services/permission/chains/company.permission.chain.ts```ts
+// ./src/backend/services/permission/chains/company.permission.chain.ts
+```ts
 	import BaseChain from '@/backend/services/permission/chains/base.chain';
 	import { Scope } from '@/utils/enums';
 	
@@ -2796,8 +2822,9 @@ src/backend/services/permission/chains/company.permission.chain.ts```ts
 
 ```
 
-src/backend/services/permission/chains/base.chain.ts```ts
-	import { ContextItem } from '@/backend/services/permission/permission.handler';
+// ./src/backend/services/permission/chains/base.chain.ts
+```ts
+	import { ContextItem } from '@/utils/permission/permission.handler';
 	
 	export default abstract class BaseChain {
 	  protected source: ContextItem | null = null;
@@ -2918,7 +2945,8 @@ src/backend/services/permission/chains/base.chain.ts```ts
 
 ```
 
-src/backend/services/permission/chains/user.permission.chain.ts```ts
+// ./src/backend/services/permission/chains/user.permission.chain.ts
+```ts
 	import BaseChain from '@/backend/services/permission/chains/base.chain';
 	import { Scope } from '@/utils/enums';
 	
@@ -2938,7 +2966,8 @@ src/backend/services/permission/chains/user.permission.chain.ts```ts
 
 ```
 
-src/backend/services/permission/chains/project.permission.chain.ts```ts
+// ./src/backend/services/permission/chains/project.permission.chain.ts
+```ts
 	import BaseChain from '@/backend/services/permission/chains/base.chain';
 	import { Scope } from '@/utils/enums';
 	
@@ -3003,7 +3032,8 @@ src/backend/services/permission/chains/project.permission.chain.ts```ts
 
 ```
 
-src/backend/services/permission/factory/permission.loader.factory.ts```ts
+// ./src/backend/services/permission/factory/permission.loader.factory.ts
+```ts
 	import UserPermissionLoader from '@/backend/services/permission/loader/user.permission.loader';
 	import CompanyPermissionLoader from '@/backend/services/permission/loader/company.permission.loader';
 	import ProjectPermissionLoader from '@/backend/services/permission/loader/project.permission.loader';
@@ -3027,7 +3057,8 @@ src/backend/services/permission/factory/permission.loader.factory.ts```ts
 
 ```
 
-src/backend/services/permission/loader/project.permission.loader.ts```ts
+// ./src/backend/services/permission/loader/project.permission.loader.ts
+```ts
 	import PermissionLoaderInterface from '@/backend/services/permission/loader/permission.loader.interface';
 	import BasePermissionLoader from '@/backend/services/permission/loader/base.permission.loader';
 	import ProjectRepository from '@/backend/repositories/mongodb/project.repository';
@@ -3137,7 +3168,8 @@ src/backend/services/permission/loader/project.permission.loader.ts```ts
 
 ```
 
-src/backend/services/permission/loader/company.permission.loader.ts```ts
+// ./src/backend/services/permission/loader/company.permission.loader.ts
+```ts
 	import PermissionLoaderInterface from '@/backend/services/permission/loader/permission.loader.interface';
 	import { Mongoose } from 'mongoose';
 	import CompanyRepositoryInterface from '@/backend/repositories/interfaces/company.repository.interface';
@@ -3235,7 +3267,8 @@ src/backend/services/permission/loader/company.permission.loader.ts```ts
 
 ```
 
-src/backend/services/permission/loader/user.permission.loader.ts```ts
+// ./src/backend/services/permission/loader/user.permission.loader.ts
+```ts
 	import PermissionLoaderInterface from '@/backend/services/permission/loader/permission.loader.interface';
 	import NotFoundException from '@/backend/exceptions/notfound.exception';
 	import UserRepositoryInterface from '@/backend/repositories/interfaces/user.repository.interface';
@@ -3323,7 +3356,8 @@ src/backend/services/permission/loader/user.permission.loader.ts```ts
 
 ```
 
-src/backend/services/permission/loader/base.permission.loader.ts```ts
+// ./src/backend/services/permission/loader/base.permission.loader.ts
+```ts
 	export default abstract class BasePermissionLoader {
 	  protected companyId: string | null = null;
 	  protected userId: string | null = null;
@@ -3393,14 +3427,16 @@ src/backend/services/permission/loader/base.permission.loader.ts```ts
 
 ```
 
-src/backend/services/permission/loader/permission.loader.interface.ts```ts
+// ./src/backend/services/permission/loader/permission.loader.interface.ts
+```ts
 	export default interface PermissionLoaderInterface {
 	  loadPermission(): void;
 	}
 
 ```
 
-src/backend/validator/budget.validator.ts```ts
+// ./src/backend/validator/budget.validator.ts
+```ts
 	import BaseValidator from '@/backend/validator/base.validator';
 	import { number, string } from 'yup';
 	import ProjectRepositoryInterface from '../repositories/interfaces/project.repository.interface';
@@ -3469,7 +3505,8 @@ src/backend/validator/budget.validator.ts```ts
 
 ```
 
-src/backend/validator/register.validator.ts```ts
+// ./src/backend/validator/register.validator.ts
+```ts
 	import BaseValidator from '@/backend/validator/base.validator';
 	import { string } from 'yup';
 	import { Mongoose } from 'mongoose';
@@ -3525,7 +3562,8 @@ src/backend/validator/register.validator.ts```ts
 
 ```
 
-src/backend/validator/base.validator.ts```ts
+// ./src/backend/validator/base.validator.ts
+```ts
 	export default abstract class BaseValidator {
 	  protected messageError: string[] = [];
 	  protected rules: object[] = [];
@@ -3572,7 +3610,8 @@ src/backend/validator/base.validator.ts```ts
 
 ```
 
-src/backend/validator/change-password.validator.ts```ts
+// ./src/backend/validator/change-password.validator.ts
+```ts
 	import UserRepository from '@/backend/repositories/mongodb/user.repository';
 	import BaseValidator from '@/backend/validator/base.validator';
 	import UserRepositoryInterface from '@/backend/repositories/interfaces/user.repository.interface';
@@ -3661,7 +3700,8 @@ src/backend/validator/change-password.validator.ts```ts
 
 ```
 
-src/backend/validator/user-bulk-action.validator.ts```ts
+// ./src/backend/validator/user-bulk-action.validator.ts
+```ts
 	import BaseValidator from '@/backend/validator/base.validator';
 	import { array, mixed, string } from 'yup';
 	import { Actions } from '@/utils/enums';
@@ -3701,7 +3741,8 @@ src/backend/validator/user-bulk-action.validator.ts```ts
 
 ```
 
-src/backend/validator/forgot-password.validator.ts```ts
+// ./src/backend/validator/forgot-password.validator.ts
+```ts
 	import BaseValidator from '@/backend/validator/base.validator';
 	import { string } from 'yup';
 	import { Mongoose } from 'mongoose';
@@ -3736,7 +3777,8 @@ src/backend/validator/forgot-password.validator.ts```ts
 
 ```
 
-src/backend/validator/upload.validator.ts```ts
+// ./src/backend/validator/upload.validator.ts
+```ts
 	import BaseValidator from '@/backend/validator/base.validator';
 	import { mixed, string } from 'yup';
 	import { FolderName } from '@/utils/enums';
@@ -3809,7 +3851,8 @@ src/backend/validator/upload.validator.ts```ts
 
 ```
 
-src/backend/validator/reset-password.validator.ts```ts
+// ./src/backend/validator/reset-password.validator.ts
+```ts
 	import BaseValidator from '@/backend/validator/base.validator';
 	import { string } from 'yup';
 	
@@ -3850,7 +3893,8 @@ src/backend/validator/reset-password.validator.ts```ts
 
 ```
 
-src/backend/validator/builder.validator.ts```ts
+// ./src/backend/validator/builder.validator.ts
+```ts
 	import BaseValidator from '@/backend/validator/base.validator';
 	import { string } from 'yup';
 	import UploadValidator from './upload.validator';
@@ -3892,7 +3936,8 @@ src/backend/validator/builder.validator.ts```ts
 
 ```
 
-src/backend/validator/profile.validator.ts```ts
+// ./src/backend/validator/profile.validator.ts
+```ts
 	import BaseValidator from '@/backend/validator/base.validator';
 	import { string } from 'yup';
 	import { Mongoose } from 'mongoose';
@@ -3979,7 +4024,8 @@ src/backend/validator/profile.validator.ts```ts
 
 ```
 
-src/backend/validator/contractor.validator.ts```ts
+// ./src/backend/validator/contractor.validator.ts
+```ts
 	import BaseValidator from '@/backend/validator/base.validator';
 	import { string } from 'yup';
 	
@@ -4016,7 +4062,8 @@ src/backend/validator/contractor.validator.ts```ts
 
 ```
 
-src/backend/validator/project.validator.ts```ts
+// ./src/backend/validator/project.validator.ts
+```ts
 	import BaseValidator from '@/backend/validator/base.validator';
 	import { date, number, string } from 'yup';
 	import UploadValidator from './upload.validator';
@@ -4059,7 +4106,8 @@ src/backend/validator/project.validator.ts```ts
 
 ```
 
-src/backend/validator/objectId.validator.ts```ts
+// ./src/backend/validator/objectId.validator.ts
+```ts
 	import BaseValidator from '@/backend/validator/base.validator';
 	import { string } from 'yup';
 	
@@ -4089,7 +4137,8 @@ src/backend/validator/objectId.validator.ts```ts
 
 ```
 
-src/backend/models/project.model.ts```ts
+// ./src/backend/models/project.model.ts
+```ts
 	import DateUTC from '@/utils/datetime/date.custom';
 	import mongoose from 'mongoose';
 	import { Project as ProjectType } from '@/utils/dtos/project.dto';
@@ -4268,7 +4317,8 @@ src/backend/models/project.model.ts```ts
 
 ```
 
-src/backend/models/invoice.model.ts```ts
+// ./src/backend/models/invoice.model.ts
+```ts
 	import mongoose from 'mongoose';
 	import { Invoice as InvoiceType } from '@/utils/dtos/invoice.dto';
 	
@@ -4399,7 +4449,8 @@ src/backend/models/invoice.model.ts```ts
 
 ```
 
-src/backend/models/user.model.ts```ts
+// ./src/backend/models/user.model.ts
+```ts
 	import mongoose from 'mongoose';
 	import { User as UserType } from '@/utils/dtos/user.dto';
 	import Role from '@/backend/models/role.model';
@@ -4505,7 +4556,8 @@ src/backend/models/user.model.ts```ts
 
 ```
 
-src/backend/models/builder.model.ts```ts
+// ./src/backend/models/builder.model.ts
+```ts
 	import mongoose from 'mongoose';
 	import { Builder as BuilderType } from '@/utils/dtos/builder.dto';
 	
@@ -4601,7 +4653,8 @@ src/backend/models/builder.model.ts```ts
 
 ```
 
-src/backend/models/budget.model.ts```ts
+// ./src/backend/models/budget.model.ts
+```ts
 	import mongoose from 'mongoose';
 	import { Budget as BudgetType } from '@/utils/dtos/budget.dto';
 	
@@ -4677,7 +4730,8 @@ src/backend/models/budget.model.ts```ts
 
 ```
 
-src/backend/models/role.model.ts```ts
+// ./src/backend/models/role.model.ts
+```ts
 	import mongoose from 'mongoose';
 	import { Role as RoleType } from '@/utils/dtos/role.dto';
 	import Permission from '@/backend/models/permission.model';
@@ -4725,7 +4779,8 @@ src/backend/models/role.model.ts```ts
 
 ```
 
-src/backend/models/company.model.ts```ts
+// ./src/backend/models/company.model.ts
+```ts
 	import mongoose from 'mongoose';
 	import { Company as CompanyType } from '@/utils/dtos/company.dto';
 	import Role from '@/backend/models/role.model';
@@ -4789,7 +4844,8 @@ src/backend/models/company.model.ts```ts
 
 ```
 
-src/backend/models/permission.model.ts```ts
+// ./src/backend/models/permission.model.ts
+```ts
 	import mongoose from 'mongoose';
 	import { Permission as PermissionType } from '@/utils/dtos/permission.dto';
 	
@@ -4843,7 +4899,8 @@ src/backend/models/permission.model.ts```ts
 
 ```
 
-src/backend/models/contractor.model.ts```ts
+// ./src/backend/models/contractor.model.ts
+```ts
 	import mongoose from 'mongoose';
 	import { Contractor as ContractorType } from '@/utils/dtos/contractor.dto';
 	
@@ -4935,7 +4992,8 @@ src/backend/models/contractor.model.ts```ts
 
 ```
 
-src/backend/structs/pagination.struct.ts```ts
+// ./src/backend/structs/pagination.struct.ts
+```ts
 	import BaseStruct from '@/backend/structs/base.struct';
 	
 	export default class PaginationStruct extends BaseStruct {
@@ -4955,7 +5013,8 @@ src/backend/structs/pagination.struct.ts```ts
 
 ```
 
-src/backend/structs/response.struct.ts```ts
+// ./src/backend/structs/response.struct.ts
+```ts
 	import BaseStruct from '@/backend/structs/base.struct';
 	import PaginationStruct from '@/backend/structs/pagination.struct';
 	
@@ -5023,7 +5082,8 @@ src/backend/structs/response.struct.ts```ts
 
 ```
 
-src/backend/structs/base.struct.ts```ts
+// ./src/backend/structs/base.struct.ts
+```ts
 	export default abstract class BaseStruct {
 	  public getValue(key: string): any {
 	    if (!this.hasOwnProperty(key)) {
@@ -5061,7 +5121,8 @@ src/backend/structs/base.struct.ts```ts
 
 ```
 
-src/backend/repositories/mongodb/permission.repository.ts```ts
+// ./src/backend/repositories/mongodb/permission.repository.ts
+```ts
 	import mongoose, { Mongoose } from 'mongoose';
 	import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
 	import PermissionRepositoryInterface from '@/backend/repositories/interfaces/permission.repository.interface';
@@ -5079,7 +5140,8 @@ src/backend/repositories/mongodb/permission.repository.ts```ts
 
 ```
 
-src/backend/repositories/mongodb/role.repository.ts```ts
+// ./src/backend/repositories/mongodb/role.repository.ts
+```ts
 	import mongoose, { Mongoose } from 'mongoose';
 	import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
 	import RoleRepositoryInterface from '@/backend/repositories/interfaces/role.repository.interface';
@@ -5110,7 +5172,8 @@ src/backend/repositories/mongodb/role.repository.ts```ts
 
 ```
 
-src/backend/repositories/mongodb/user.repository.ts```ts
+// ./src/backend/repositories/mongodb/user.repository.ts
+```ts
 	import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
 	import UserRepositoryInterface from '@/backend/repositories/interfaces/user.repository.interface';
 	import User from '@/backend/models/user.model';
@@ -5182,7 +5245,8 @@ src/backend/repositories/mongodb/user.repository.ts```ts
 
 ```
 
-src/backend/repositories/mongodb/budget.repository.ts```ts
+// ./src/backend/repositories/mongodb/budget.repository.ts
+```ts
 	import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
 	import BudgetRepositoryInterface from '@/backend/repositories/interfaces/budget.repository.interface';
 	import mongoose, { Mongoose, SortOrder } from 'mongoose';
@@ -5217,7 +5281,8 @@ src/backend/repositories/mongodb/budget.repository.ts```ts
 
 ```
 
-src/backend/repositories/mongodb/project.repository.ts```ts
+// ./src/backend/repositories/mongodb/project.repository.ts
+```ts
 	import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
 	import ProjectRepositoryInterface from '@/backend/repositories/interfaces/project.repository.interface';
 	import mongoose, { Mongoose, SortOrder } from 'mongoose';
@@ -5265,7 +5330,8 @@ src/backend/repositories/mongodb/project.repository.ts```ts
 
 ```
 
-src/backend/repositories/mongodb/contractor.repository.ts```ts
+// ./src/backend/repositories/mongodb/contractor.repository.ts
+```ts
 	import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
 	import ContractorRepositoryInterface from '@/backend/repositories/interfaces/contractor.repository.interface';
 	import mongoose, { Mongoose } from 'mongoose';
@@ -5301,7 +5367,8 @@ src/backend/repositories/mongodb/contractor.repository.ts```ts
 
 ```
 
-src/backend/repositories/mongodb/company.repository.ts```ts
+// ./src/backend/repositories/mongodb/company.repository.ts
+```ts
 	import mongoose, { Mongoose } from 'mongoose';
 	import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
 	import Company from '@/backend/models/company.model';
@@ -5319,7 +5386,8 @@ src/backend/repositories/mongodb/company.repository.ts```ts
 
 ```
 
-src/backend/repositories/mongodb/base.repository.abstract.ts```ts
+// ./src/backend/repositories/mongodb/base.repository.abstract.ts
+```ts
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -5409,7 +5477,8 @@ src/backend/repositories/mongodb/base.repository.abstract.ts```ts
 
 ```
 
-src/backend/repositories/mongodb/invoice.repository.ts```ts
+// ./src/backend/repositories/mongodb/invoice.repository.ts
+```ts
 	import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
 	import mongoose, { Mongoose } from 'mongoose';
 	import InvoiceRepositoryInterface from '@/backend/repositories/interfaces/invoice.repository.interface';
@@ -5457,7 +5526,8 @@ src/backend/repositories/mongodb/invoice.repository.ts```ts
 
 ```
 
-src/backend/repositories/mongodb/builder.repository.ts```ts
+// ./src/backend/repositories/mongodb/builder.repository.ts
+```ts
 	import BaseRepositoryAbstract from '@/backend/repositories/mongodb/base.repository.abstract';
 	import { BuilderRepositoryInterface } from '@/backend/repositories/interfaces/builder.repository.interface';
 	import mongoose, { Mongoose, SortOrder } from 'mongoose';
@@ -5493,21 +5563,24 @@ src/backend/repositories/mongodb/builder.repository.ts```ts
 
 ```
 
-src/backend/repositories/interfaces/budget.repository.interface.ts```ts
+// ./src/backend/repositories/interfaces/budget.repository.interface.ts
+```ts
 	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
 	
 	export default interface BudgetRepositoryInterface extends BaseRepositoryInterface {}
 
 ```
 
-src/backend/repositories/interfaces/permission.repository.interface.ts```ts
+// ./src/backend/repositories/interfaces/permission.repository.interface.ts
+```ts
 	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
 	
 	export default interface PermissionRepositoryInterface extends BaseRepositoryInterface {}
 
 ```
 
-src/backend/repositories/interfaces/user.repository.interface.ts```ts
+// ./src/backend/repositories/interfaces/user.repository.interface.ts
+```ts
 	import UserDto from '@/utils/dtos/user.dto';
 	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
 	import mongoose from 'mongoose';
@@ -5524,14 +5597,16 @@ src/backend/repositories/interfaces/user.repository.interface.ts```ts
 
 ```
 
-src/backend/repositories/interfaces/builder.repository.interface.ts```ts
+// ./src/backend/repositories/interfaces/builder.repository.interface.ts
+```ts
 	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
 	
 	export interface BuilderRepositoryInterface extends BaseRepositoryInterface {}
 
 ```
 
-src/backend/repositories/interfaces/base.repository.interface.ts```ts
+// ./src/backend/repositories/interfaces/base.repository.interface.ts
+```ts
 	import mongoose, { SortOrder } from 'mongoose';
 	import { DTO } from '@/utils/dtos/types/dto.type';
 	
@@ -5559,7 +5634,8 @@ src/backend/repositories/interfaces/base.repository.interface.ts```ts
 
 ```
 
-src/backend/repositories/interfaces/contractor.repository.interface.ts```ts
+// ./src/backend/repositories/interfaces/contractor.repository.interface.ts
+```ts
 	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
 	import mongoose from 'mongoose';
 	
@@ -5571,7 +5647,8 @@ src/backend/repositories/interfaces/contractor.repository.interface.ts```ts
 
 ```
 
-src/backend/repositories/interfaces/invoice.repository.interface.ts```ts
+// ./src/backend/repositories/interfaces/invoice.repository.interface.ts
+```ts
 	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
 	
 	export default interface InvoiceRepositoryInterface extends BaseRepositoryInterface {
@@ -5582,7 +5659,8 @@ src/backend/repositories/interfaces/invoice.repository.interface.ts```ts
 
 ```
 
-src/backend/repositories/interfaces/project.repository.interface.ts```ts
+// ./src/backend/repositories/interfaces/project.repository.interface.ts
+```ts
 	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
 	import mongoose from 'mongoose';
 	
@@ -5592,14 +5670,16 @@ src/backend/repositories/interfaces/project.repository.interface.ts```ts
 
 ```
 
-src/backend/repositories/interfaces/company.repository.interface.ts```ts
+// ./src/backend/repositories/interfaces/company.repository.interface.ts
+```ts
 	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
 	
 	export default interface CompanyRepositoryInterface extends BaseRepositoryInterface {}
 
 ```
 
-src/backend/repositories/interfaces/role.repository.interface.ts```ts
+// ./src/backend/repositories/interfaces/role.repository.interface.ts
+```ts
 	import { Role as RoleType } from '@/utils/dtos/role.dto';
 	import BaseRepositoryInterface from '@/backend/repositories/interfaces/base.repository.interface';
 	
@@ -5611,7 +5691,8 @@ src/backend/repositories/interfaces/role.repository.interface.ts```ts
 
 ```
 
-src/backend/middlewares/unauth.middleware.ts```ts
+// ./src/backend/middlewares/unauth.middleware.ts
+```ts
 	import { NextFetchEvent, NextMiddleware, NextRequest, NextResponse } from 'next/server';
 	import { MiddlewareFactory, specialPublicPagesDefinition } from '@/backend/middlewares/type/middleware.type';
 	import { getCookie } from '@/utils/helper';
@@ -5636,7 +5717,8 @@ src/backend/middlewares/unauth.middleware.ts```ts
 
 ```
 
-src/backend/middlewares/stack.middleware.ts```ts
+// ./src/backend/middlewares/stack.middleware.ts
+```ts
 	import { NextMiddleware, NextResponse } from 'next/server';
 	import { MiddlewareFactory } from '@/backend/middlewares/type/middleware.type';
 	
@@ -5653,7 +5735,8 @@ src/backend/middlewares/stack.middleware.ts```ts
 
 ```
 
-src/backend/middlewares/auth.middleware.ts```ts
+// ./src/backend/middlewares/auth.middleware.ts
+```ts
 	import { NextFetchEvent, NextMiddleware, NextRequest, NextResponse } from 'next/server';
 	import { MiddlewareFactory, privatePagesDefinition } from '@/backend/middlewares/type/middleware.type';
 	import { decode } from 'next-auth/jwt';
@@ -5701,7 +5784,8 @@ src/backend/middlewares/auth.middleware.ts```ts
 
 ```
 
-src/backend/middlewares/jwt.middleware.ts```ts
+// ./src/backend/middlewares/jwt.middleware.ts
+```ts
 	import { NextFetchEvent, NextMiddleware, NextRequest, NextResponse } from 'next/server';
 	import { MiddlewareFactory, specialPublicApisDefinition } from '@/backend/middlewares/type/middleware.type';
 	import { decode } from 'next-auth/jwt';
@@ -5754,7 +5838,8 @@ src/backend/middlewares/jwt.middleware.ts```ts
 
 ```
 
-src/backend/middlewares/authorize.middleware.ts```ts
+// ./src/backend/middlewares/authorize.middleware.ts
+```ts
 	import { NextFetchEvent, NextMiddleware, NextRequest, NextResponse } from 'next/server';
 	import { MiddlewareFactory } from '@/backend/middlewares/type/middleware.type';
 	import { headers } from 'next/headers';
@@ -5855,7 +5940,8 @@ src/backend/middlewares/authorize.middleware.ts```ts
 
 ```
 
-src/backend/middlewares/type/middleware.type.ts```ts
+// ./src/backend/middlewares/type/middleware.type.ts
+```ts
 	import { NextMiddleware } from 'next/server';
 	import routes from '@/routes';
 	
@@ -5889,7 +5975,8 @@ src/backend/middlewares/type/middleware.type.ts```ts
 
 ```
 
-src/backend/connection/mongo.connection.ts```ts
+// ./src/backend/connection/mongo.connection.ts
+```ts
 	import mongoose, { Mongoose } from 'mongoose';
 	
 	const MONGODB_URI: string = process.env.MONGODB_URI!;
@@ -5943,7 +6030,8 @@ src/backend/connection/mongo.connection.ts```ts
 
 ```
 
-src/menu-items/pages.tsx```tsx
+// ./src/menu-items/pages.tsx
+```tsx
 	// third-party
 	import { FormattedMessage } from 'react-intl';
 	
@@ -6055,7 +6143,8 @@ src/menu-items/pages.tsx```tsx
 
 ```
 
-src/menu-items/index.tsx```tsx
+// ./src/menu-items/index.tsx
+```tsx
 	// menu import
 	import pages from './pages';
 	
@@ -6072,7 +6161,8 @@ src/menu-items/index.tsx```tsx
 
 ```
 
-src/types/request.ts```ts
+// ./src/types/request.ts
+```ts
 	import { FolderName } from 'utils/enums';
 	import { UserProfile } from './user-profile';
 	
@@ -6231,7 +6321,8 @@ src/types/request.ts```ts
 
 ```
 
-src/types/pagination.ts```ts
+// ./src/types/pagination.ts
+```ts
 	export type ResponseMeta = {
 	  total: number;
 	  page: number;
@@ -6241,7 +6332,8 @@ src/types/pagination.ts```ts
 
 ```
 
-src/types/snackbar.ts```ts
+// ./src/types/snackbar.ts
+```ts
 	// material-ui
 	import { AlertProps, SnackbarOrigin } from '@mui/material';
 	
@@ -6264,7 +6356,8 @@ src/types/snackbar.ts```ts
 
 ```
 
-src/types/config.ts```ts
+// ./src/types/config.ts
+```ts
 	// material-ui
 	import { PaletteMode } from '@mui/material';
 	
@@ -6309,7 +6402,8 @@ src/types/config.ts```ts
 
 ```
 
-src/types/response.ts```ts
+// ./src/types/response.ts
+```ts
 	import { Builder } from '@/utils/dtos/builder.dto';
 	import { ResponseMeta } from './pagination';
 	import { IContractor } from '@/utils/services/contractor';
@@ -6462,7 +6556,8 @@ src/types/response.ts```ts
 
 ```
 
-src/types/menu.ts```ts
+// ./src/types/menu.ts
+```ts
 	// types
 	import { NavItemType } from 'types';
 	
@@ -6478,7 +6573,8 @@ src/types/menu.ts```ts
 
 ```
 
-src/types/user-profile.ts```ts
+// ./src/types/user-profile.ts
+```ts
 	// types
 	import { HandleFunction } from 'types';
 	
@@ -6595,7 +6691,8 @@ src/types/user-profile.ts```ts
 
 ```
 
-src/types/route.ts```ts
+// ./src/types/route.ts
+```ts
 	export type IRoute = {
 	  [k: string]: IItemRoute;
 	};
@@ -6608,7 +6705,8 @@ src/types/route.ts```ts
 
 ```
 
-src/types/model.ts```ts
+// ./src/types/model.ts
+```ts
 	import { Project } from '@/utils/dtos/project.dto';
 	
 	export interface IProject extends Project {
@@ -6617,7 +6715,8 @@ src/types/model.ts```ts
 
 ```
 
-src/types/default-theme.ts```ts
+// ./src/types/default-theme.ts
+```ts
 	// material-ui
 	import { Color, PaletteMode } from '@mui/material';
 	
@@ -6790,7 +6889,8 @@ src/types/default-theme.ts```ts
 
 ```
 
-src/types/user.ts```ts
+// ./src/types/user.ts
+```ts
 	// types
 	import { GenericCardProps } from 'types';
 	import { PostDataType, UserProfile, Profile } from 'types/user-profile';
@@ -6852,7 +6952,8 @@ src/types/user.ts```ts
 
 ```
 
-src/types/auth.ts```ts
+// ./src/types/auth.ts
+```ts
 	// types
 	import { UserProfile } from 'types/user-profile';
 	
@@ -6881,7 +6982,8 @@ src/types/auth.ts```ts
 
 ```
 
-src/types/link.ts```ts
+// ./src/types/link.ts
+```ts
 	import { LinkProps as NextLinkProps } from 'next/link';
 	
 	// material-ui
@@ -6908,7 +7010,8 @@ src/types/link.ts```ts
 
 ```
 
-src/types/index.ts```ts
+// ./src/types/index.ts
+```ts
 	import React, { FunctionComponent, ReactElement, ReactNode } from 'react';
 	import { Theme } from '@mui/material/styles';
 	
@@ -7083,7 +7186,8 @@ src/types/index.ts```ts
 
 ```
 
-src/types/overrides/createPalette.d.ts```ts
+// ./src/types/overrides/createPalette.d.ts
+```ts
 	// eslint-disable-next-line
 	import * as createPalette from '@mui/material/styles/createPalette';
 	
@@ -7167,7 +7271,8 @@ src/types/overrides/createPalette.d.ts```ts
 
 ```
 
-src/types/overrides/Alert.d.ts```ts
+// ./src/types/overrides/Alert.d.ts
+```ts
 	// eslint-disable-next-line
 	import * as Alert from '@mui/material/Alert';
 	
@@ -7180,7 +7285,8 @@ src/types/overrides/Alert.d.ts```ts
 
 ```
 
-src/types/overrides/createTypography.d.ts```ts
+// ./src/types/overrides/createTypography.d.ts
+```ts
 	// eslint-disable-next-line
 	import * as createTypography from '@mui/material/styles/createTypography';
 	
@@ -7228,7 +7334,8 @@ src/types/overrides/createTypography.d.ts```ts
 
 ```
 
-src/types/overrides/createTheme.d.ts```ts
+// ./src/types/overrides/createTheme.d.ts
+```ts
 	// eslint-disable-next-line
 	import * as createTheme from '@mui/material/styles';
 	import { customShadows } from 'themes/shadows';
@@ -7254,7 +7361,8 @@ src/types/overrides/createTheme.d.ts```ts
 
 ```
 
-src/types/resource/company.ts```ts
+// ./src/types/resource/company.ts
+```ts
 	export interface ICompany {
 	  id: string;
 	  companyName: string;
@@ -7264,7 +7372,8 @@ src/types/resource/company.ts```ts
 
 ```
 
-src/types/resource/service.ts```ts
+// ./src/types/resource/service.ts
+```ts
 	export interface IService {
 	  id: string;
 	  serviceName: string;
@@ -7272,7 +7381,8 @@ src/types/resource/service.ts```ts
 
 ```
 
-src/types/resource/builder.ts```ts
+// ./src/types/resource/builder.ts
+```ts
 	import { Builder as BuilderDto } from '@/utils/dtos/builder.dto';
 	
 	export interface IBuilder extends BuilderDto {
@@ -7281,7 +7391,8 @@ src/types/resource/builder.ts```ts
 
 ```
 
-src/types/resource/invoice.ts```ts
+// ./src/types/resource/invoice.ts
+```ts
 	import { Invoice as InvoiceDto } from '@/utils/dtos/invoice.dto';
 	
 	export interface IInvoice extends Omit<InvoiceDto, '_id' | 'invoiceGst'> {
@@ -7292,7 +7403,8 @@ src/types/resource/invoice.ts```ts
 
 ```
 
-src/types/resource/budget.ts```ts
+// ./src/types/resource/budget.ts
+```ts
 	import { Budget as BudgetDto } from '@/utils/dtos/budget.dto';
 	export interface IBudget extends BudgetDto {
 	  id: string;
@@ -7300,7 +7412,8 @@ src/types/resource/budget.ts```ts
 
 ```
 
-src/types/resource/user.ts```ts
+// ./src/types/resource/user.ts
+```ts
 	import { User as UserDto } from '@/utils/dtos/user.dto';
 	
 	export interface IUser extends UserDto {
@@ -7317,7 +7430,8 @@ src/types/resource/user.ts```ts
 
 ```
 
-src/types/resource/project.ts```ts
+// ./src/types/resource/project.ts
+```ts
 	import { Project as ProjectDto } from '@/utils/dtos/project.dto';
 	
 	export interface IProject extends ProjectDto {
@@ -7326,7 +7440,8 @@ src/types/resource/project.ts```ts
 
 ```
 
-src/contexts/ConfigContext.tsx```tsx
+// ./src/contexts/ConfigContext.tsx
+```tsx
 	'use client';
 	import { createContext, ReactNode } from 'react';
 	
@@ -7475,7 +7590,8 @@ src/contexts/ConfigContext.tsx```tsx
 
 ```
 
-src/contexts/SessionContext.tsx```tsx
+// ./src/contexts/SessionContext.tsx
+```tsx
 	'use client';
 	
 	import { SessionProvider } from 'next-auth/react';
@@ -7497,7 +7613,8 @@ src/contexts/SessionContext.tsx```tsx
 
 ```
 
-src/layout/NavigationScroll.tsx```tsx
+// ./src/layout/NavigationScroll.tsx
+```tsx
 	import { useEffect, ReactElement } from 'react';
 	
 	// ==============================|| NAVIGATION SCROLL TO TOP ||============================== //
@@ -7518,7 +7635,8 @@ src/layout/NavigationScroll.tsx```tsx
 
 ```
 
-src/layout/NavMotion.tsx```tsx
+// ./src/layout/NavMotion.tsx
+```tsx
 	import { ReactElement } from 'react';
 	
 	// third-party
@@ -7559,7 +7677,8 @@ src/layout/NavMotion.tsx```tsx
 
 ```
 
-src/layout/index.tsx```tsx
+// ./src/layout/index.tsx
+```tsx
 	// project import
 	import LAYOUT, { Props } from 'constant';
 	import MainLayout from './MainLayout';
@@ -7592,7 +7711,8 @@ src/layout/index.tsx```tsx
 
 ```
 
-src/layout/GuestGuard.tsx```tsx
+// ./src/layout/GuestGuard.tsx
+```tsx
 	import { FC, ReactNode } from 'react';
 	
 	// project imports
@@ -7617,7 +7737,8 @@ src/layout/GuestGuard.tsx```tsx
 
 ```
 
-src/layout/MinimalLayout/index.tsx```tsx
+// ./src/layout/MinimalLayout/index.tsx
+```tsx
 	import { FC, ReactNode } from 'react';
 	
 	interface Props {
@@ -7632,7 +7753,8 @@ src/layout/MinimalLayout/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/HorizontalBar.tsx```tsx
+// ./src/layout/MainLayout/HorizontalBar.tsx
+```tsx
 	import React, { ReactElement } from 'react';
 	
 	// material-ui
@@ -7702,7 +7824,8 @@ src/layout/MainLayout/HorizontalBar.tsx```tsx
 
 ```
 
-src/layout/MainLayout/index.tsx```tsx
+// ./src/layout/MainLayout/index.tsx
+```tsx
 	'use client';
 	import { useEffect, useMemo, FC, ReactNode } from 'react';
 	
@@ -7857,7 +7980,8 @@ src/layout/MainLayout/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/styles.module.scss```scss
+// ./src/layout/MainLayout/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.appBar {
@@ -7866,7 +7990,8 @@ src/layout/MainLayout/styles.module.scss```scss
 
 ```
 
-src/layout/MainLayout/Footer/style.module.scss```scss
+// ./src/layout/MainLayout/Footer/style.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.container{
@@ -7881,7 +8006,8 @@ src/layout/MainLayout/Footer/style.module.scss```scss
 	}
 ```
 
-src/layout/MainLayout/Footer/index.tsx```tsx
+// ./src/layout/MainLayout/Footer/index.tsx
+```tsx
 	import { Box, Typography } from '@mui/material';
 	import style from './style.module.scss';
 	
@@ -7897,7 +8023,8 @@ src/layout/MainLayout/Footer/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/MenuList/index.tsx```tsx
+// ./src/layout/MainLayout/MenuList/index.tsx
+```tsx
 	import { memo } from 'react';
 	
 	// material-ui
@@ -7982,7 +8109,8 @@ src/layout/MainLayout/MenuList/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/MenuList/NavCollapse/index.tsx```tsx
+// ./src/layout/MainLayout/MenuList/NavCollapse/index.tsx
+```tsx
 	import { useEffect, useState } from 'react';
 	import { usePathname } from 'next/navigation';
 	
@@ -8423,7 +8551,8 @@ src/layout/MainLayout/MenuList/NavCollapse/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/MenuList/NavGroup/index.tsx```tsx
+// ./src/layout/MainLayout/MenuList/NavGroup/index.tsx
+```tsx
 	import { Fragment, useEffect, useState } from 'react';
 	import { usePathname } from 'next/navigation';
 	
@@ -8731,7 +8860,8 @@ src/layout/MainLayout/MenuList/NavGroup/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/MenuList/NavItem/index.tsx```tsx
+// ./src/layout/MainLayout/MenuList/NavItem/index.tsx
+```tsx
 	import { useEffect } from 'react';
 	import { usePathname } from 'next/navigation';
 	import Link from 'next/link';
@@ -8986,7 +9116,8 @@ src/layout/MainLayout/MenuList/NavItem/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Header/index.tsx```tsx
+// ./src/layout/MainLayout/Header/index.tsx
+```tsx
 	// material-ui
 	import { useTheme } from '@mui/material/styles';
 	import { Avatar, Box, useMediaQuery } from '@mui/material';
@@ -9096,7 +9227,8 @@ src/layout/MainLayout/Header/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Header/LocalizationSection/index.tsx```tsx
+// ./src/layout/MainLayout/Header/LocalizationSection/index.tsx
+```tsx
 	import { useEffect, useRef, useState } from 'react';
 	
 	// material-ui
@@ -9268,7 +9400,8 @@ src/layout/MainLayout/Header/LocalizationSection/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Header/MegaMenuSection/Banner.tsx```tsx
+// ./src/layout/MainLayout/Header/MegaMenuSection/Banner.tsx
+```tsx
 	// material-ui
 	import { useTheme } from '@mui/material/styles';
 	import { Box } from '@mui/material';
@@ -12064,7 +12197,8 @@ src/layout/MainLayout/Header/MegaMenuSection/Banner.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Header/MegaMenuSection/index.tsx```tsx
+// ./src/layout/MainLayout/Header/MegaMenuSection/index.tsx
+```tsx
 	import { useEffect, useRef, useState } from 'react';
 	import Link from 'next/link';
 	
@@ -12346,7 +12480,8 @@ src/layout/MainLayout/Header/MegaMenuSection/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Header/NotificationSection/NotificationList.tsx```tsx
+// ./src/layout/MainLayout/Header/NotificationSection/NotificationList.tsx
+```tsx
 	// material-ui
 	import { useTheme, styled } from '@mui/material/styles';
 	import {
@@ -12632,7 +12767,8 @@ src/layout/MainLayout/Header/NotificationSection/NotificationList.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Header/NotificationSection/index.tsx```tsx
+// ./src/layout/MainLayout/Header/NotificationSection/index.tsx
+```tsx
 	import { useEffect, useRef, useState } from 'react';
 	import Link from 'next/link';
 	
@@ -12852,7 +12988,8 @@ src/layout/MainLayout/Header/NotificationSection/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Header/FullScreenSection/index.tsx```tsx
+// ./src/layout/MainLayout/Header/FullScreenSection/index.tsx
+```tsx
 	import { useCallback, useState } from 'react';
 	
 	// material-ui
@@ -12917,7 +13054,8 @@ src/layout/MainLayout/Header/FullScreenSection/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Header/MobileSection/index.tsx```tsx
+// ./src/layout/MainLayout/Header/MobileSection/index.tsx
+```tsx
 	import { useEffect, useRef, useState } from 'react';
 	
 	// material-ui
@@ -13030,7 +13168,8 @@ src/layout/MainLayout/Header/MobileSection/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Header/ProfileSection/index.tsx```tsx
+// ./src/layout/MainLayout/Header/ProfileSection/index.tsx
+```tsx
 	import { useEffect, useRef, useState } from 'react';
 	
 	// material-ui
@@ -13226,7 +13365,8 @@ src/layout/MainLayout/Header/ProfileSection/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Header/ProfileSection/components/UserInfo/index.tsx```tsx
+// ./src/layout/MainLayout/Header/ProfileSection/components/UserInfo/index.tsx
+```tsx
 	import { forwardRef } from 'react';
 	import { Box, Icon } from '@mui/material';
 	import MoreVertIcon from '@mui/icons-material/MoreVert';
@@ -13263,7 +13403,8 @@ src/layout/MainLayout/Header/ProfileSection/components/UserInfo/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Header/ProfileSection/components/UserInfo/styles.module.scss```scss
+// ./src/layout/MainLayout/Header/ProfileSection/components/UserInfo/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.wrapper {
@@ -13289,7 +13430,8 @@ src/layout/MainLayout/Header/ProfileSection/components/UserInfo/styles.module.sc
 
 ```
 
-src/layout/MainLayout/Header/SearchSection/index.tsx```tsx
+// ./src/layout/MainLayout/Header/SearchSection/index.tsx
+```tsx
 	import { useState } from 'react';
 	
 	// material-ui
@@ -13476,7 +13618,8 @@ src/layout/MainLayout/Header/SearchSection/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Sidebar/MiniDrawerStyled.tsx```tsx
+// ./src/layout/MainLayout/Sidebar/MiniDrawerStyled.tsx
+```tsx
 	// material-ui
 	import { styled, Theme, CSSObject } from '@mui/material/styles';
 	import Drawer from '@mui/material/Drawer';
@@ -13531,7 +13674,8 @@ src/layout/MainLayout/Sidebar/MiniDrawerStyled.tsx```tsx
 
 ```
 
-src/layout/MainLayout/Sidebar/index.tsx```tsx
+// ./src/layout/MainLayout/Sidebar/index.tsx
+```tsx
 	import { memo, useMemo } from 'react';
 	
 	// material-ui
@@ -13652,7 +13796,8 @@ src/layout/MainLayout/Sidebar/index.tsx```tsx
 
 ```
 
-src/layout/MainLayout/LogoSection/index.tsx```tsx
+// ./src/layout/MainLayout/LogoSection/index.tsx
+```tsx
 	import NextLink from 'next/link';
 	
 	// project imports
@@ -13671,7 +13816,8 @@ src/layout/MainLayout/LogoSection/index.tsx```tsx
 
 ```
 
-src/views/mails/forgot-password-email-template.tsx```tsx
+// ./src/views/mails/forgot-password-email-template.tsx
+```tsx
 	import { Html } from '@react-email/html';
 	import { Text } from '@react-email/text';
 	import { Section } from '@react-email/section';
@@ -13717,7 +13863,8 @@ src/views/mails/forgot-password-email-template.tsx```tsx
 
 ```
 
-src/views/mails/confirm-email-template.tsx```tsx
+// ./src/views/mails/confirm-email-template.tsx
+```tsx
 	import { Html } from '@react-email/html';
 	import { Text } from '@react-email/text';
 	import { Section } from '@react-email/section';
@@ -13771,7 +13918,8 @@ src/views/mails/confirm-email-template.tsx```tsx
 
 ```
 
-src/views/maintenance/under-construction.tsx```tsx
+// ./src/views/maintenance/under-construction.tsx
+```tsx
 	'use client';
 	
 	import Link from 'next/link';
@@ -13880,7 +14028,8 @@ src/views/maintenance/under-construction.tsx```tsx
 
 ```
 
-src/views/maintenance/404-notfound.tsx```tsx
+// ./src/views/maintenance/404-notfound.tsx
+```tsx
 	'use client';
 	
 	import Link from 'next/link';
@@ -13999,7 +14148,8 @@ src/views/maintenance/404-notfound.tsx```tsx
 
 ```
 
-src/views/maintenance/coming-soon1.tsx```tsx
+// ./src/views/maintenance/coming-soon1.tsx
+```tsx
 	'use client';
 	
 	import Image from 'next/image';
@@ -14404,7 +14554,8 @@ src/views/maintenance/coming-soon1.tsx```tsx
 
 ```
 
-src/views/maintenance/coming-soon2.tsx```tsx
+// ./src/views/maintenance/coming-soon2.tsx
+```tsx
 	'use client';
 	
 	// material-ui
@@ -14563,7 +14714,8 @@ src/views/maintenance/coming-soon2.tsx```tsx
 
 ```
 
-src/views/maintenance/500.tsx```tsx
+// ./src/views/maintenance/500.tsx
+```tsx
 	'use client';
 	
 	import Link from 'next/link';
@@ -14682,7 +14834,8 @@ src/views/maintenance/500.tsx```tsx
 
 ```
 
-src/views/react-swagger/index.tsx```tsx
+// ./src/views/react-swagger/index.tsx
+```tsx
 	'use client';
 	// @ts-ignore
 	import SwaggerUI from 'swagger-ui-react';
@@ -14698,7 +14851,8 @@ src/views/react-swagger/index.tsx```tsx
 
 ```
 
-src/views/projects/index.tsx```tsx
+// ./src/views/projects/index.tsx
+```tsx
 	'use client';
 	import Projects from '@/components/projects/List';
 	
@@ -14710,7 +14864,8 @@ src/views/projects/index.tsx```tsx
 
 ```
 
-src/views/authentication/register.tsx```tsx
+// ./src/views/authentication/register.tsx
+```tsx
 	'use client';
 	
 	import RegisterForm from 'components/authentication/auth-forms/RegisterForm';
@@ -14725,7 +14880,8 @@ src/views/authentication/register.tsx```tsx
 
 ```
 
-src/views/authentication/verifyEmail.tsx```tsx
+// ./src/views/authentication/verifyEmail.tsx
+```tsx
 	'use client';
 	
 	import VerifyEmailForm from '@/components/authentication/auth-forms/VerifyEmailForm';
@@ -14739,7 +14895,8 @@ src/views/authentication/verifyEmail.tsx```tsx
 
 ```
 
-src/views/authentication/resetPassword.tsx```tsx
+// ./src/views/authentication/resetPassword.tsx
+```tsx
 	'use client';
 	
 	import ResetPasswordForm from '@/components/authentication/auth-forms/ResetPasswordForm';
@@ -14758,7 +14915,8 @@ src/views/authentication/resetPassword.tsx```tsx
 
 ```
 
-src/views/authentication/forgotPassword.tsx```tsx
+// ./src/views/authentication/forgotPassword.tsx
+```tsx
 	'use client';
 	
 	import ForgotPasswordForm from '@/components/authentication/auth-forms/ForgotPasswordForm';
@@ -14772,7 +14930,8 @@ src/views/authentication/forgotPassword.tsx```tsx
 
 ```
 
-src/views/authentication/login.tsx```tsx
+// ./src/views/authentication/login.tsx
+```tsx
 	'use client';
 	
 	import LoginForm from 'components/authentication/auth-forms/LoginForm';
@@ -14787,7 +14946,8 @@ src/views/authentication/login.tsx```tsx
 
 ```
 
-src/views/authentication/registerRole.tsx```tsx
+// ./src/views/authentication/registerRole.tsx
+```tsx
 	'use client';
 	
 	import RegisterRoleForm from 'components/authentication/auth-forms/RegisterRoleForm';
@@ -14802,7 +14962,8 @@ src/views/authentication/registerRole.tsx```tsx
 
 ```
 
-src/views/account/profile.tsx```tsx
+// ./src/views/account/profile.tsx
+```tsx
 	'use client';
 	import { Profile } from '@/components/account';
 	
@@ -14814,7 +14975,8 @@ src/views/account/profile.tsx```tsx
 
 ```
 
-src/views/contractorProjects/index.tsx```tsx
+// ./src/views/contractorProjects/index.tsx
+```tsx
 	'use client';
 	import ContactorProjects from '@/components/contractorProjects/List';
 	
@@ -14826,7 +14988,8 @@ src/views/contractorProjects/index.tsx```tsx
 
 ```
 
-src/views/user/index.tsx```tsx
+// ./src/views/user/index.tsx
+```tsx
 	'use client';
 	import User from '@/components/user';
 	
@@ -14838,7 +15001,8 @@ src/views/user/index.tsx```tsx
 
 ```
 
-src/views/contractor/index.tsx```tsx
+// ./src/views/contractor/index.tsx
+```tsx
 	'use client';
 	import Contractor from '@/components/contractor';
 	
@@ -14850,7 +15014,8 @@ src/views/contractor/index.tsx```tsx
 
 ```
 
-src/views/contractorProjectDetail/index.tsx```tsx
+// ./src/views/contractorProjectDetail/index.tsx
+```tsx
 	'use client';
 	import ContactorProjectDetail from '@/components/contractorProjects/Detail';
 	
@@ -14862,7 +15027,8 @@ src/views/contractorProjectDetail/index.tsx```tsx
 
 ```
 
-src/views/builder/index.tsx```tsx
+// ./src/views/builder/index.tsx
+```tsx
 	'use client';
 	import Builder from '@/components/builder';
 	
@@ -14874,7 +15040,8 @@ src/views/builder/index.tsx```tsx
 
 ```
 
-src/styles/navbar.module.scss```scss
+// ./src/styles/navbar.module.scss
+```scss
 	@import "variables.module";
 	
 	.container {
@@ -14887,7 +15054,8 @@ src/styles/navbar.module.scss```scss
 	}
 ```
 
-src/styles/theme.ts```ts
+// ./src/styles/theme.ts
+```ts
 	// @ts-nocheck
 	/**
 	 * @license
@@ -15019,7 +15187,8 @@ src/styles/theme.ts```ts
 
 ```
 
-src/styles/landing.module.scss```scss
+// ./src/styles/landing.module.scss
+```scss
 	@import "variables.module";
 	
 	.container {
@@ -15037,14 +15206,16 @@ src/styles/landing.module.scss```scss
 	}
 ```
 
-src/styles/firebaseui-styling.global.scss```scss
+// ./src/styles/firebaseui-styling.global.scss
+```scss
 	.firebaseui-container {
 	  min-width: 20em;
 	}
 
 ```
 
-src/styles/_variables.module.scss```scss
+// ./src/styles/_variables.module.scss
+```scss
 	@import '../scss/cm.module';
 	/* Colors */
 	$primary: #fafafa;
@@ -15075,7 +15246,8 @@ src/styles/_variables.module.scss```scss
 
 ```
 
-src/styles/dataPage.module.scss```scss
+// ./src/styles/dataPage.module.scss
+```scss
 	@import "variables.module";
 	
 	.addButton {
@@ -15088,7 +15260,8 @@ src/styles/dataPage.module.scss```scss
 	}
 ```
 
-src/styles/dataRow.module.scss```scss
+// ./src/styles/dataRow.module.scss
+```scss
 	.contentRow {
 	    align-items: center;
 	    gap: 2em;
@@ -15099,7 +15272,8 @@ src/styles/dataRow.module.scss```scss
 	}
 ```
 
-src/styles/global.scss```scss
+// ./src/styles/global.scss
+```scss
 	@import "variables.module";
 	
 	body {
@@ -15111,7 +15285,8 @@ src/styles/global.scss```scss
 
 ```
 
-src/styles/globals.css```css
+// ./src/styles/globals.css
+```css
 	html,
 	body {
 	  padding: 0;
@@ -15141,7 +15316,8 @@ src/styles/globals.css```css
 
 ```
 
-src/styles/dataDialog.module.scss```scss
+// ./src/styles/dataDialog.module.scss
+```scss
 	.title {
 	    padding-left: 0.6em;
 	}
@@ -15160,7 +15336,8 @@ src/styles/dataDialog.module.scss```scss
 	}
 ```
 
-src/styles/Home.module.css```css
+// ./src/styles/Home.module.css
+```css
 	.container {
 	  padding: 0 2rem;
 	}
@@ -15289,7 +15466,8 @@ src/styles/Home.module.css```css
 
 ```
 
-src/constant/layout.ts```ts
+// ./src/constant/layout.ts
+```ts
 	import { ReactElement } from 'react';
 	
 	export const LAYOUT_CONST = {
@@ -15344,13 +15522,15 @@ src/constant/layout.ts```ts
 
 ```
 
-src/constant/currency.ts```ts
+// ./src/constant/currency.ts
+```ts
 	export const CURRENCY = 'USD';
 	export const CURRENCY_SYMBOL = '$';
 
 ```
 
-src/constant/builder.ts```ts
+// ./src/constant/builder.ts
+```ts
 	export const BUILDER_CATEGORIES = [
 	  'Residential',
 	  'Commercial',
@@ -15369,7 +15549,8 @@ src/constant/builder.ts```ts
 
 ```
 
-src/constant/contractor.ts```ts
+// ./src/constant/contractor.ts
+```ts
 	export const CONTRACTOR_SERVICES = [
 	  'Remodeling, Roofing',
 	  'Electrical, Lighting, Solar',
@@ -15391,20 +15572,23 @@ src/constant/contractor.ts```ts
 
 ```
 
-src/constant/upload.ts```ts
+// ./src/constant/upload.ts
+```ts
 	// DEFINE FILE ALLOW UPLOAD
 	export const MAX_FILE_SIZE = 10;
 	export const IMAGE_TYPES = ['image/png', 'image/jpeg'];
 
 ```
 
-src/constant/project.ts```ts
+// ./src/constant/project.ts
+```ts
 	export const PROJECT_ROLE = ['Builder/Admin', 'Builder/Project Manager', 'Builder/Site Supervisor', 'Builder/Account Payable'];
 	export const PROJECT_CATEGORY = ['A', 'B', 'C', 'D', 'E', 'F'];
 
 ```
 
-src/constant/index.ts```ts
+// ./src/constant/index.ts
+```ts
 	import LAYOUT from './layout';
 	
 	export * from './layout';
@@ -15416,7 +15600,8 @@ src/constant/index.ts```ts
 
 ```
 
-src/scss/_theme3.module.scss```scss
+// ./src/scss/_theme3.module.scss
+```scss
 	// paper & background
 	$paper: #ffffff;
 	
@@ -15577,7 +15762,8 @@ src/scss/_theme3.module.scss```scss
 
 ```
 
-src/scss/style.scss```scss
+// ./src/scss/style.scss
+```scss
 	// color variants
 	@import '_cm.module.scss';
 	
@@ -15618,7 +15804,8 @@ src/scss/style.scss```scss
 
 ```
 
-src/scss/_cm.module.scss```scss
+// ./src/scss/_cm.module.scss
+```scss
 	// paper & background
 	$paper: #ffffff;
 	
@@ -15821,7 +16008,8 @@ src/scss/_cm.module.scss```scss
 
 ```
 
-src/scss/_themes-vars.module.scss```scss
+// ./src/scss/_themes-vars.module.scss
+```scss
 	// paper & background
 	$paper: #ffffff;
 	
@@ -15982,7 +16170,8 @@ src/scss/_themes-vars.module.scss```scss
 
 ```
 
-src/scss/_theme6.module.scss```scss
+// ./src/scss/_theme6.module.scss
+```scss
 	// paper & background
 	$paper: #ffffff;
 	
@@ -16143,7 +16332,8 @@ src/scss/_theme6.module.scss```scss
 
 ```
 
-src/scss/_theme1.module.scss```scss
+// ./src/scss/_theme1.module.scss
+```scss
 	// paper & background
 	$paper: #ffffff;
 	
@@ -16304,7 +16494,8 @@ src/scss/_theme1.module.scss```scss
 
 ```
 
-src/scss/_theme2.module.scss```scss
+// ./src/scss/_theme2.module.scss
+```scss
 	// paper & background
 	$paper: #ffffff;
 	
@@ -16465,7 +16656,8 @@ src/scss/_theme2.module.scss```scss
 
 ```
 
-src/scss/_theme5.module.scss```scss
+// ./src/scss/_theme5.module.scss
+```scss
 	// paper & background
 	$paper: #ffffff;
 	
@@ -16626,7 +16818,8 @@ src/scss/_theme5.module.scss```scss
 
 ```
 
-src/scss/_theme4.module.scss```scss
+// ./src/scss/_theme4.module.scss
+```scss
 	// paper & background
 	$paper: #ffffff;
 	
@@ -16787,7 +16980,8 @@ src/scss/_theme4.module.scss```scss
 
 ```
 
-src/store/actions.ts```ts
+// ./src/store/actions.ts
+```ts
 	// action - account reducer
 	export const LOGIN = 'LOGIN';
 	export const LOGOUT = 'LOGOUT';
@@ -16796,7 +16990,8 @@ src/store/actions.ts```ts
 
 ```
 
-src/store/ProviderWrapper.tsx```tsx
+// ./src/store/ProviderWrapper.tsx
+```tsx
 	'use client';
 	
 	import { ReactNode, useEffect, useState } from 'react';
@@ -16883,7 +17078,8 @@ src/store/ProviderWrapper.tsx```tsx
 
 ```
 
-src/store/constant.ts```ts
+// ./src/store/constant.ts
+```ts
 	// theme constant
 	export const gridSpacing = 3;
 	export const drawerWidth = 260;
@@ -16891,7 +17087,8 @@ src/store/constant.ts```ts
 
 ```
 
-src/store/reducer.ts```ts
+// ./src/store/reducer.ts
+```ts
 	// third-party
 	import { combineReducers } from 'redux';
 	import { persistReducer } from 'redux-persist';
@@ -16921,7 +17118,8 @@ src/store/reducer.ts```ts
 
 ```
 
-src/store/index.ts```ts
+// ./src/store/index.ts
+```ts
 	// third-party
 	import { configureStore } from '@reduxjs/toolkit';
 	import { useDispatch as useAppDispatch, useSelector as useAppSelector, TypedUseSelectorHook } from 'react-redux';
@@ -16953,7 +17151,8 @@ src/store/index.ts```ts
 
 ```
 
-src/store/slices/account.ts```ts
+// ./src/store/slices/account.ts
+```ts
 	// third-party
 	import { createSlice, PayloadAction } from '@reduxjs/toolkit';
 	
@@ -17013,7 +17212,8 @@ src/store/slices/account.ts```ts
 
 ```
 
-src/store/slices/snackbar.ts```ts
+// ./src/store/slices/snackbar.ts
+```ts
 	import { createSlice } from '@reduxjs/toolkit';
 	
 	// types
@@ -17092,7 +17292,8 @@ src/store/slices/snackbar.ts```ts
 
 ```
 
-src/store/slices/menu.ts```ts
+// ./src/store/slices/menu.ts
+```ts
 	// third-party
 	import { createSlice } from '@reduxjs/toolkit';
 	
@@ -17159,7 +17360,8 @@ src/store/slices/menu.ts```ts
 
 ```
 
-src/app/not-found.tsx```tsx
+// ./src/app/not-found.tsx
+```tsx
 	import Error404 from 'views/maintenance/404-notfound';
 	
 	// ==============================|| PAGE ||============================== //
@@ -17170,7 +17372,8 @@ src/app/not-found.tsx```tsx
 
 ```
 
-src/app/globals.css```css
+// ./src/app/globals.css
+```css
 	/* third-party */
 	@import '~react-perfect-scrollbar/dist/css/styles.css';
 	@import '~slick-carousel/slick/slick.css';
@@ -17330,7 +17533,8 @@ src/app/globals.css```css
 
 ```
 
-src/app/layout.tsx```tsx
+// ./src/app/layout.tsx
+```tsx
 	import type { Metadata } from 'next';
 	import { getServerSession } from 'next-auth';
 	import { authOptions } from '@/auth';
@@ -17363,7 +17567,8 @@ src/app/layout.tsx```tsx
 
 ```
 
-src/app/global-error.tsx```tsx
+// ./src/app/global-error.tsx
+```tsx
 	'use client';
 	
 	// project import
@@ -17386,7 +17591,8 @@ src/app/global-error.tsx```tsx
 
 ```
 
-src/app/page.tsx```tsx
+// ./src/app/page.tsx
+```tsx
 	// project import
 	import GuestGuard from 'utils/route-guard/GuestGuard';
 	import Login from 'views/authentication/login';
@@ -17410,7 +17616,8 @@ src/app/page.tsx```tsx
 
 ```
 
-src/app/loading.tsx```tsx
+// ./src/app/loading.tsx
+```tsx
 	'use client';
 	
 	import Loader from '../components/ui-component/Loader';
@@ -17423,7 +17630,8 @@ src/app/loading.tsx```tsx
 
 ```
 
-src/app/(minimal)/register-role/page.tsx```tsx
+// ./src/app/(minimal)/register-role/page.tsx
+```tsx
 	import RegisterRole from 'views/authentication/registerRole';
 	
 	// ==============================|| PAGE ||============================== //
@@ -17434,7 +17642,8 @@ src/app/(minimal)/register-role/page.tsx```tsx
 
 ```
 
-src/app/(publicPages)/layout.tsx```tsx
+// ./src/app/(publicPages)/layout.tsx
+```tsx
 	// PROJECT IMPORTS
 	import MinimalLayout from 'layout/MinimalLayout';
 	
@@ -17446,7 +17655,8 @@ src/app/(publicPages)/layout.tsx```tsx
 
 ```
 
-src/app/(publicPages)/auth/confirm-email/page.tsx```tsx
+// ./src/app/(publicPages)/auth/confirm-email/page.tsx
+```tsx
 	import AuthService from '@/backend/services/auth.service';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { redirect } from 'next/navigation';
@@ -17476,7 +17686,8 @@ src/app/(publicPages)/auth/confirm-email/page.tsx```tsx
 
 ```
 
-src/app/(publicPages)/login/page.tsx```tsx
+// ./src/app/(publicPages)/login/page.tsx
+```tsx
 	import { getServerSession } from 'next-auth';
 	import { redirect } from 'next/navigation';
 	import routes from 'routes';
@@ -17523,7 +17734,8 @@ src/app/(publicPages)/login/page.tsx```tsx
 
 ```
 
-src/app/(publicPages)/forgot-password/page.tsx```tsx
+// ./src/app/(publicPages)/forgot-password/page.tsx
+```tsx
 	import ForgotPasswordView from '@/views/authentication/forgotPassword';
 	
 	export default async function ForgotPassword() {
@@ -17532,7 +17744,8 @@ src/app/(publicPages)/forgot-password/page.tsx```tsx
 
 ```
 
-src/app/(publicPages)/verify-email/page.tsx```tsx
+// ./src/app/(publicPages)/verify-email/page.tsx
+```tsx
 	import VerifyEmailView from '@/views/authentication/verifyEmail';
 	
 	export default async function VerifyEmail() {
@@ -17541,7 +17754,8 @@ src/app/(publicPages)/verify-email/page.tsx```tsx
 
 ```
 
-src/app/(publicPages)/pages/maintenance/under-construction/page.tsx```tsx
+// ./src/app/(publicPages)/pages/maintenance/under-construction/page.tsx
+```tsx
 	// PROJECT IMPORTS
 	import UnderConstruction from 'views/maintenance/under-construction';
 	
@@ -17555,7 +17769,8 @@ src/app/(publicPages)/pages/maintenance/under-construction/page.tsx```tsx
 
 ```
 
-src/app/(publicPages)/pages/maintenance/404/page.tsx```tsx
+// ./src/app/(publicPages)/pages/maintenance/404/page.tsx
+```tsx
 	// PROJECT IMPORTS
 	import Error from 'views/maintenance/404-notfound';
 	
@@ -17569,7 +17784,8 @@ src/app/(publicPages)/pages/maintenance/404/page.tsx```tsx
 
 ```
 
-src/app/(publicPages)/pages/maintenance/500/page.tsx```tsx
+// ./src/app/(publicPages)/pages/maintenance/500/page.tsx
+```tsx
 	// PROJECT IMPORTS
 	import Error from 'views/maintenance/500';
 	
@@ -17583,7 +17799,8 @@ src/app/(publicPages)/pages/maintenance/500/page.tsx```tsx
 
 ```
 
-src/app/(publicPages)/pages/maintenance/coming-soon/coming-soon2/page.tsx```tsx
+// ./src/app/(publicPages)/pages/maintenance/coming-soon/coming-soon2/page.tsx
+```tsx
 	// PROJECT IMPORTS
 	import ComingSoon2 from 'views/maintenance/coming-soon2';
 	
@@ -17597,7 +17814,8 @@ src/app/(publicPages)/pages/maintenance/coming-soon/coming-soon2/page.tsx```tsx
 
 ```
 
-src/app/(publicPages)/pages/maintenance/coming-soon/coming-soon1/page.tsx```tsx
+// ./src/app/(publicPages)/pages/maintenance/coming-soon/coming-soon1/page.tsx
+```tsx
 	// PROJECT IMPORTS
 	import ComingSoon1 from 'views/maintenance/coming-soon1';
 	
@@ -17611,7 +17829,8 @@ src/app/(publicPages)/pages/maintenance/coming-soon/coming-soon1/page.tsx```tsx
 
 ```
 
-src/app/(publicPages)/reset-password/page.tsx```tsx
+// ./src/app/(publicPages)/reset-password/page.tsx
+```tsx
 	import ResetPasswordView from '@/views/authentication/resetPassword';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import AuthService from '@/backend/services/auth.service';
@@ -17635,7 +17854,8 @@ src/app/(publicPages)/reset-password/page.tsx```tsx
 
 ```
 
-src/app/(publicPages)/register/page.tsx```tsx
+// ./src/app/(publicPages)/register/page.tsx
+```tsx
 	import Register from 'views/authentication/register';
 	import { getServerSession } from 'next-auth';
 	import routes from '@/routes';
@@ -17655,7 +17875,8 @@ src/app/(publicPages)/register/page.tsx```tsx
 
 ```
 
-src/app/(adminPanel)/layout.tsx```tsx
+// ./src/app/(adminPanel)/layout.tsx
+```tsx
 	// PROJECT IMPORTS
 	import DashboardLayout from 'layout/MainLayout';
 	import AuthGuard from 'utils/route-guard/AuthGuard';
@@ -17678,7 +17899,8 @@ src/app/(adminPanel)/layout.tsx```tsx
 
 ```
 
-src/app/(adminPanel)/my-account/page.tsx```tsx
+// ./src/app/(adminPanel)/my-account/page.tsx
+```tsx
 	import Profile from '@/views/account/profile';
 	
 	// ==============================|| PAGE ||============================== //
@@ -17689,7 +17911,8 @@ src/app/(adminPanel)/my-account/page.tsx```tsx
 
 ```
 
-src/app/(adminPanel)/contractor-projects/page.tsx```tsx
+// ./src/app/(adminPanel)/contractor-projects/page.tsx
+```tsx
 	import ContractorProjectsView from '@/views/contractorProjects';
 	
 	// ==============================|| PAGE ||============================== //
@@ -17700,7 +17923,8 @@ src/app/(adminPanel)/contractor-projects/page.tsx```tsx
 
 ```
 
-src/app/(adminPanel)/contractor-projects/[id]/page.tsx```tsx
+// ./src/app/(adminPanel)/contractor-projects/[id]/page.tsx
+```tsx
 	import React from 'react';
 	import ContractorProjectDetail from 'views/contractorProjectDetail';
 	
@@ -17710,7 +17934,8 @@ src/app/(adminPanel)/contractor-projects/[id]/page.tsx```tsx
 
 ```
 
-src/app/(adminPanel)/api-docs/page.tsx```tsx
+// ./src/app/(adminPanel)/api-docs/page.tsx
+```tsx
 	import ReactSwagger from '@/views/react-swagger';
 	import { getApiSpecs } from '../../../../lib/swagger';
 	
@@ -17722,7 +17947,8 @@ src/app/(adminPanel)/api-docs/page.tsx```tsx
 
 ```
 
-src/app/(adminPanel)/projects/page.tsx```tsx
+// ./src/app/(adminPanel)/projects/page.tsx
+```tsx
 	import ProjectsView from '@/views/projects';
 	
 	// ==============================|| PAGE ||============================== //
@@ -17733,7 +17959,8 @@ src/app/(adminPanel)/projects/page.tsx```tsx
 
 ```
 
-src/app/(adminPanel)/projects/[id]/page.tsx```tsx
+// ./src/app/(adminPanel)/projects/[id]/page.tsx
+```tsx
 	import React from 'react';
 	import ProjectDetail from '@/components/projects/Detail';
 	
@@ -17743,7 +17970,8 @@ src/app/(adminPanel)/projects/[id]/page.tsx```tsx
 
 ```
 
-src/app/(adminPanel)/user/page.tsx```tsx
+// ./src/app/(adminPanel)/user/page.tsx
+```tsx
 	import React from 'react';
 	import User from '@/views/user';
 	
@@ -17753,7 +17981,8 @@ src/app/(adminPanel)/user/page.tsx```tsx
 
 ```
 
-src/app/(adminPanel)/user/[id]/page.tsx```tsx
+// ./src/app/(adminPanel)/user/[id]/page.tsx
+```tsx
 	import React from 'react';
 	import UserDetail from '@/components/user/detail';
 	
@@ -17763,7 +17992,8 @@ src/app/(adminPanel)/user/[id]/page.tsx```tsx
 
 ```
 
-src/app/(adminPanel)/contractor/page.tsx```tsx
+// ./src/app/(adminPanel)/contractor/page.tsx
+```tsx
 	import React from 'react';
 	import Contractor from '@/views/contractor';
 	
@@ -17773,7 +18003,8 @@ src/app/(adminPanel)/contractor/page.tsx```tsx
 
 ```
 
-src/app/(adminPanel)/builder/page.tsx```tsx
+// ./src/app/(adminPanel)/builder/page.tsx
+```tsx
 	import React from 'react';
 	import Builder from '@/views/builder';
 	
@@ -17783,7 +18014,8 @@ src/app/(adminPanel)/builder/page.tsx```tsx
 
 ```
 
-src/app/api/auth/[...nextauth]/route.ts```ts
+// ./src/app/api/auth/[...nextauth]/route.ts
+```ts
 	import NextAuth from 'next-auth/next';
 	import { authOptions } from '@/auth';
 	import { AuthOptions } from 'next-auth';
@@ -17794,7 +18026,8 @@ src/app/api/auth/[...nextauth]/route.ts```ts
 
 ```
 
-src/app/api/service/list/route.ts```ts
+// ./src/app/api/service/list/route.ts
+```ts
 	import { NextResponse } from 'next/server';
 	
 	export async function GET() {
@@ -17814,7 +18047,8 @@ src/app/api/service/list/route.ts```ts
 
 ```
 
-src/app/api/private/listing.ts```ts
+// ./src/app/api/private/listing.ts
+```ts
 	import { NextRequest } from 'next/server';
 	import { PAGINATE_OFFSET, PAGINATE_PAGE_SIZE } from '@/utils/constant';
 	
@@ -17880,7 +18114,8 @@ src/app/api/private/listing.ts```ts
 
 ```
 
-src/app/api/private/contractor-project/create/route.ts```ts
+// ./src/app/api/private/contractor-project/create/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	type RequestType = {
@@ -17897,7 +18132,8 @@ src/app/api/private/contractor-project/create/route.ts```ts
 
 ```
 
-src/app/api/private/contractor-project/list/route.ts```ts
+// ./src/app/api/private/contractor-project/list/route.ts
+```ts
 	import { NextResponse } from 'next/server';
 	
 	export async function GET() {
@@ -18008,7 +18244,8 @@ src/app/api/private/contractor-project/list/route.ts```ts
 
 ```
 
-src/app/api/private/contractor-project/[id]/route.ts```ts
+// ./src/app/api/private/contractor-project/[id]/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	export async function GET(request: NextRequest) {
@@ -18040,7 +18277,8 @@ src/app/api/private/contractor-project/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/contractor-project/[id]/invoices/route.ts```ts
+// ./src/app/api/private/contractor-project/[id]/invoices/route.ts
+```ts
 	import { IInvoice } from '@/types/resource/invoice';
 	import DateCustom from '@/utils/datetime/date.custom';
 	import { NextResponse } from 'next/server';
@@ -18243,7 +18481,8 @@ src/app/api/private/contractor-project/[id]/invoices/route.ts```ts
 
 ```
 
-src/app/api/private/protected/route.ts```ts
+// ./src/app/api/private/protected/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	export async function GET(request: NextRequest) {
@@ -18252,7 +18491,8 @@ src/app/api/private/protected/route.ts```ts
 
 ```
 
-src/app/api/private/invoice/upsert/route.ts```ts
+// ./src/app/api/private/invoice/upsert/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	export async function POST(request: NextRequest) {
@@ -18265,7 +18505,8 @@ src/app/api/private/invoice/upsert/route.ts```ts
 
 ```
 
-src/app/api/private/budget/create/route.ts```ts
+// ./src/app/api/private/budget/create/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import AuthService from '@/backend/services/auth.service';
@@ -18318,7 +18559,8 @@ src/app/api/private/budget/create/route.ts```ts
 
 ```
 
-src/app/api/private/budget/delete/[id]/route.ts```ts
+// ./src/app/api/private/budget/delete/[id]/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import ObjectIdValidator from '@/backend/validator/objectId.validator';
@@ -18358,7 +18600,8 @@ src/app/api/private/budget/delete/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/budget/list/route.ts```ts
+// ./src/app/api/private/budget/list/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import BudgetService from '@/backend/services/budget.service';
@@ -18415,7 +18658,8 @@ src/app/api/private/budget/list/route.ts```ts
 
 ```
 
-src/app/api/private/profile/route.ts```ts
+// ./src/app/api/private/profile/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import { headers } from 'next/headers';
 	import { decode, JWT } from 'next-auth/jwt';
@@ -18465,7 +18709,8 @@ src/app/api/private/profile/route.ts```ts
 
 ```
 
-src/app/api/private/profile/change-password/[id]/route.ts```ts
+// ./src/app/api/private/profile/change-password/[id]/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import UserService from '@/backend/services/user.service';
@@ -18516,7 +18761,8 @@ src/app/api/private/profile/change-password/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/profile/update/[id]/route.ts```ts
+// ./src/app/api/private/profile/update/[id]/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import ProfileValidator from '@/backend/validator/profile.validator';
 	import MongoConnect from '@/backend/connection/mongo.connection';
@@ -18579,7 +18825,8 @@ src/app/api/private/profile/update/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/file/upload/route.ts```ts
+// ./src/app/api/private/file/upload/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 	import UploadValidator from '@/backend/validator/upload.validator';
@@ -18645,7 +18892,8 @@ src/app/api/private/file/upload/route.ts```ts
 
 ```
 
-src/app/api/private/project/create/route.ts```ts
+// ./src/app/api/private/project/create/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import AuthService from '@/backend/services/auth.service';
@@ -18681,7 +18929,8 @@ src/app/api/private/project/create/route.ts```ts
 
 ```
 
-src/app/api/private/project/delete/[id]/route.ts```ts
+// ./src/app/api/private/project/delete/[id]/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import ObjectIdValidator from '@/backend/validator/objectId.validator';
@@ -18722,7 +18971,8 @@ src/app/api/private/project/delete/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/project/list/route.ts```ts
+// ./src/app/api/private/project/list/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import ResponseStruct from '@/backend/structs/response.struct';
@@ -18754,7 +19004,8 @@ src/app/api/private/project/list/route.ts```ts
 
 ```
 
-src/app/api/private/project/[id]/route.ts```ts
+// ./src/app/api/private/project/[id]/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import ProjectService from '@/backend/services/project.service';
@@ -18780,7 +19031,8 @@ src/app/api/private/project/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/project/[id]/contractors/route.ts```ts
+// ./src/app/api/private/project/[id]/contractors/route.ts
+```ts
 	import { NextResponse } from 'next/server';
 	
 	export async function GET() {
@@ -18832,7 +19084,8 @@ src/app/api/private/project/[id]/contractors/route.ts```ts
 
 ```
 
-src/app/api/private/project/[id]/invoices/route.ts```ts
+// ./src/app/api/private/project/[id]/invoices/route.ts
+```ts
 	import { IInvoice } from '@/types/resource/invoice';
 	import DateCustom from '@/utils/datetime/date.custom';
 	import { NextResponse } from 'next/server';
@@ -19035,7 +19288,8 @@ src/app/api/private/project/[id]/invoices/route.ts```ts
 
 ```
 
-src/app/api/private/project/[id]/roles/route.ts```ts
+// ./src/app/api/private/project/[id]/roles/route.ts
+```ts
 	import { NextResponse } from 'next/server';
 	
 	export async function GET() {
@@ -19092,7 +19346,8 @@ src/app/api/private/project/[id]/roles/route.ts```ts
 
 ```
 
-src/app/api/private/project/update/[id]/route.ts```ts
+// ./src/app/api/private/project/update/[id]/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import ObjectIdValidator from '@/backend/validator/objectId.validator';
@@ -19131,7 +19386,8 @@ src/app/api/private/project/update/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/user/create/route.ts```ts
+// ./src/app/api/private/user/create/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	type RequestType = {
@@ -19149,7 +19405,8 @@ src/app/api/private/user/create/route.ts```ts
 
 ```
 
-src/app/api/private/user/delete/[id]/route.ts```ts
+// ./src/app/api/private/user/delete/[id]/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ResponseStruct from '@/backend/structs/response.struct';
@@ -19210,7 +19467,8 @@ src/app/api/private/user/delete/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/user/status/[id]/route.ts```ts
+// ./src/app/api/private/user/status/[id]/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ResponseStruct from '@/backend/structs/response.struct';
@@ -19290,7 +19548,8 @@ src/app/api/private/user/status/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/user/bulk-control/route.ts```ts
+// ./src/app/api/private/user/bulk-control/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import { Actions } from '@/utils/enums';
 	import MongoConnect from '@/backend/connection/mongo.connection';
@@ -19355,7 +19614,8 @@ src/app/api/private/user/bulk-control/route.ts```ts
 
 ```
 
-src/app/api/private/user/archive/[id]/route.ts```ts
+// ./src/app/api/private/user/archive/[id]/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ResponseStruct from '@/backend/structs/response.struct';
@@ -19416,7 +19676,8 @@ src/app/api/private/user/archive/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/user/list/route.ts```ts
+// ./src/app/api/private/user/list/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ResponseStruct from '@/backend/structs/response.struct';
@@ -19472,7 +19733,8 @@ src/app/api/private/user/list/route.ts```ts
 
 ```
 
-src/app/api/private/user/[id]/route.ts```ts
+// ./src/app/api/private/user/[id]/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ResponseStruct from '@/backend/structs/response.struct';
@@ -19520,7 +19782,8 @@ src/app/api/private/user/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/user/[id]/get-role-permission/route.ts```ts
+// ./src/app/api/private/user/[id]/get-role-permission/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ResponseStruct from '@/backend/structs/response.struct';
@@ -19565,7 +19828,8 @@ src/app/api/private/user/[id]/get-role-permission/route.ts```ts
 
 ```
 
-src/app/api/private/contractor/create/route.ts```ts
+// ./src/app/api/private/contractor/create/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import UploadValidator from '@/backend/validator/upload.validator';
 	import { FolderName } from '@/utils/enums';
@@ -19636,7 +19900,8 @@ src/app/api/private/contractor/create/route.ts```ts
 
 ```
 
-src/app/api/private/contractor/delete/[id]/route.ts```ts
+// ./src/app/api/private/contractor/delete/[id]/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ContractorService from '@/backend/services/contractor.service';
@@ -19669,7 +19934,8 @@ src/app/api/private/contractor/delete/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/contractor/update-contractor-role/route.ts```ts
+// ./src/app/api/private/contractor/update-contractor-role/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ContractorService from '@/backend/services/contractor.service';
@@ -19699,7 +19965,8 @@ src/app/api/private/contractor/update-contractor-role/route.ts```ts
 
 ```
 
-src/app/api/private/contractor/list/route.ts```ts
+// ./src/app/api/private/contractor/list/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ContractorService from '@/backend/services/contractor.service';
@@ -19738,7 +20005,8 @@ src/app/api/private/contractor/list/route.ts```ts
 
 ```
 
-src/app/api/private/contractor/update/[id]/route.ts```ts
+// ./src/app/api/private/contractor/update/[id]/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ContractorService from '@/backend/services/contractor.service';
@@ -19811,7 +20079,8 @@ src/app/api/private/contractor/update/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/builder/create/route.ts```ts
+// ./src/app/api/private/builder/create/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import BuilderValidator from '@/backend/validator/builder.validator';
 	import { NextRequest, NextResponse } from 'next/server';
@@ -19853,7 +20122,8 @@ src/app/api/private/builder/create/route.ts```ts
 
 ```
 
-src/app/api/private/builder/delete/[id]/route.ts```ts
+// ./src/app/api/private/builder/delete/[id]/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import BuilderService from '@/backend/services/builder.service';
@@ -19900,7 +20170,8 @@ src/app/api/private/builder/delete/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/builder/list/route.ts```ts
+// ./src/app/api/private/builder/list/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import BuilderService from '@/backend/services/builder.service';
@@ -19938,7 +20209,8 @@ src/app/api/private/builder/list/route.ts```ts
 
 ```
 
-src/app/api/private/builder/[id]/route.ts```ts
+// ./src/app/api/private/builder/[id]/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import { NextRequest, NextResponse } from 'next/server';
 	import BuilderService from '@/backend/services/builder.service';
@@ -19970,7 +20242,8 @@ src/app/api/private/builder/[id]/route.ts```ts
 
 ```
 
-src/app/api/private/builder/update/[id]/route.ts```ts
+// ./src/app/api/private/builder/update/[id]/route.ts
+```ts
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import BuilderValidator from '@/backend/validator/builder.validator';
 	import { NextRequest, NextResponse } from 'next/server';
@@ -20015,7 +20288,8 @@ src/app/api/private/builder/update/[id]/route.ts```ts
 
 ```
 
-src/app/api/company/create/route.ts```ts
+// ./src/app/api/company/create/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	
 	export async function POST(request: NextRequest) {
@@ -20032,7 +20306,8 @@ src/app/api/company/create/route.ts```ts
 
 ```
 
-src/app/api/company/list/route.ts```ts
+// ./src/app/api/company/list/route.ts
+```ts
 	import { NextResponse } from 'next/server';
 	
 	export async function GET() {
@@ -20056,7 +20331,8 @@ src/app/api/company/list/route.ts```ts
 
 ```
 
-src/app/api/public/auth/token/[email]/route.ts```ts
+// ./src/app/api/public/auth/token/[email]/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import { encode } from 'next-auth/jwt';
 	import MongoConnect from '@/backend/connection/mongo.connection';
@@ -20105,7 +20381,8 @@ src/app/api/public/auth/token/[email]/route.ts```ts
 
 ```
 
-src/app/api/public/auth/reset-password/route.ts```ts
+// ./src/app/api/public/auth/reset-password/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import UserRepository from '@/backend/repositories/mongodb/user.repository';
 	import MongoConnect from '@/backend/connection/mongo.connection';
@@ -20156,7 +20433,8 @@ src/app/api/public/auth/reset-password/route.ts```ts
 
 ```
 
-src/app/api/public/auth/code/verify/route.ts```ts
+// ./src/app/api/public/auth/code/verify/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import AuthService from '@/backend/services/auth.service';
@@ -20202,7 +20480,8 @@ src/app/api/public/auth/code/verify/route.ts```ts
 
 ```
 
-src/app/api/public/auth/code/send/route.ts```ts
+// ./src/app/api/public/auth/code/send/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import MongoConnect from '@/backend/connection/mongo.connection';
 	import ForgotPasswordValidator from '@/backend/validator/forgot-password.validator';
@@ -20249,7 +20528,8 @@ src/app/api/public/auth/code/send/route.ts```ts
 
 ```
 
-src/app/api/public/auth/register/route.ts```ts
+// ./src/app/api/public/auth/register/route.ts
+```ts
 	import { NextRequest, NextResponse } from 'next/server';
 	import RegisterValidator from '@/backend/validator/register.validator';
 	import MongoConnect from '@/backend/connection/mongo.connection';
@@ -20316,7 +20596,8 @@ src/app/api/public/auth/register/route.ts```ts
 
 ```
 
-src/hooks/useConfig.ts```ts
+// ./src/hooks/useConfig.ts
+```ts
 	import { useContext } from 'react';
 	import { ConfigContext } from 'contexts/ConfigContext';
 	
@@ -20328,7 +20609,8 @@ src/hooks/useConfig.ts```ts
 
 ```
 
-src/hooks/useLocalStorage.ts```ts
+// ./src/hooks/useLocalStorage.ts
+```ts
 	import { useState, useEffect } from 'react';
 	
 	// ==============================|| LOCAL STORAGE HOOKS ||============================== //
@@ -20365,7 +20647,8 @@ src/hooks/useLocalStorage.ts```ts
 
 ```
 
-src/hooks/useAsync.ts```ts
+// ./src/hooks/useAsync.ts
+```ts
 	import { get } from 'lodash';
 	import { useCallback, useEffect, useReducer, useRef } from 'react';
 	import { ResponseError } from '@/types/response';
@@ -20469,7 +20752,8 @@ src/hooks/useAsync.ts```ts
 
 ```
 
-src/hooks/useUploadFile.ts```ts
+// ./src/hooks/useUploadFile.ts
+```ts
 	import { useIntl } from 'react-intl';
 	
 	// projects import
@@ -20531,7 +20815,8 @@ src/hooks/useUploadFile.ts```ts
 
 ```
 
-src/hooks/useScriptRef.ts```ts
+// ./src/hooks/useScriptRef.ts
+```ts
 	'use client';
 	
 	import { useEffect, useRef } from 'react';
@@ -20555,7 +20840,8 @@ src/hooks/useScriptRef.ts```ts
 
 ```
 
-src/hooks/useCommonValidates.ts```ts
+// ./src/hooks/useCommonValidates.ts
+```ts
 	import { useIntl } from 'react-intl';
 	import { isUndefined } from 'lodash';
 	import * as Yup from 'yup';
@@ -20653,7 +20939,8 @@ src/hooks/useCommonValidates.ts```ts
 
 ```
 
-src/utils/enums.ts```ts
+// ./src/utils/enums.ts
+```ts
 	export enum UserStatus {
 	  ACTIVE = 'active',
 	  INACTIVE = 'inactive',
@@ -20726,7 +21013,9 @@ src/utils/enums.ts```ts
 	  CONTRACTOR = 'Contractor',
 	  SUPER_ADMIN = 'Super Admin',
 	  ADMIN = 'Admin',
-	  GENERIC = 'Generic'
+	  GENERIC = 'Generic',
+	  GENERIC_CONTACTOR = 'Generic Contractor',
+	  GENERIC_BUILDER = 'Generic Builder'
 	}
 	
 	export enum Scope {
@@ -20737,7 +21026,8 @@ src/utils/enums.ts```ts
 
 ```
 
-src/utils/common.ts```ts
+// ./src/utils/common.ts
+```ts
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -20872,7 +21162,8 @@ src/utils/common.ts```ts
 
 ```
 
-src/utils/api.ts```ts
+// ./src/utils/api.ts
+```ts
 	const APIS = {
 	  /** AUTH */
 	  REGISTER: 'public/auth/register',
@@ -20941,7 +21232,8 @@ src/utils/api.ts```ts
 
 ```
 
-src/utils/email.ts```ts
+// ./src/utils/email.ts
+```ts
 	export const showPartialEmail = (email: string): string => {
 	  if (!email) return '';
 	  return email.replace(/(\w{3})[\w.-]+@([\w.]+\w)/, '$1***@$2');
@@ -20949,7 +21241,8 @@ src/utils/email.ts```ts
 
 ```
 
-src/utils/roles.ts```ts
+// ./src/utils/roles.ts
+```ts
 	import UserDto from '@/utils/dtos/user.dto';
 	
 	export const isContractor = (user: UserDto) => {
@@ -20960,7 +21253,8 @@ src/utils/roles.ts```ts
 
 ```
 
-src/utils/notify.ts```ts
+// ./src/utils/notify.ts
+```ts
 	// store
 	import { dispatch } from 'store';
 	import { openSnackbar } from 'store/slices/snackbar';
@@ -21027,7 +21321,8 @@ src/utils/notify.ts```ts
 
 ```
 
-src/utils/helper.ts```ts
+// ./src/utils/helper.ts
+```ts
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -21231,7 +21526,8 @@ src/utils/helper.ts```ts
 
 ```
 
-src/utils/constant.ts```ts
+// ./src/utils/constant.ts
+```ts
 	import { IRequestFilter } from '@/types/request';
 	
 	export const DEFAULT_FILE_NAME: string = 'No file selected';
@@ -21269,7 +21565,8 @@ src/utils/constant.ts```ts
 
 ```
 
-src/utils/password-strength.ts```ts
+// ./src/utils/password-strength.ts
+```ts
 	/**
 	 * Password validator for login pages
 	 */
@@ -21308,7 +21605,8 @@ src/utils/password-strength.ts```ts
 
 ```
 
-src/utils/auth.ts```ts
+// ./src/utils/auth.ts
+```ts
 	import { signOut as nextAuthSignOut, SignOutParams } from 'next-auth/react';
 	
 	export interface ISignOut extends SignOutParams {
@@ -21332,7 +21630,8 @@ src/utils/auth.ts```ts
 
 ```
 
-src/utils/axios.ts```ts
+// ./src/utils/axios.ts
+```ts
 	/**
 	 * axios setup to use mock service
 	 */
@@ -21353,7 +21652,8 @@ src/utils/axios.ts```ts
 
 ```
 
-src/utils/services/company.ts```ts
+// ./src/utils/services/company.ts
+```ts
 	import { IResponseGetCompanies } from 'types/response';
 	import { IRequestFilter, IRequestCreateCompany } from 'types/request';
 	import { ICompany } from 'types/resource/company';
@@ -21378,7 +21678,8 @@ src/utils/services/company.ts```ts
 
 ```
 
-src/utils/services/service.ts```ts
+// ./src/utils/services/service.ts
+```ts
 	import { IResponseGetServices } from 'types/response';
 	import { IRequestFilter } from 'types/request';
 	import { generateQueryFromFilter } from 'utils/helper';
@@ -21395,7 +21696,8 @@ src/utils/services/service.ts```ts
 
 ```
 
-src/utils/services/builder.ts```ts
+// ./src/utils/services/builder.ts
+```ts
 	import { IResponseCreateBuilder, IResponseDeleteBuilder, IResponseUpdateBuilder } from './../../types/response';
 	import axiosServices from '../axios';
 	import endPoints from '../api';
@@ -21436,7 +21738,8 @@ src/utils/services/builder.ts```ts
 
 ```
 
-src/utils/services/contractor.ts```ts
+// ./src/utils/services/contractor.ts
+```ts
 	import axiosServices from '../axios';
 	import endPoints from '../api';
 	import {
@@ -21509,7 +21812,8 @@ src/utils/services/contractor.ts```ts
 
 ```
 
-src/utils/services/upload.ts```ts
+// ./src/utils/services/upload.ts
+```ts
 	import axios from '../axios';
 	import endPoints from '../api';
 	import { IRequestUpload } from 'types/request';
@@ -21530,7 +21834,8 @@ src/utils/services/upload.ts```ts
 
 ```
 
-src/utils/services/contractorProject.ts```ts
+// ./src/utils/services/contractorProject.ts
+```ts
 	import axios from '../axios';
 	import endPoints from '../api';
 	import { IResponseProjects } from 'types/response';
@@ -21568,7 +21873,8 @@ src/utils/services/contractorProject.ts```ts
 
 ```
 
-src/utils/services/budget.ts```ts
+// ./src/utils/services/budget.ts
+```ts
 	import { IResponseListBudgets, IResponseCreateBudget, IResponseDeleteBudget } from 'types/response';
 	import axios from '../axios';
 	import endPoints from '../api';
@@ -21591,7 +21897,8 @@ src/utils/services/budget.ts```ts
 
 ```
 
-src/utils/services/user.ts```ts
+// ./src/utils/services/user.ts
+```ts
 	import axiosServices from '../axios';
 	import endPoints from '../api';
 	import { IResponseCreateUser, IResponseDeleteUser, IResponseListUsers, IResponseUpdateUser } from '@/types/response';
@@ -21629,7 +21936,8 @@ src/utils/services/user.ts```ts
 
 ```
 
-src/utils/services/auth.ts```ts
+// ./src/utils/services/auth.ts
+```ts
 	import axios from '../axios';
 	import endPoints from '../api';
 	import {
@@ -21761,7 +22069,8 @@ src/utils/services/auth.ts```ts
 
 ```
 
-src/utils/services/project.ts```ts
+// ./src/utils/services/project.ts
+```ts
 	import axios from '../axios';
 	import endPoints from '../api';
 	import { IResponseProjects, IResponseDeleteProject, IResponseCreateBuilder, IResponseUpdateProject } from 'types/response';
@@ -21842,7 +22151,8 @@ src/utils/services/project.ts```ts
 
 ```
 
-src/utils/permission/permission.handler.ts```ts
+// ./src/utils/permission/permission.handler.ts
+```ts
 	import BaseChain from '@/backend/services/permission/chains/base.chain';
 	import ProjectPermissionChain from '@/backend/services/permission/chains/project.permission.chain';
 	import CompanyPermissionChain from '@/backend/services/permission/chains/company.permission.chain';
@@ -21931,7 +22241,8 @@ src/utils/permission/permission.handler.ts```ts
 
 ```
 
-src/utils/dtos/role.dto.ts```ts
+// ./src/utils/dtos/role.dto.ts
+```ts
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -21980,7 +22291,8 @@ src/utils/dtos/role.dto.ts```ts
 
 ```
 
-src/utils/dtos/builder.dto.ts```ts
+// ./src/utils/dtos/builder.dto.ts
+```ts
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -22080,7 +22392,8 @@ src/utils/dtos/builder.dto.ts```ts
 
 ```
 
-src/utils/dtos/contractor.dto.ts```ts
+// ./src/utils/dtos/contractor.dto.ts
+```ts
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -22161,7 +22474,8 @@ src/utils/dtos/contractor.dto.ts```ts
 
 ```
 
-src/utils/dtos/budget.dto.ts```ts
+// ./src/utils/dtos/budget.dto.ts
+```ts
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -22240,7 +22554,8 @@ src/utils/dtos/budget.dto.ts```ts
 
 ```
 
-src/utils/dtos/user.dto.ts```ts
+// ./src/utils/dtos/user.dto.ts
+```ts
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -22318,7 +22633,8 @@ src/utils/dtos/user.dto.ts```ts
 
 ```
 
-src/utils/dtos/project.dto.ts```ts
+// ./src/utils/dtos/project.dto.ts
+```ts
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -22452,7 +22768,8 @@ src/utils/dtos/project.dto.ts```ts
 
 ```
 
-src/utils/dtos/base.dto.ts```ts
+// ./src/utils/dtos/base.dto.ts
+```ts
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -22532,7 +22849,8 @@ src/utils/dtos/base.dto.ts```ts
 
 ```
 
-src/utils/dtos/permission.dto.ts```ts
+// ./src/utils/dtos/permission.dto.ts
+```ts
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -22582,7 +22900,8 @@ src/utils/dtos/permission.dto.ts```ts
 
 ```
 
-src/utils/dtos/company.dto.ts```ts
+// ./src/utils/dtos/company.dto.ts
+```ts
 	import BaseDto from '@/utils/dtos/base.dto';
 	
 	export type Company = {
@@ -22629,7 +22948,8 @@ src/utils/dtos/company.dto.ts```ts
 
 ```
 
-src/utils/dtos/invoice.dto.ts```ts
+// ./src/utils/dtos/invoice.dto.ts
+```ts
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -22748,7 +23068,8 @@ src/utils/dtos/invoice.dto.ts```ts
 
 ```
 
-src/utils/dtos/types/dto.type.ts```ts
+// ./src/utils/dtos/types/dto.type.ts
+```ts
 	import Budget from '@/utils/dtos/budget.dto';
 	import Builder from '@/utils/dtos/builder.dto';
 	import Contractor from '@/utils/dtos/contractor.dto';
@@ -22763,7 +23084,8 @@ src/utils/dtos/types/dto.type.ts```ts
 
 ```
 
-src/utils/form/index.ts```ts
+// ./src/utils/form/index.ts
+```ts
 	import { forOwn } from 'lodash';
 	import { FormikErrors, FormikTouched } from 'formik';
 	
@@ -22820,7 +23142,8 @@ src/utils/form/index.ts```ts
 
 ```
 
-src/utils/logger/sentry.logger.ts```ts
+// ./src/utils/logger/sentry.logger.ts
+```ts
 	import LoggerInterface from '@/utils/logger/interface/logger.interface';
 	import * as Sentry from '@sentry/nextjs';
 	import { ExclusiveEventHintOrCaptureContext } from '@sentry/core/types/utils/prepareEvent';
@@ -22857,7 +23180,8 @@ src/utils/logger/sentry.logger.ts```ts
 
 ```
 
-src/utils/logger/console.logger.ts```ts
+// ./src/utils/logger/console.logger.ts
+```ts
 	import LoggerInterface from '@/utils/logger/interface/logger.interface';
 	
 	export default class ConsoleLogger implements LoggerInterface {
@@ -22884,7 +23208,8 @@ src/utils/logger/console.logger.ts```ts
 
 ```
 
-src/utils/logger/index.ts```ts
+// ./src/utils/logger/index.ts
+```ts
 	import LoggerInterface from '@/utils/logger/interface/logger.interface';
 	import * as process from 'process';
 	import ConsoleLogger from '@/utils/logger/console.logger';
@@ -22932,7 +23257,8 @@ src/utils/logger/index.ts```ts
 
 ```
 
-src/utils/logger/interface/logger.interface.ts```ts
+// ./src/utils/logger/interface/logger.interface.ts
+```ts
 	import { ExclusiveEventHintOrCaptureContext } from '@sentry/core/types/utils/prepareEvent';
 	
 	export default interface LoggerInterface {
@@ -22945,7 +23271,8 @@ src/utils/logger/interface/logger.interface.ts```ts
 
 ```
 
-src/utils/route-guard/AuthGuard.tsx```tsx
+// ./src/utils/route-guard/AuthGuard.tsx
+```tsx
 	'use client';
 	
 	import { useRouter } from 'next/navigation';
@@ -22982,7 +23309,8 @@ src/utils/route-guard/AuthGuard.tsx```tsx
 
 ```
 
-src/utils/route-guard/GuestGuard.tsx```tsx
+// ./src/utils/route-guard/GuestGuard.tsx
+```tsx
 	'use client';
 	
 	import { useEffect } from 'react';
@@ -23020,7 +23348,8 @@ src/utils/route-guard/GuestGuard.tsx```tsx
 
 ```
 
-src/utils/locales/en/index.ts```ts
+// ./src/utils/locales/en/index.ts
+```ts
 	import defaultLanguages from './default.json';
 	import auth from './auth.json';
 	import builder from './builder.json';
@@ -23053,7 +23382,8 @@ src/utils/locales/en/index.ts```ts
 
 ```
 
-src/utils/datetime/date.custom.ts```ts
+// ./src/utils/datetime/date.custom.ts
+```ts
 	import { DATE_FORMAT_DEFAULT } from '@/constant';
 	import { format } from 'date-fns';
 	export default class DateCustom extends Date {
@@ -23101,7 +23431,8 @@ src/utils/datetime/date.custom.ts```ts
 
 ```
 
-src/utils/currency/index.ts```ts
+// ./src/utils/currency/index.ts
+```ts
 	import { CURRENCY } from 'constant';
 	
 	export function formatPrice(price: number): string {
@@ -23115,7 +23446,8 @@ src/utils/currency/index.ts```ts
 
 ```
 
-src/components/ui-component/Logo.tsx```tsx
+// ./src/components/ui-component/Logo.tsx
+```tsx
 	// material-ui
 	import Image from 'next/image';
 	import React from 'react';
@@ -23150,7 +23482,8 @@ src/components/ui-component/Logo.tsx```tsx
 
 ```
 
-src/components/ui-component/Locales.tsx```tsx
+// ./src/components/ui-component/Locales.tsx
+```tsx
 	import React, { useState, useEffect } from 'react';
 	
 	// third-party
@@ -23195,7 +23528,8 @@ src/components/ui-component/Locales.tsx```tsx
 
 ```
 
-src/components/ui-component/RTLLayout.tsx```tsx
+// ./src/components/ui-component/RTLLayout.tsx
+```tsx
 	import { useEffect, ReactNode } from 'react';
 	
 	// material-ui
@@ -23232,7 +23566,8 @@ src/components/ui-component/RTLLayout.tsx```tsx
 
 ```
 
-src/components/ui-component/Loadable.tsx```tsx
+// ./src/components/ui-component/Loadable.tsx
+```tsx
 	import { Suspense, ElementType } from 'react';
 	
 	// project imports
@@ -23250,7 +23585,8 @@ src/components/ui-component/Loadable.tsx```tsx
 
 ```
 
-src/components/ui-component/Loader.tsx```tsx
+// ./src/components/ui-component/Loader.tsx
+```tsx
 	// material-ui
 	import LinearProgress from '@mui/material/LinearProgress';
 	import { styled } from '@mui/material/styles';
@@ -23276,7 +23612,8 @@ src/components/ui-component/Loader.tsx```tsx
 
 ```
 
-src/components/ui-component/Page.tsx```tsx
+// ./src/components/ui-component/Page.tsx
+```tsx
 	import { forwardRef, ReactNode, Ref } from 'react';
 	
 	// next
@@ -23310,7 +23647,8 @@ src/components/ui-component/Page.tsx```tsx
 
 ```
 
-src/components/ui-component/cards/SubCard.tsx```tsx
+// ./src/components/ui-component/cards/SubCard.tsx
+```tsx
 	import React, { ReactNode, Ref } from 'react';
 	
 	// material-ui
@@ -23381,7 +23719,8 @@ src/components/ui-component/cards/SubCard.tsx```tsx
 
 ```
 
-src/components/ui-component/cards/CardSecondaryAction.tsx```tsx
+// ./src/components/ui-component/cards/CardSecondaryAction.tsx
+```tsx
 	import { ReactNode } from 'react';
 	
 	// material-ui
@@ -23451,7 +23790,8 @@ src/components/ui-component/cards/CardSecondaryAction.tsx```tsx
 
 ```
 
-src/components/ui-component/cards/MainCard.tsx```tsx
+// ./src/components/ui-component/cards/MainCard.tsx
+```tsx
 	'use client';
 	import React, { Ref } from 'react';
 	
@@ -23544,7 +23884,8 @@ src/components/ui-component/cards/MainCard.tsx```tsx
 
 ```
 
-src/components/ui-component/cards/AuthFooter.tsx```tsx
+// ./src/components/ui-component/cards/AuthFooter.tsx
+```tsx
 	// material-ui
 	import { Link, Typography, Stack } from '@mui/material';
 	
@@ -23565,7 +23906,8 @@ src/components/ui-component/cards/AuthFooter.tsx```tsx
 
 ```
 
-src/components/ui-component/Select/index.tsx```tsx
+// ./src/components/ui-component/Select/index.tsx
+```tsx
 	import * as React from 'react';
 	
 	import { InputLabel, Select, SelectProps } from '@mui/material';
@@ -23596,7 +23938,8 @@ src/components/ui-component/Select/index.tsx```tsx
 
 ```
 
-src/components/ui-component/Select/styles.module.scss```scss
+// ./src/components/ui-component/Select/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.root {
@@ -23606,7 +23949,8 @@ src/components/ui-component/Select/styles.module.scss```scss
 
 ```
 
-src/components/ui-component/SelectField/index.tsx```tsx
+// ./src/components/ui-component/SelectField/index.tsx
+```tsx
 	import { MenuItem as Option, Box, CircularProgress } from '@mui/material';
 	
 	// projects import
@@ -23654,12 +23998,14 @@ src/components/ui-component/SelectField/index.tsx```tsx
 
 ```
 
-src/components/ui-component/tabs/index.ts```ts
+// ./src/components/ui-component/tabs/index.ts
+```ts
 	export { default as TabPanel } from './TabPanel';
 
 ```
 
-src/components/ui-component/tabs/TabPanel/index.tsx```tsx
+// ./src/components/ui-component/tabs/TabPanel/index.tsx
+```tsx
 	import React from 'react';
 	import { Box } from '@mui/material';
 	
@@ -23682,7 +24028,8 @@ src/components/ui-component/tabs/TabPanel/index.tsx```tsx
 
 ```
 
-src/components/ui-component/Card/index.tsx```tsx
+// ./src/components/ui-component/Card/index.tsx
+```tsx
 	import React from 'react';
 	import cs from 'classnames';
 	import {
@@ -23727,7 +24074,8 @@ src/components/ui-component/Card/index.tsx```tsx
 
 ```
 
-src/components/ui-component/Card/styles.module.scss```scss
+// ./src/components/ui-component/Card/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.card {
@@ -23749,7 +24097,8 @@ src/components/ui-component/Card/styles.module.scss```scss
 
 ```
 
-src/components/ui-component/TimeCountDown/index.tsx```tsx
+// ./src/components/ui-component/TimeCountDown/index.tsx
+```tsx
 	import { useEffect, useRef } from 'react';
 	
 	export interface ITimeCountDownProps {
@@ -23785,7 +24134,8 @@ src/components/ui-component/TimeCountDown/index.tsx```tsx
 
 ```
 
-src/components/ui-component/extended/Breadcrumbs.tsx```tsx
+// ./src/components/ui-component/extended/Breadcrumbs.tsx
+```tsx
 	'use client';
 	import { CSSProperties, ReactElement, useEffect, useState } from 'react';
 	
@@ -24074,7 +24424,8 @@ src/components/ui-component/extended/Breadcrumbs.tsx```tsx
 
 ```
 
-src/components/ui-component/extended/Snackbar.tsx```tsx
+// ./src/components/ui-component/extended/Snackbar.tsx
+```tsx
 	import { SyntheticEvent } from 'react';
 	
 	// material-ui
@@ -24205,7 +24556,8 @@ src/components/ui-component/extended/Snackbar.tsx```tsx
 
 ```
 
-src/components/ui-component/extended/Transitions.tsx```tsx
+// ./src/components/ui-component/extended/Transitions.tsx
+```tsx
 	import React, { Ref, ExoticComponent, ReactElement } from 'react';
 	
 	// material-ui
@@ -24314,7 +24666,8 @@ src/components/ui-component/extended/Transitions.tsx```tsx
 
 ```
 
-src/components/ui-component/extended/Chip.tsx```tsx
+// ./src/components/ui-component/extended/Chip.tsx
+```tsx
 	// material-ui
 	import { useTheme } from '@mui/material/styles';
 	import MuiChip, { ChipProps } from '@mui/material/Chip';
@@ -24508,7 +24861,8 @@ src/components/ui-component/extended/Chip.tsx```tsx
 
 ```
 
-src/components/ui-component/extended/Avatar.tsx```tsx
+// ./src/components/ui-component/extended/Avatar.tsx
+```tsx
 	import { ReactNode } from 'react';
 	
 	// material-ui
@@ -24594,7 +24948,8 @@ src/components/ui-component/extended/Avatar.tsx```tsx
 
 ```
 
-src/components/ui-component/extended/AnimateButton.tsx```tsx
+// ./src/components/ui-component/extended/AnimateButton.tsx
+```tsx
 	'use client';
 	
 	import React, { Ref } from 'react';
@@ -24701,7 +25056,8 @@ src/components/ui-component/extended/AnimateButton.tsx```tsx
 
 ```
 
-src/components/ui-component/extended/Form/FormControlSelect.tsx```tsx
+// ./src/components/ui-component/extended/Form/FormControlSelect.tsx
+```tsx
 	'use client';
 	
 	import { useState } from 'react';
@@ -24799,7 +25155,8 @@ src/components/ui-component/extended/Form/FormControlSelect.tsx```tsx
 
 ```
 
-src/components/ui-component/extended/Form/FormControl.tsx```tsx
+// ./src/components/ui-component/extended/Form/FormControl.tsx
+```tsx
 	// material-ui
 	import { useTheme } from '@mui/material/styles';
 	import { Divider, InputAdornment, InputLabel, OutlinedInput } from '@mui/material';
@@ -24878,7 +25235,8 @@ src/components/ui-component/extended/Form/FormControl.tsx```tsx
 
 ```
 
-src/components/ui-component/extended/Form/InputLabel.tsx```tsx
+// ./src/components/ui-component/extended/Form/InputLabel.tsx
+```tsx
 	'use client';
 	
 	// material-ui
@@ -24909,7 +25267,8 @@ src/components/ui-component/extended/Form/InputLabel.tsx```tsx
 
 ```
 
-src/components/ui-component/PasswordStrength/index.tsx```tsx
+// ./src/components/ui-component/PasswordStrength/index.tsx
+```tsx
 	import * as React from 'react';
 	import { strengthColor, strengthIndicator } from 'utils/password-strength';
 	import { Box, Typography } from '@mui/material';
@@ -24942,7 +25301,8 @@ src/components/ui-component/PasswordStrength/index.tsx```tsx
 
 ```
 
-src/components/ui-component/FormControl/index.tsx```tsx
+// ./src/components/ui-component/FormControl/index.tsx
+```tsx
 	import { FormControl as MUIFormControl, FormControlProps, InputLabel, FormHelperText } from '@mui/material';
 	import cs from 'classnames';
 	import styles from './styles.module.scss';
@@ -24984,7 +25344,8 @@ src/components/ui-component/FormControl/index.tsx```tsx
 
 ```
 
-src/components/ui-component/FormControl/styles.module.scss```scss
+// ./src/components/ui-component/FormControl/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.root {
@@ -25026,7 +25387,8 @@ src/components/ui-component/FormControl/styles.module.scss```scss
 
 ```
 
-src/components/ui-component/WaitingApprove/index.tsx```tsx
+// ./src/components/ui-component/WaitingApprove/index.tsx
+```tsx
 	import * as React from 'react';
 	import { Box } from '@mui/material';
 	import { HourglassMedium } from '@phosphor-icons/react';
@@ -25055,7 +25417,8 @@ src/components/ui-component/WaitingApprove/index.tsx```tsx
 
 ```
 
-src/components/ui-component/Upload/index.tsx```tsx
+// ./src/components/ui-component/Upload/index.tsx
+```tsx
 	import { ChangeEvent, useEffect, useState } from 'react';
 	import { Button } from '@mui/material';
 	import { useIntl } from 'react-intl';
@@ -25115,7 +25478,8 @@ src/components/ui-component/Upload/index.tsx```tsx
 
 ```
 
-src/components/ui-component/Upload/styles.module.scss```scss
+// ./src/components/ui-component/Upload/styles.module.scss
+```scss
 	.imageLocal {
 	  position: absolute;
 	  inset: 0;
@@ -25127,7 +25491,8 @@ src/components/ui-component/Upload/styles.module.scss```scss
 
 ```
 
-src/components/ui-component/Link/index.tsx```tsx
+// ./src/components/ui-component/Link/index.tsx
+```tsx
 	import NextLink, { LinkProps } from 'next/link';
 	import { Box, BoxProps } from '@mui/material';
 	import cs from 'classnames';
@@ -25146,7 +25511,8 @@ src/components/ui-component/Link/index.tsx```tsx
 
 ```
 
-src/components/ui-component/Link/styles.module.scss```scss
+// ./src/components/ui-component/Link/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.link {
@@ -25162,7 +25528,8 @@ src/components/ui-component/Link/styles.module.scss```scss
 
 ```
 
-src/components/ui-component/TextField/index.tsx```tsx
+// ./src/components/ui-component/TextField/index.tsx
+```tsx
 	import * as React from 'react';
 	import cs from 'classnames';
 	import { TextField as MUITextField, TextFieldProps as MUITextFieldProps } from '@mui/material';
@@ -25195,7 +25562,8 @@ src/components/ui-component/TextField/index.tsx```tsx
 
 ```
 
-src/components/ui-component/TextField/styles.module.scss```scss
+// ./src/components/ui-component/TextField/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.root {
@@ -25254,7 +25622,8 @@ src/components/ui-component/TextField/styles.module.scss```scss
 
 ```
 
-src/components/ui-component/autocomplete/Users.tsx```tsx
+// ./src/components/ui-component/autocomplete/Users.tsx
+```tsx
 	import { useEffect, useState } from 'react';
 	import TextField from '@mui/material/TextField';
 	import Autocomplete from '@mui/material/Autocomplete';
@@ -25374,14 +25743,16 @@ src/components/ui-component/autocomplete/Users.tsx```tsx
 
 ```
 
-src/components/ui-component/inputs/index.ts```ts
+// ./src/components/ui-component/inputs/index.ts
+```ts
 	export { default as OutlinedInput } from './OutlinedInput';
 	export { default as OutlinePassword } from './OutlinedPassword';
 	export { default as AmountInput } from './Amount';
 
 ```
 
-src/components/ui-component/inputs/OutlinedPassword/index.tsx```tsx
+// ./src/components/ui-component/inputs/OutlinedPassword/index.tsx
+```tsx
 	import { useState } from 'react';
 	import { IconButton, InputAdornment } from '@mui/material';
 	import Visibility from '@mui/icons-material/Visibility';
@@ -25421,7 +25792,8 @@ src/components/ui-component/inputs/OutlinedPassword/index.tsx```tsx
 
 ```
 
-src/components/ui-component/inputs/OutlinedInput/index.tsx```tsx
+// ./src/components/ui-component/inputs/OutlinedInput/index.tsx
+```tsx
 	import { OutlinedInput as MUIOutlinedInput, OutlinedInputProps } from '@mui/material';
 	import cs from 'classnames';
 	import styles from './styles.module.scss';
@@ -25449,7 +25821,8 @@ src/components/ui-component/inputs/OutlinedInput/index.tsx```tsx
 
 ```
 
-src/components/ui-component/inputs/OutlinedInput/styles.module.scss```scss
+// ./src/components/ui-component/inputs/OutlinedInput/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.notchedOutline {
@@ -25488,7 +25861,8 @@ src/components/ui-component/inputs/OutlinedInput/styles.module.scss```scss
 
 ```
 
-src/components/ui-component/inputs/Amount/index.tsx```tsx
+// ./src/components/ui-component/inputs/Amount/index.tsx
+```tsx
 	import * as React from 'react';
 	import { NumericFormat, NumericFormatProps, NumberFormatValues } from 'react-number-format';
 	import TextField, { TextFieldProps } from 'components/ui-component/TextField';
@@ -25547,7 +25921,8 @@ src/components/ui-component/inputs/Amount/index.tsx```tsx
 
 ```
 
-src/components/ui-component/DatePicker/index.tsx```tsx
+// ./src/components/ui-component/DatePicker/index.tsx
+```tsx
 	import * as React from 'react';
 	import { FormHelperText } from '@mui/material';
 	import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -25571,12 +25946,14 @@ src/components/ui-component/DatePicker/index.tsx```tsx
 
 ```
 
-src/components/ui-component/buttons/index.tsx```tsx
+// ./src/components/ui-component/buttons/index.tsx
+```tsx
 	export { default as Button } from './Button';
 
 ```
 
-src/components/ui-component/buttons/Button/index.tsx```tsx
+// ./src/components/ui-component/buttons/Button/index.tsx
+```tsx
 	import LoadingButton, { LoadingButtonProps } from '@mui/lab/LoadingButton';
 	import styles from './styles.module.scss';
 	
@@ -25599,7 +25976,8 @@ src/components/ui-component/buttons/Button/index.tsx```tsx
 
 ```
 
-src/components/ui-component/buttons/Button/styles.module.scss```scss
+// ./src/components/ui-component/buttons/Button/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.root {
@@ -25630,7 +26008,8 @@ src/components/ui-component/buttons/Button/styles.module.scss```scss
 
 ```
 
-src/components/ui-component/table/default.scss```scss
+// ./src/components/ui-component/table/default.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.tableActionIcon {
@@ -25656,7 +26035,8 @@ src/components/ui-component/table/default.scss```scss
 
 ```
 
-src/components/ui-component/table/table.module.scss```scss
+// ./src/components/ui-component/table/table.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.iconSort{
@@ -25685,7 +26065,8 @@ src/components/ui-component/table/table.module.scss```scss
 	}
 ```
 
-src/components/ui-component/table/index.tsx```tsx
+// ./src/components/ui-component/table/index.tsx
+```tsx
 	'use client';
 	import { Box, BoxProps } from '@mui/material';
 	import { DataGrid, DataGridProps, GridSortDirection } from '@mui/x-data-grid';
@@ -25793,7 +26174,8 @@ src/components/ui-component/table/index.tsx```tsx
 
 ```
 
-src/components/maintenance/ComingSoon/ComingSoon1/Slider.tsx```tsx
+// ./src/components/maintenance/ComingSoon/ComingSoon1/Slider.tsx
+```tsx
 	// material-ui
 	import { CardMedia, Grid, Link } from '@mui/material';
 	
@@ -25854,7 +26236,8 @@ src/components/maintenance/ComingSoon/ComingSoon1/Slider.tsx```tsx
 
 ```
 
-src/components/maintenance/ComingSoon/ComingSoon1/MailerSubscriber.tsx```tsx
+// ./src/components/maintenance/ComingSoon/ComingSoon1/MailerSubscriber.tsx
+```tsx
 	// material-ui
 	import { Box, Button, FormControl, FormHelperText, Grid, InputLabel, OutlinedInput } from '@mui/material';
 	
@@ -25976,7 +26359,8 @@ src/components/maintenance/ComingSoon/ComingSoon1/MailerSubscriber.tsx```tsx
 
 ```
 
-src/components/dialogs/ProjectRolesDialog.tsx```tsx
+// ./src/components/dialogs/ProjectRolesDialog.tsx
+```tsx
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -26179,7 +26563,8 @@ src/components/dialogs/ProjectRolesDialog.tsx```tsx
 
 ```
 
-src/components/dialogs/BudgetImportDialog.tsx```tsx
+// ./src/components/dialogs/BudgetImportDialog.tsx
+```tsx
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -26378,7 +26763,8 @@ src/components/dialogs/BudgetImportDialog.tsx```tsx
 
 ```
 
-src/components/dialogs/ProjectContractorsDialog.tsx```tsx
+// ./src/components/dialogs/ProjectContractorsDialog.tsx
+```tsx
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -26527,7 +26913,8 @@ src/components/dialogs/ProjectContractorsDialog.tsx```tsx
 
 ```
 
-src/components/dialogs/InvoiceDialog.tsx```tsx
+// ./src/components/dialogs/InvoiceDialog.tsx
+```tsx
 	/**
 	 * @license
 	 * Copyright 2024 J2C
@@ -26947,7 +27334,8 @@ src/components/dialogs/InvoiceDialog.tsx```tsx
 
 ```
 
-src/components/dialogs/contractor/ContractorDeleteDialog.tsx```tsx
+// ./src/components/dialogs/contractor/ContractorDeleteDialog.tsx
+```tsx
 	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
 	import { GridCloseIcon } from '@mui/x-data-grid';
 	import { Button } from '@/components/ui-component/buttons';
@@ -27024,7 +27412,8 @@ src/components/dialogs/contractor/ContractorDeleteDialog.tsx```tsx
 
 ```
 
-src/components/dialogs/contractor/style.module.scss```scss
+// ./src/components/dialogs/contractor/style.module.scss
+```scss
 	.imageLocal{
 	  position: absolute;
 	  inset: 0;
@@ -27036,7 +27425,8 @@ src/components/dialogs/contractor/style.module.scss```scss
 
 ```
 
-src/components/dialogs/contractor/ContractorDialog.tsx```tsx
+// ./src/components/dialogs/contractor/ContractorDialog.tsx
+```tsx
 	import {
 	  Box,
 	  Button,
@@ -27303,7 +27693,8 @@ src/components/dialogs/contractor/ContractorDialog.tsx```tsx
 
 ```
 
-src/components/projects/Add/style.module.scss```scss
+// ./src/components/projects/Add/style.module.scss
+```scss
 	.imageLocal{
 	  position: absolute;
 	  inset: 0;
@@ -27314,7 +27705,8 @@ src/components/projects/Add/style.module.scss```scss
 	}
 ```
 
-src/components/projects/Add/index.tsx```tsx
+// ./src/components/projects/Add/index.tsx
+```tsx
 	import { useEffect } from 'react';
 	import { isEmpty } from 'lodash';
 	import { Box, Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, Grid, IconButton, Typography } from '@mui/material';
@@ -27545,7 +27937,8 @@ src/components/projects/Add/index.tsx```tsx
 
 ```
 
-src/components/projects/DeleteDialog/index.tsx```tsx
+// ./src/components/projects/DeleteDialog/index.tsx
+```tsx
 	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
 	import { useIntl } from 'react-intl';
 	import { GridCloseIcon } from '@mui/x-data-grid';
@@ -27630,7 +28023,8 @@ src/components/projects/DeleteDialog/index.tsx```tsx
 
 ```
 
-src/components/projects/List/index.tsx```tsx
+// ./src/components/projects/List/index.tsx
+```tsx
 	'use client';
 	import { useEffect, useState } from 'react';
 	import { useIntl } from 'react-intl';
@@ -27819,11 +28213,13 @@ src/components/projects/List/index.tsx```tsx
 
 ```
 
-src/components/projects/List/styles.module.scss```scss
+// ./src/components/projects/List/styles.module.scss
+```scss
 
 ```
 
-src/components/projects/List/components/TotalBudget/index.tsx```tsx
+// ./src/components/projects/List/components/TotalBudget/index.tsx
+```tsx
 	import * as React from 'react';
 	import { Typography } from '@mui/material';
 	
@@ -27842,7 +28238,8 @@ src/components/projects/List/components/TotalBudget/index.tsx```tsx
 
 ```
 
-src/components/projects/List/components/ProjectName/index.tsx```tsx
+// ./src/components/projects/List/components/ProjectName/index.tsx
+```tsx
 	import * as React from 'react';
 	import { Box, Typography } from '@mui/material';
 	
@@ -27870,7 +28267,8 @@ src/components/projects/List/components/ProjectName/index.tsx```tsx
 
 ```
 
-src/components/projects/List/components/ProjectName/styles.module.scss```scss
+// ./src/components/projects/List/components/ProjectName/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.wrapper {
@@ -27886,7 +28284,8 @@ src/components/projects/List/components/ProjectName/styles.module.scss```scss
 
 ```
 
-src/components/projects/List/components/DeleteBtn/index.tsx```tsx
+// ./src/components/projects/List/components/DeleteBtn/index.tsx
+```tsx
 	import { useState } from 'react';
 	
 	// projects import
@@ -27932,7 +28331,8 @@ src/components/projects/List/components/DeleteBtn/index.tsx```tsx
 
 ```
 
-src/components/projects/List/components/EditBtn/index.tsx```tsx
+// ./src/components/projects/List/components/EditBtn/index.tsx
+```tsx
 	import { useState } from 'react';
 	
 	// projects import
@@ -27993,7 +28393,8 @@ src/components/projects/List/components/EditBtn/index.tsx```tsx
 
 ```
 
-src/components/projects/List/components/StartDate/index.tsx```tsx
+// ./src/components/projects/List/components/StartDate/index.tsx
+```tsx
 	import * as React from 'react';
 	import { isValid } from 'date-fns';
 	import { Typography } from '@mui/material';
@@ -28015,7 +28416,8 @@ src/components/projects/List/components/StartDate/index.tsx```tsx
 
 ```
 
-src/components/projects/Detail/style.module.scss```scss
+// ./src/components/projects/Detail/style.module.scss
+```scss
 	
 	@import 'styles/variables.module';
 	
@@ -28032,7 +28434,8 @@ src/components/projects/Detail/style.module.scss```scss
 	}
 ```
 
-src/components/projects/Detail/index.tsx```tsx
+// ./src/components/projects/Detail/index.tsx
+```tsx
 	'use client';
 	
 	import Breadcrumbs from '@/components/Breadcrumbs';
@@ -28141,7 +28544,8 @@ src/components/projects/Detail/index.tsx```tsx
 
 ```
 
-src/components/projects/Detail/contractors/index.tsx```tsx
+// ./src/components/projects/Detail/contractors/index.tsx
+```tsx
 	import { Button } from '@/components/ui-component/buttons';
 	import { Box, Typography } from '@mui/material';
 	import { Plus, Trash } from '@phosphor-icons/react';
@@ -28252,7 +28656,8 @@ src/components/projects/Detail/contractors/index.tsx```tsx
 
 ```
 
-src/components/projects/Detail/contractors/addContractor/index.tsx```tsx
+// ./src/components/projects/Detail/contractors/addContractor/index.tsx
+```tsx
 	import {
 	  Box,
 	  Dialog,
@@ -28394,7 +28799,8 @@ src/components/projects/Detail/contractors/addContractor/index.tsx```tsx
 
 ```
 
-src/components/projects/Detail/invoices/style.module.scss```scss
+// ./src/components/projects/Detail/invoices/style.module.scss
+```scss
 	
 	@import 'styles/variables.module';
 	
@@ -28422,7 +28828,8 @@ src/components/projects/Detail/invoices/style.module.scss```scss
 
 ```
 
-src/components/projects/Detail/invoices/index.tsx```tsx
+// ./src/components/projects/Detail/invoices/index.tsx
+```tsx
 	import { Button } from '@/components/ui-component/buttons';
 	import { Box, Typography, Chip } from '@mui/material';
 	import { Plus, Trash } from '@phosphor-icons/react';
@@ -28632,7 +29039,8 @@ src/components/projects/Detail/invoices/index.tsx```tsx
 
 ```
 
-src/components/projects/Detail/roles/index.tsx```tsx
+// ./src/components/projects/Detail/roles/index.tsx
+```tsx
 	import { Button } from '@/components/ui-component/buttons';
 	import { Box, Typography } from '@mui/material';
 	import { Plus, Trash } from '@phosphor-icons/react';
@@ -28750,7 +29158,8 @@ src/components/projects/Detail/roles/index.tsx```tsx
 
 ```
 
-src/components/projects/Detail/roles/addUser/index.tsx```tsx
+// ./src/components/projects/Detail/roles/addUser/index.tsx
+```tsx
 	import {
 	  Box,
 	  Dialog,
@@ -28893,7 +29302,8 @@ src/components/projects/Detail/roles/addUser/index.tsx```tsx
 
 ```
 
-src/components/projects/Detail/budgets/index.tsx```tsx
+// ./src/components/projects/Detail/budgets/index.tsx
+```tsx
 	import { Button } from '@/components/ui-component/buttons';
 	import { Box, Typography } from '@mui/material';
 	import { Plus, Trash, Upload } from '@phosphor-icons/react';
@@ -29119,7 +29529,8 @@ src/components/projects/Detail/budgets/index.tsx```tsx
 
 ```
 
-src/components/projects/Detail/budgets/addBudget/index.tsx```tsx
+// ./src/components/projects/Detail/budgets/addBudget/index.tsx
+```tsx
 	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, FormHelperText, Grid, IconButton, MenuItem } from '@mui/material';
 	import { useIntl } from 'react-intl';
 	import { useFormik } from 'formik';
@@ -29416,7 +29827,8 @@ src/components/projects/Detail/budgets/addBudget/index.tsx```tsx
 
 ```
 
-src/components/projects/Detail/budgets/deleteBudget/index.tsx```tsx
+// ./src/components/projects/Detail/budgets/deleteBudget/index.tsx
+```tsx
 	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
 	import { GridCloseIcon } from '@mui/x-data-grid';
 	import { Button } from '@/components/ui-component/buttons';
@@ -29491,7 +29903,8 @@ src/components/projects/Detail/budgets/deleteBudget/index.tsx```tsx
 
 ```
 
-src/components/projects/Detail/overview/index.tsx```tsx
+// ./src/components/projects/Detail/overview/index.tsx
+```tsx
 	import { Button } from '@/components/ui-component/buttons';
 	import DateCustom, { formatDate } from '@/utils/datetime/date.custom';
 	import { Box, Grid, Typography } from '@mui/material';
@@ -29567,7 +29980,8 @@ src/components/projects/Detail/overview/index.tsx```tsx
 
 ```
 
-src/components/authentication/AuthCardWrapper.tsx```tsx
+// ./src/components/authentication/AuthCardWrapper.tsx
+```tsx
 	// material-ui
 	import { Box } from '@mui/material';
 	
@@ -29597,7 +30011,8 @@ src/components/authentication/AuthCardWrapper.tsx```tsx
 
 ```
 
-src/components/authentication/AuthWrapper1.tsx```tsx
+// ./src/components/authentication/AuthWrapper1.tsx
+```tsx
 	'use client';
 	
 	// material-ui
@@ -29614,7 +30029,8 @@ src/components/authentication/AuthWrapper1.tsx```tsx
 
 ```
 
-src/components/authentication/auth-forms/ThirdParty/index.tsx```tsx
+// ./src/components/authentication/auth-forms/ThirdParty/index.tsx
+```tsx
 	import { useState } from 'react';
 	import { Box } from '@mui/material';
 	import { useIntl } from 'react-intl';
@@ -29675,7 +30091,8 @@ src/components/authentication/auth-forms/ThirdParty/index.tsx```tsx
 
 ```
 
-src/components/authentication/auth-forms/ThirdParty/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/ThirdParty/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.loginForm3Party {
@@ -29724,7 +30141,8 @@ src/components/authentication/auth-forms/ThirdParty/styles.module.scss```scss
 
 ```
 
-src/components/authentication/auth-forms/Slides/index.tsx```tsx
+// ./src/components/authentication/auth-forms/Slides/index.tsx
+```tsx
 	import NextImage from 'next/image';
 	import Slider from 'react-slick';
 	import { Box, Typography } from '@mui/material';
@@ -29780,7 +30198,8 @@ src/components/authentication/auth-forms/Slides/index.tsx```tsx
 
 ```
 
-src/components/authentication/auth-forms/Slides/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/Slides/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.slide {
@@ -29865,7 +30284,8 @@ src/components/authentication/auth-forms/Slides/styles.module.scss```scss
 
 ```
 
-src/components/authentication/auth-forms/Divider/index.tsx```tsx
+// ./src/components/authentication/auth-forms/Divider/index.tsx
+```tsx
 	import * as React from 'react';
 	import { Box, Divider as MUIDivider } from '@mui/material';
 	import { useIntl } from 'react-intl';
@@ -29892,7 +30312,8 @@ src/components/authentication/auth-forms/Divider/index.tsx```tsx
 
 ```
 
-src/components/authentication/auth-forms/Divider/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/Divider/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.loginFormOr {
@@ -29927,7 +30348,8 @@ src/components/authentication/auth-forms/Divider/styles.module.scss```scss
 
 ```
 
-src/components/authentication/auth-forms/ForgotPasswordForm/index.tsx```tsx
+// ./src/components/authentication/auth-forms/ForgotPasswordForm/index.tsx
+```tsx
 	import { useState } from 'react';
 	import { Box, Grid, Typography } from '@mui/material';
 	import { useIntl } from 'react-intl';
@@ -30093,7 +30515,8 @@ src/components/authentication/auth-forms/ForgotPasswordForm/index.tsx```tsx
 
 ```
 
-src/components/authentication/auth-forms/ForgotPasswordForm/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/ForgotPasswordForm/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.signUp {
@@ -30118,7 +30541,8 @@ src/components/authentication/auth-forms/ForgotPasswordForm/styles.module.scss``
 
 ```
 
-src/components/authentication/auth-forms/VerifyEmailForm/index.tsx```tsx
+// ./src/components/authentication/auth-forms/VerifyEmailForm/index.tsx
+```tsx
 	import { useRef } from 'react';
 	import { useIntl } from 'react-intl';
 	import { useSearchParams } from 'next/navigation';
@@ -30252,7 +30676,8 @@ src/components/authentication/auth-forms/VerifyEmailForm/index.tsx```tsx
 
 ```
 
-src/components/authentication/auth-forms/VerifyEmailForm/components/Form/index.tsx```tsx
+// ./src/components/authentication/auth-forms/VerifyEmailForm/components/Form/index.tsx
+```tsx
 	import { useState, useImperativeHandle, forwardRef, useEffect } from 'react';
 	import { Box, Grid, Typography, FormHelperText, Divider } from '@mui/material';
 	import { useIntl } from 'react-intl';
@@ -30373,7 +30798,8 @@ src/components/authentication/auth-forms/VerifyEmailForm/components/Form/index.t
 
 ```
 
-src/components/authentication/auth-forms/VerifyEmailForm/components/Form/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/VerifyEmailForm/components/Form/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.line {
@@ -30382,7 +30808,8 @@ src/components/authentication/auth-forms/VerifyEmailForm/components/Form/styles.
 
 ```
 
-src/components/authentication/auth-forms/VerifyEmailForm/components/VerifyCodeInput/index.tsx```tsx
+// ./src/components/authentication/auth-forms/VerifyEmailForm/components/VerifyCodeInput/index.tsx
+```tsx
 	import { ChangeEvent, useRef } from 'react';
 	import { Input, Box } from '@mui/material';
 	import styles from './styles.module.scss';
@@ -30443,7 +30870,8 @@ src/components/authentication/auth-forms/VerifyEmailForm/components/VerifyCodeIn
 
 ```
 
-src/components/authentication/auth-forms/VerifyEmailForm/components/VerifyCodeInput/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/VerifyEmailForm/components/VerifyCodeInput/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.wrapper {
@@ -30473,7 +30901,8 @@ src/components/authentication/auth-forms/VerifyEmailForm/components/VerifyCodeIn
 
 ```
 
-src/components/authentication/auth-forms/LoginForm/index.tsx```tsx
+// ./src/components/authentication/auth-forms/LoginForm/index.tsx
+```tsx
 	import { Box, Checkbox, FormControlLabel, Grid, Typography } from '@mui/material';
 	import { useIntl } from 'react-intl';
 	
@@ -30675,7 +31104,8 @@ src/components/authentication/auth-forms/LoginForm/index.tsx```tsx
 
 ```
 
-src/components/authentication/auth-forms/LoginForm/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/LoginForm/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.signUp {
@@ -30693,7 +31123,8 @@ src/components/authentication/auth-forms/LoginForm/styles.module.scss```scss
 
 ```
 
-src/components/authentication/auth-forms/FormContainer/index.tsx```tsx
+// ./src/components/authentication/auth-forms/FormContainer/index.tsx
+```tsx
 	import React from 'react';
 	import NextImage from 'next/image';
 	import { Box, Grid, Typography } from '@mui/material';
@@ -30744,7 +31175,8 @@ src/components/authentication/auth-forms/FormContainer/index.tsx```tsx
 
 ```
 
-src/components/authentication/auth-forms/FormContainer/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/FormContainer/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.formContainer {
@@ -30796,7 +31228,8 @@ src/components/authentication/auth-forms/FormContainer/styles.module.scss```scss
 
 ```
 
-src/components/authentication/auth-forms/RegisterForm/index.tsx```tsx
+// ./src/components/authentication/auth-forms/RegisterForm/index.tsx
+```tsx
 	import { Box, Checkbox, FormControlLabel, Grid, Typography } from '@mui/material';
 	import { useRouter } from 'next/navigation';
 	import { useIntl, FormattedMessage } from 'react-intl';
@@ -31046,7 +31479,8 @@ src/components/authentication/auth-forms/RegisterForm/index.tsx```tsx
 
 ```
 
-src/components/authentication/auth-forms/RegisterForm/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/RegisterForm/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.signUp {
@@ -31065,7 +31499,8 @@ src/components/authentication/auth-forms/RegisterForm/styles.module.scss```scss
 
 ```
 
-src/components/authentication/auth-forms/RegisterRoleForm/index.tsx```tsx
+// ./src/components/authentication/auth-forms/RegisterRoleForm/index.tsx
+```tsx
 	import { useState } from 'react';
 	import { Box } from '@mui/material';
 	import { useIntl } from 'react-intl';
@@ -31177,7 +31612,8 @@ src/components/authentication/auth-forms/RegisterRoleForm/index.tsx```tsx
 
 ```
 
-src/components/authentication/auth-forms/RegisterRoleForm/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/RegisterRoleForm/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.signUp {
@@ -31196,7 +31632,8 @@ src/components/authentication/auth-forms/RegisterRoleForm/styles.module.scss```s
 
 ```
 
-src/components/authentication/auth-forms/RegisterRoleForm/components/CreateCompany/index.tsx```tsx
+// ./src/components/authentication/auth-forms/RegisterRoleForm/components/CreateCompany/index.tsx
+```tsx
 	import { Box, Grid } from '@mui/material';
 	import TextField from '@/components/ui-component/TextField';
 	import { useIntl } from 'react-intl';
@@ -31316,7 +31753,8 @@ src/components/authentication/auth-forms/RegisterRoleForm/components/CreateCompa
 
 ```
 
-src/components/authentication/auth-forms/RegisterRoleForm/components/CreateCompany/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/RegisterRoleForm/components/CreateCompany/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.company {
@@ -31338,7 +31776,8 @@ src/components/authentication/auth-forms/RegisterRoleForm/components/CreateCompa
 
 ```
 
-src/components/authentication/auth-forms/RegisterRoleForm/components/SelectCompany/index.tsx```tsx
+// ./src/components/authentication/auth-forms/RegisterRoleForm/components/SelectCompany/index.tsx
+```tsx
 	import { Box, Grid } from '@mui/material';
 	import { useIntl } from 'react-intl';
 	import { useFormik } from 'formik';
@@ -31406,7 +31845,8 @@ src/components/authentication/auth-forms/RegisterRoleForm/components/SelectCompa
 
 ```
 
-src/components/authentication/auth-forms/RegisterRoleForm/components/SelectRoles/index.tsx```tsx
+// ./src/components/authentication/auth-forms/RegisterRoleForm/components/SelectRoles/index.tsx
+```tsx
 	import { useState } from 'react';
 	import { Grid, Box, Typography } from '@mui/material';
 	import cs from 'classnames';
@@ -31495,7 +31935,8 @@ src/components/authentication/auth-forms/RegisterRoleForm/components/SelectRoles
 
 ```
 
-src/components/authentication/auth-forms/RegisterRoleForm/components/SelectRoles/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/RegisterRoleForm/components/SelectRoles/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.role {
@@ -31528,7 +31969,8 @@ src/components/authentication/auth-forms/RegisterRoleForm/components/SelectRoles
 
 ```
 
-src/components/authentication/auth-forms/ResetPasswordForm/index.tsx```tsx
+// ./src/components/authentication/auth-forms/ResetPasswordForm/index.tsx
+```tsx
 	import { Box, Grid, Typography } from '@mui/material';
 	import { useIntl } from 'react-intl';
 	import { useSearchParams } from 'next/navigation';
@@ -31709,7 +32151,8 @@ src/components/authentication/auth-forms/ResetPasswordForm/index.tsx```tsx
 
 ```
 
-src/components/authentication/auth-forms/ResetPasswordForm/styles.module.scss```scss
+// ./src/components/authentication/auth-forms/ResetPasswordForm/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.signUp {
@@ -31734,12 +32177,14 @@ src/components/authentication/auth-forms/ResetPasswordForm/styles.module.scss```
 
 ```
 
-src/components/account/index.ts```ts
+// ./src/components/account/index.ts
+```ts
 	export { default as Profile } from './Profile';
 
 ```
 
-src/components/account/Profile/index.tsx```tsx
+// ./src/components/account/Profile/index.tsx
+```tsx
 	import * as React from 'react';
 	import { Grid, Box } from '@mui/material';
 	import { useSearchParams } from 'next/navigation';
@@ -31781,7 +32226,8 @@ src/components/account/Profile/index.tsx```tsx
 
 ```
 
-src/components/account/Profile/components/AccountDetail/index.tsx```tsx
+// ./src/components/account/Profile/components/AccountDetail/index.tsx
+```tsx
 	import * as React from 'react';
 	import { Formik, FormikHelpers } from 'formik';
 	import { Grid } from '@mui/material';
@@ -31997,7 +32443,8 @@ src/components/account/Profile/components/AccountDetail/index.tsx```tsx
 
 ```
 
-src/components/account/Profile/components/Contractor/index.tsx```tsx
+// ./src/components/account/Profile/components/Contractor/index.tsx
+```tsx
 	import { useState } from 'react';
 	import { Grid, Box } from '@mui/material';
 	import * as Yup from 'yup';
@@ -32370,7 +32817,8 @@ src/components/account/Profile/components/Contractor/index.tsx```tsx
 
 ```
 
-src/components/account/Profile/components/Contractor/styles.module.scss```scss
+// ./src/components/account/Profile/components/Contractor/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.alert {
@@ -32384,7 +32832,8 @@ src/components/account/Profile/components/Contractor/styles.module.scss```scss
 
 ```
 
-src/components/account/Profile/components/Builder/index.tsx```tsx
+// ./src/components/account/Profile/components/Builder/index.tsx
+```tsx
 	import { useState } from 'react';
 	import { Grid, Box } from '@mui/material';
 	import * as Yup from 'yup';
@@ -32647,7 +33096,8 @@ src/components/account/Profile/components/Builder/index.tsx```tsx
 
 ```
 
-src/components/account/Profile/components/Builder/styles.module.scss```scss
+// ./src/components/account/Profile/components/Builder/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.alert {
@@ -32661,7 +33111,8 @@ src/components/account/Profile/components/Builder/styles.module.scss```scss
 
 ```
 
-src/components/account/Profile/components/ChangePassword/index.tsx```tsx
+// ./src/components/account/Profile/components/ChangePassword/index.tsx
+```tsx
 	import * as React from 'react';
 	import { Grid } from '@mui/material';
 	import { Formik, FormikHelpers } from 'formik';
@@ -32801,7 +33252,8 @@ src/components/account/Profile/components/ChangePassword/index.tsx```tsx
 
 ```
 
-src/components/account/Profile/components/ProfilePicture/index.tsx```tsx
+// ./src/components/account/Profile/components/ProfilePicture/index.tsx
+```tsx
 	import { ChangeEvent } from 'react';
 	import { Box, Typography } from '@mui/material';
 	import { useIntl } from 'react-intl';
@@ -32895,7 +33347,8 @@ src/components/account/Profile/components/ProfilePicture/index.tsx```tsx
 
 ```
 
-src/components/account/Profile/components/ProfilePicture/styles.module.scss```scss
+// ./src/components/account/Profile/components/ProfilePicture/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.wrapper {
@@ -32925,7 +33378,8 @@ src/components/account/Profile/components/ProfilePicture/styles.module.scss```sc
 
 ```
 
-src/components/account/Profile/components/Avatar/index.tsx```tsx
+// ./src/components/account/Profile/components/Avatar/index.tsx
+```tsx
 	import { ChangeEvent, useState } from 'react';
 	import { Box } from '@mui/material';
 	import { useIntl } from 'react-intl';
@@ -32980,7 +33434,8 @@ src/components/account/Profile/components/Avatar/index.tsx```tsx
 
 ```
 
-src/components/account/Profile/components/Avatar/styles.module.scss```scss
+// ./src/components/account/Profile/components/Avatar/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.wrapper {
@@ -33010,13 +33465,15 @@ src/components/account/Profile/components/Avatar/styles.module.scss```scss
 
 ```
 
-src/components/resourceFields/index.ts```ts
+// ./src/components/resourceFields/index.ts
+```ts
 	export { default as ServiceDropdownField } from './ServiceDropdownField';
 	export { default as CompanyDropdownField } from './CompanyDropdownField';
 
 ```
 
-src/components/resourceFields/CompanyDropdownField/index.tsx```tsx
+// ./src/components/resourceFields/CompanyDropdownField/index.tsx
+```tsx
 	import { useState, useEffect, useCallback } from 'react';
 	import { Box } from '@mui/material';
 	import { useIntl } from 'react-intl';
@@ -33090,7 +33547,8 @@ src/components/resourceFields/CompanyDropdownField/index.tsx```tsx
 
 ```
 
-src/components/resourceFields/CompanyDropdownField/styles.module.scss```scss
+// ./src/components/resourceFields/CompanyDropdownField/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.company {
@@ -33108,7 +33566,8 @@ src/components/resourceFields/CompanyDropdownField/styles.module.scss```scss
 
 ```
 
-src/components/resourceFields/ServiceDropdownField/index.tsx```tsx
+// ./src/components/resourceFields/ServiceDropdownField/index.tsx
+```tsx
 	import { useState, useEffect, useCallback } from 'react';
 	import { useIntl } from 'react-intl';
 	
@@ -33171,7 +33630,8 @@ src/components/resourceFields/ServiceDropdownField/index.tsx```tsx
 
 ```
 
-src/components/contractorProjects/Add/style.module.scss```scss
+// ./src/components/contractorProjects/Add/style.module.scss
+```scss
 	.imageLocal {
 	  position: absolute;
 	  inset: 0;
@@ -33183,7 +33643,8 @@ src/components/contractorProjects/Add/style.module.scss```scss
 
 ```
 
-src/components/contractorProjects/Add/index.tsx```tsx
+// ./src/components/contractorProjects/Add/index.tsx
+```tsx
 	import { useEffect } from 'react';
 	import { isEmpty } from 'lodash';
 	import { Box, Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, Grid, IconButton, Typography } from '@mui/material';
@@ -33413,7 +33874,8 @@ src/components/contractorProjects/Add/index.tsx```tsx
 
 ```
 
-src/components/contractorProjects/List/index.tsx```tsx
+// ./src/components/contractorProjects/List/index.tsx
+```tsx
 	'use client';
 	import { useEffect, useState } from 'react';
 	import { useIntl } from 'react-intl';
@@ -33532,7 +33994,8 @@ src/components/contractorProjects/List/index.tsx```tsx
 
 ```
 
-src/components/contractorProjects/List/components/ProjectName/index.tsx```tsx
+// ./src/components/contractorProjects/List/components/ProjectName/index.tsx
+```tsx
 	import * as React from 'react';
 	import { Box, Typography } from '@mui/material';
 	
@@ -33560,7 +34023,8 @@ src/components/contractorProjects/List/components/ProjectName/index.tsx```tsx
 
 ```
 
-src/components/contractorProjects/List/components/ProjectName/styles.module.scss```scss
+// ./src/components/contractorProjects/List/components/ProjectName/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.wrapper {
@@ -33576,7 +34040,8 @@ src/components/contractorProjects/List/components/ProjectName/styles.module.scss
 
 ```
 
-src/components/contractorProjects/List/components/StartDate/index.tsx```tsx
+// ./src/components/contractorProjects/List/components/StartDate/index.tsx
+```tsx
 	import * as React from 'react';
 	import { isValid } from 'date-fns';
 	import { Typography } from '@mui/material';
@@ -33598,7 +34063,8 @@ src/components/contractorProjects/List/components/StartDate/index.tsx```tsx
 
 ```
 
-src/components/contractorProjects/Detail/style.module.scss```scss
+// ./src/components/contractorProjects/Detail/style.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.tab {
@@ -33617,7 +34083,8 @@ src/components/contractorProjects/Detail/style.module.scss```scss
 
 ```
 
-src/components/contractorProjects/Detail/index.tsx```tsx
+// ./src/components/contractorProjects/Detail/index.tsx
+```tsx
 	'use client';
 	
 	import { useEffect, useState } from 'react';
@@ -33727,7 +34194,8 @@ src/components/contractorProjects/Detail/index.tsx```tsx
 
 ```
 
-src/components/contractorProjects/Detail/invoices/style.module.scss```scss
+// ./src/components/contractorProjects/Detail/invoices/style.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.headerTitle {
@@ -33756,7 +34224,8 @@ src/components/contractorProjects/Detail/invoices/style.module.scss```scss
 
 ```
 
-src/components/contractorProjects/Detail/invoices/index.tsx```tsx
+// ./src/components/contractorProjects/Detail/invoices/index.tsx
+```tsx
 	import { useEffect, useState } from 'react';
 	import { useIntl } from 'react-intl';
 	import { Box, Typography, Chip } from '@mui/material';
@@ -33970,7 +34439,8 @@ src/components/contractorProjects/Detail/invoices/index.tsx```tsx
 
 ```
 
-src/components/contractorProjects/Detail/overview/index.tsx```tsx
+// ./src/components/contractorProjects/Detail/overview/index.tsx
+```tsx
 	import Image from 'next/image';
 	import { useIntl } from 'react-intl';
 	import { Box, Grid, Typography } from '@mui/material';
@@ -34023,7 +34493,8 @@ src/components/contractorProjects/Detail/overview/index.tsx```tsx
 
 ```
 
-src/components/user/index.tsx```tsx
+// ./src/components/user/index.tsx
+```tsx
 	'use client';
 	import { Box, Stack, Typography } from '@mui/material';
 	import Breadcrumbs from '../Breadcrumbs';
@@ -34262,7 +34733,8 @@ src/components/user/index.tsx```tsx
 
 ```
 
-src/components/user/dialog/UserDeleteDialog.tsx```tsx
+// ./src/components/user/dialog/UserDeleteDialog.tsx
+```tsx
 	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
 	import { GridCloseIcon } from '@mui/x-data-grid';
 	import { Button } from '@/components/ui-component/buttons';
@@ -34350,7 +34822,8 @@ src/components/user/dialog/UserDeleteDialog.tsx```tsx
 
 ```
 
-src/components/user/dialog/UserChangeStatus.tsx```tsx
+// ./src/components/user/dialog/UserChangeStatus.tsx
+```tsx
 	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
 	import { GridCloseIcon } from '@mui/x-data-grid';
 	import { Button } from '@/components/ui-component/buttons';
@@ -34441,7 +34914,8 @@ src/components/user/dialog/UserChangeStatus.tsx```tsx
 
 ```
 
-src/components/user/component/ButtonDelete.tsx```tsx
+// ./src/components/user/component/ButtonDelete.tsx
+```tsx
 	import { Button, ButtonProps } from '@mui/material';
 	import styles from './styles.module.scss';
 	import { useIntl } from 'react-intl';
@@ -34468,7 +34942,8 @@ src/components/user/component/ButtonDelete.tsx```tsx
 
 ```
 
-src/components/user/component/ButtonSelectStatus.tsx```tsx
+// ./src/components/user/component/ButtonSelectStatus.tsx
+```tsx
 	import { Box, Button, ButtonProps, Divider, Popover, PopoverProps, Typography } from '@mui/material';
 	import { useState } from 'react';
 	import { useIntl } from 'react-intl';
@@ -34535,7 +35010,8 @@ src/components/user/component/ButtonSelectStatus.tsx```tsx
 
 ```
 
-src/components/user/component/styles.module.scss```scss
+// ./src/components/user/component/styles.module.scss
+```scss
 	@import 'styles/_variables.module';
 	
 	.selectButton{
@@ -34576,7 +35052,8 @@ src/components/user/component/styles.module.scss```scss
 	}
 ```
 
-src/components/user/detail/index.tsx```tsx
+// ./src/components/user/detail/index.tsx
+```tsx
 	'use client';
 	
 	import Breadcrumbs from '@/components/Breadcrumbs';
@@ -34657,7 +35134,8 @@ src/components/user/detail/index.tsx```tsx
 
 ```
 
-src/components/user/detail/components/BasicInformation/index.tsx```tsx
+// ./src/components/user/detail/components/BasicInformation/index.tsx
+```tsx
 	import * as React from 'react';
 	import { Grid, TextFieldProps } from '@mui/material';
 	import { format } from 'date-fns';
@@ -34738,7 +35216,8 @@ src/components/user/detail/components/BasicInformation/index.tsx```tsx
 
 ```
 
-src/components/user/detail/components/AdditionalInformation/index.tsx```tsx
+// ./src/components/user/detail/components/AdditionalInformation/index.tsx
+```tsx
 	import * as React from 'react';
 	import { Grid, TextFieldProps } from '@mui/material';
 	import { useIntl } from 'react-intl';
@@ -34805,7 +35284,8 @@ src/components/user/detail/components/AdditionalInformation/index.tsx```tsx
 
 ```
 
-src/components/user/detail/components/ProfilePicture/index.tsx```tsx
+// ./src/components/user/detail/components/ProfilePicture/index.tsx
+```tsx
 	import { Box } from '@mui/material';
 	import { useIntl } from 'react-intl';
 	
@@ -34837,7 +35317,8 @@ src/components/user/detail/components/ProfilePicture/index.tsx```tsx
 
 ```
 
-src/components/user/detail/components/ProfilePicture/styles.module.scss```scss
+// ./src/components/user/detail/components/ProfilePicture/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.wrapper {
@@ -34867,7 +35348,8 @@ src/components/user/detail/components/ProfilePicture/styles.module.scss```scss
 
 ```
 
-src/components/Breadcrumbs/index.tsx```tsx
+// ./src/components/Breadcrumbs/index.tsx
+```tsx
 	import React, { KeyboardEvent, useMemo } from 'react';
 	import NextImage from 'next/image';
 	import { forOwn } from 'lodash';
@@ -34970,7 +35452,8 @@ src/components/Breadcrumbs/index.tsx```tsx
 
 ```
 
-src/components/Breadcrumbs/styles.module.scss```scss
+// ./src/components/Breadcrumbs/styles.module.scss
+```scss
 	@import 'styles/variables.module';
 	
 	.wrapper {
@@ -35005,13 +35488,15 @@ src/components/Breadcrumbs/styles.module.scss```scss
 	}
 ```
 
-src/components/contractor/contractor.module.scss```scss
+// ./src/components/contractor/contractor.module.scss
+```scss
 	.addButton{
 	  font-size: 1.5rem;
 	}
 ```
 
-src/components/contractor/index.tsx```tsx
+// ./src/components/contractor/index.tsx
+```tsx
 	'use client';
 	import { Box, Stack, Typography } from '@mui/material';
 	import Breadcrumbs from '../Breadcrumbs';
@@ -35214,13 +35699,15 @@ src/components/contractor/index.tsx```tsx
 
 ```
 
-src/components/builder/builder.module.scss```scss
+// ./src/components/builder/builder.module.scss
+```scss
 	.addButton{
 	  font-size: 1.5rem;
 	}
 ```
 
-src/components/builder/index.tsx```tsx
+// ./src/components/builder/index.tsx
+```tsx
 	'use client';
 	import { Box, Stack, Typography } from '@mui/material';
 	import { Pencil, Trash } from '@phosphor-icons/react';
@@ -35418,7 +35905,8 @@ src/components/builder/index.tsx```tsx
 
 ```
 
-src/components/builder/dialog/style.module.scss```scss
+// ./src/components/builder/dialog/style.module.scss
+```scss
 	.imageLocal{
 	  position: absolute;
 	  inset: 0;
@@ -35429,7 +35917,8 @@ src/components/builder/dialog/style.module.scss```scss
 	}
 ```
 
-src/components/builder/dialog/BuilderDialog.tsx```tsx
+// ./src/components/builder/dialog/BuilderDialog.tsx
+```tsx
 	import {
 	  Box,
 	  Button,
@@ -35679,7 +36168,8 @@ src/components/builder/dialog/BuilderDialog.tsx```tsx
 
 ```
 
-src/components/builder/dialog/BuilderDeleteDialog.tsx```tsx
+// ./src/components/builder/dialog/BuilderDeleteDialog.tsx
+```tsx
 	import { Dialog, DialogActions, DialogContent, DialogProps, DialogTitle, IconButton, Typography } from '@mui/material';
 	import { GridCloseIcon } from '@mui/x-data-grid';
 	import { Button } from '@/components/ui-component/buttons';
@@ -35757,7 +36247,8 @@ src/components/builder/dialog/BuilderDeleteDialog.tsx```tsx
 
 ```
 
-src/themes/compStyleOverride.tsx```tsx
+// ./src/themes/compStyleOverride.tsx
+```tsx
 	// project imports
 	import { Theme } from '@mui/material/styles';
 	
@@ -36145,7 +36636,8 @@ src/themes/compStyleOverride.tsx```tsx
 
 ```
 
-src/themes/typography.tsx```tsx
+// ./src/themes/typography.tsx
+```tsx
 	// material-ui
 	import { Theme, TypographyVariantsOptions } from '@mui/material/styles';
 	
@@ -36282,7 +36774,8 @@ src/themes/typography.tsx```tsx
 
 ```
 
-src/themes/index.tsx```tsx
+// ./src/themes/index.tsx
+```tsx
 	import { useMemo, ReactNode } from 'react';
 	
 	// material-ui
@@ -36432,7 +36925,8 @@ src/themes/index.tsx```tsx
 
 ```
 
-src/themes/emotionCache.tsx```tsx
+// ./src/themes/emotionCache.tsx
+```tsx
 	import * as React from 'react';
 	import createCache from '@emotion/cache';
 	import { useServerInsertedHTML } from 'next/navigation';
@@ -36507,7 +37001,8 @@ src/themes/emotionCache.tsx```tsx
 
 ```
 
-src/themes/shadows.tsx```tsx
+// ./src/themes/shadows.tsx
+```tsx
 	// material-ui
 	import { alpha, Theme } from '@mui/material/styles';
 	
@@ -36536,7 +37031,8 @@ src/themes/shadows.tsx```tsx
 
 ```
 
-src/themes/palette.tsx```tsx
+// ./src/themes/palette.tsx
+```tsx
 	// material-ui
 	import { createTheme } from '@mui/material/styles';
 	import { PaletteMode } from '@mui/material';
@@ -36698,7 +37194,8 @@ src/themes/palette.tsx```tsx
 
 ```
 
-types/next-auth.d.ts```ts
+// ./types/next-auth.d.ts
+```ts
 	import { DefaultSession } from 'next-auth/core/types';
 	
 	declare module 'next-auth' {
@@ -36718,7 +37215,8 @@ types/next-auth.d.ts```ts
 
 ```
 
-lib/swagger/index.ts```ts
+// ./lib/swagger/index.ts
+```ts
 	import { createSwaggerSpec } from 'next-swagger-doc';
 	
 	export const getApiSpecs = async () => {
@@ -36752,7 +37250,8 @@ lib/swagger/index.ts```ts
 
 ```
 
-lib/swagger/doc/auth/sendCode.ts```ts
+// ./lib/swagger/doc/auth/sendCode.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/public/auth/code/send:
@@ -36823,7 +37322,8 @@ lib/swagger/doc/auth/sendCode.ts```ts
 
 ```
 
-lib/swagger/doc/auth/resetPassword.ts```ts
+// ./lib/swagger/doc/auth/resetPassword.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/public/auth/reset-password:
@@ -36906,7 +37406,8 @@ lib/swagger/doc/auth/resetPassword.ts```ts
 
 ```
 
-lib/swagger/doc/auth/verifyCode.ts```ts
+// ./lib/swagger/doc/auth/verifyCode.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/public/auth/code/verify:
@@ -36989,7 +37490,8 @@ lib/swagger/doc/auth/verifyCode.ts```ts
 
 ```
 
-lib/swagger/doc/auth/getToken.ts```ts
+// ./lib/swagger/doc/auth/getToken.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/public/auth/token/{email}:
@@ -37043,7 +37545,8 @@ lib/swagger/doc/auth/getToken.ts```ts
 
 ```
 
-lib/swagger/doc/auth/register.ts```ts
+// ./lib/swagger/doc/auth/register.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/public/auth/register:
@@ -37121,7 +37624,8 @@ lib/swagger/doc/auth/register.ts```ts
 
 ```
 
-lib/swagger/doc/budget/post.ts```ts
+// ./lib/swagger/doc/budget/post.ts
+```ts
 	/**
 	@swagger
 	* /api/private/budget/create:
@@ -37227,7 +37731,8 @@ lib/swagger/doc/budget/post.ts```ts
 
 ```
 
-lib/swagger/doc/budget/delete.ts```ts
+// ./lib/swagger/doc/budget/delete.ts
+```ts
 	// @ts-nocheck
 	/**
 	 * @swagger
@@ -37279,7 +37784,8 @@ lib/swagger/doc/budget/delete.ts```ts
 
 ```
 
-lib/swagger/doc/budget/get.ts```ts
+// ./lib/swagger/doc/budget/get.ts
+```ts
 	/**
 	@swagger
 	* /api/private/budget/list:
@@ -37394,7 +37900,8 @@ lib/swagger/doc/budget/get.ts```ts
 
 ```
 
-lib/swagger/doc/profile/put.ts```ts
+// ./lib/swagger/doc/profile/put.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/profile/{id}:
@@ -37492,7 +37999,8 @@ lib/swagger/doc/profile/put.ts```ts
 
 ```
 
-lib/swagger/doc/profile/changePassword.ts```ts
+// ./lib/swagger/doc/profile/changePassword.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/change-password/{id}:
@@ -37570,7 +38078,8 @@ lib/swagger/doc/profile/changePassword.ts```ts
 
 ```
 
-lib/swagger/doc/profile/get.ts```ts
+// ./lib/swagger/doc/profile/get.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/profile:
@@ -37661,7 +38170,8 @@ lib/swagger/doc/profile/get.ts```ts
 
 ```
 
-lib/swagger/doc/file/upload.ts```ts
+// ./lib/swagger/doc/file/upload.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/file/upload:
@@ -37717,7 +38227,8 @@ lib/swagger/doc/file/upload.ts```ts
 
 ```
 
-lib/swagger/doc/project/put.ts```ts
+// ./lib/swagger/doc/project/put.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/project/update/{id}:
@@ -37804,7 +38315,8 @@ lib/swagger/doc/project/put.ts```ts
 
 ```
 
-lib/swagger/doc/project/post.ts```ts
+// ./lib/swagger/doc/project/post.ts
+```ts
 	/**
 	* @swagger
 	* /api/private/project/create:
@@ -37885,7 +38397,8 @@ lib/swagger/doc/project/post.ts```ts
 
 ```
 
-lib/swagger/doc/project/delete.ts```ts
+// ./lib/swagger/doc/project/delete.ts
+```ts
 	// @ts-nocheck
 	/**
 	 * @swagger
@@ -37937,7 +38450,8 @@ lib/swagger/doc/project/delete.ts```ts
 
 ```
 
-lib/swagger/doc/project/getDetail.ts```ts
+// ./lib/swagger/doc/project/getDetail.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/project/{id}:
@@ -37988,7 +38502,8 @@ lib/swagger/doc/project/getDetail.ts```ts
 
 ```
 
-lib/swagger/doc/project/get.ts```ts
+// ./lib/swagger/doc/project/get.ts
+```ts
 	/**
 	@swagger
 	* /api/private/project/list:
@@ -38102,7 +38617,8 @@ lib/swagger/doc/project/get.ts```ts
 
 ```
 
-lib/swagger/doc/user/updateStatus.ts```ts
+// ./lib/swagger/doc/user/updateStatus.ts
+```ts
 	/**
 	 * @swagger
 	 * api/private/user/status/{id}:
@@ -38181,7 +38697,8 @@ lib/swagger/doc/user/updateStatus.ts```ts
 
 ```
 
-lib/swagger/doc/user/delete.ts```ts
+// ./lib/swagger/doc/user/delete.ts
+```ts
 	/**
 	 * @swagger
 	 * api/private/user/delete/{id}:
@@ -38248,7 +38765,8 @@ lib/swagger/doc/user/delete.ts```ts
 
 ```
 
-lib/swagger/doc/user/getDetail.ts```ts
+// ./lib/swagger/doc/user/getDetail.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/user/{id}:
@@ -38366,7 +38884,8 @@ lib/swagger/doc/user/getDetail.ts```ts
 
 ```
 
-lib/swagger/doc/user/getRolePermissions.ts```ts
+// ./lib/swagger/doc/user/getRolePermissions.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/user/{id}/get-role-permission:
@@ -38486,7 +39005,8 @@ lib/swagger/doc/user/getRolePermissions.ts```ts
 
 ```
 
-lib/swagger/doc/user/archive.ts```ts
+// ./lib/swagger/doc/user/archive.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/user/archive/{id}:
@@ -38553,7 +39073,8 @@ lib/swagger/doc/user/archive.ts```ts
 
 ```
 
-lib/swagger/doc/user/get.ts```ts
+// ./lib/swagger/doc/user/get.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/user/list:
@@ -38673,7 +39194,8 @@ lib/swagger/doc/user/get.ts```ts
 
 ```
 
-lib/swagger/doc/user/bulkControl.ts```ts
+// ./lib/swagger/doc/user/bulkControl.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/user/bulk-control:
@@ -38751,7 +39273,8 @@ lib/swagger/doc/user/bulkControl.ts```ts
 
 ```
 
-lib/swagger/doc/contractor/put.ts```ts
+// ./lib/swagger/doc/contractor/put.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/contractor/update/{id}:
@@ -38884,7 +39407,8 @@ lib/swagger/doc/contractor/put.ts```ts
 
 ```
 
-lib/swagger/doc/contractor/post.ts```ts
+// ./lib/swagger/doc/contractor/post.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/contractor/create:
@@ -38972,7 +39496,8 @@ lib/swagger/doc/contractor/post.ts```ts
 
 ```
 
-lib/swagger/doc/contractor/delete.ts```ts
+// ./lib/swagger/doc/contractor/delete.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/contractor/delete/{id}:
@@ -39026,7 +39551,8 @@ lib/swagger/doc/contractor/delete.ts```ts
 
 ```
 
-lib/swagger/doc/contractor/get.ts```ts
+// ./lib/swagger/doc/contractor/get.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/contractor/list:
@@ -39159,7 +39685,8 @@ lib/swagger/doc/contractor/get.ts```ts
 
 ```
 
-lib/swagger/doc/builder/put.ts```ts
+// ./lib/swagger/doc/builder/put.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/builder/update/{id}:
@@ -39252,7 +39779,8 @@ lib/swagger/doc/builder/put.ts```ts
 
 ```
 
-lib/swagger/doc/builder/post.ts```ts
+// ./lib/swagger/doc/builder/post.ts
+```ts
 	/**
 	@swagger
 	* /api/private/builder/create:
@@ -39366,7 +39894,8 @@ lib/swagger/doc/builder/post.ts```ts
 
 ```
 
-lib/swagger/doc/builder/delete.ts```ts
+// ./lib/swagger/doc/builder/delete.ts
+```ts
 	// @ts-nocheck
 	/**
 	 * @swagger
@@ -39418,7 +39947,8 @@ lib/swagger/doc/builder/delete.ts```ts
 
 ```
 
-lib/swagger/doc/builder/getDetail.ts```ts
+// ./lib/swagger/doc/builder/getDetail.ts
+```ts
 	/**
 	 * @swagger
 	 * /api/private/builder/{id}:
@@ -39502,7 +40032,8 @@ lib/swagger/doc/builder/getDetail.ts```ts
 
 ```
 
-lib/swagger/doc/builder/get.ts```ts
+// ./lib/swagger/doc/builder/get.ts
+```ts
 	/**
 	@swagger
 	* /api/private/builder/list:
