@@ -1,334 +1,316 @@
-title:	Feature/j2 c 173
-state:	MERGED
-author:	tungphamcmvn
+title:	J2C-177: API Choose user sytem role (Builder/Contractor)
+state:	OPEN
+author:	huyphamnguyen
 labels:	
 assignees:	
-reviewers:	
+reviewers:	tungphamcmvn (Requested)
 projects:	
 milestone:	
-number:	35
-url:	https://github.com/invik-33/j2c-app/pull/35
-additions:	251
-deletions:	1
+number:	37
+url:	https://github.com/invik-33/j2c-app/pull/37
+additions:	175
+deletions:	10
 --
-Add api and swagger for seeding data.
+J2C-177: API Choose user system role (Builder/Contractor)
 
 
-diff --git a/.env.development b/.env.development
-index 6d8bb9a..0b96830 100644
---- a/.env.development
-+++ b/.env.development
-@@ -66,3 +66,5 @@ AWS_CLOUDFRONT_URL=https://j2ccdn.tnodes.com
- SENTRY_DSN=
- ## ENV
- APP_ENV=development
-+
-+NEXT_SEEDING=true
-diff --git a/.env.production b/.env.production
-index b283df7..ed3705d 100644
---- a/.env.production
-+++ b/.env.production
-@@ -66,3 +66,5 @@ AWS_CLOUDFRONT_URL=https://j2ccf.tnodes.com
- SENTRY_DSN=https://27b230e04417d304c7e3867ee14a736d@o4507056942350336.ingest.us.sentry.io/4507056944906240
- ## ENV
- APP_ENV=production
-+
-+NEXT_SEEDING=true
-diff --git a/lib/swagger/doc/seed/seed.ts b/lib/swagger/doc/seed/seed.ts
+diff --git a/lib/swagger/doc/user/updateRole.ts b/lib/swagger/doc/user/updateRole.ts
 new file mode 100644
-index 0000000..06ae889
+index 0000000..ab174f0
 --- /dev/null
-+++ b/lib/swagger/doc/seed/seed.ts
-@@ -0,0 +1,75 @@
++++ b/lib/swagger/doc/user/updateRole.ts
+@@ -0,0 +1,65 @@
 +/**
-+* @swagger
-+* /api/public/seed-data:
-+*   post:
-+*     tags:
-+*       - Seeding Data
-+*     description: Seeding data
-+*     summary: Seeding data
-+*     security:
-+*       - bearerAuth: []
-+*     requestBody:
-+*       required: false
-+*       content:
-+*         application/json:
-+*           schema:
-+*             $ref: '#/components/schemas/SeedingRequest'
-+*     responses:
-+*       200:
-+*         description: Seeding data success
-+*         content:
-+*           application/json:
-+*             schema:
-+*               $ref: '#/components/schemas/SeedingResponse'
-+*       400:
-+*         description: Bad request
-+*         content:
-+*           application/json:
-+*             schema:
-+*               type: object
-+*               properties:
-+*                 errors:
-+*                   type: array
-+*                   items:
-+*                     type: string
-+* components:
-+*   schemas:
-+*     SeedingRequest:
-+*       type: object
-+*       properties:
-+*         email:
-+*           type: string
-+*           format: email
-+*           description: Email address of the user
-+*           example:  john.doe@example.com
-+*           required: true
-+*         firstName:
-+*           type: string
-+*           description: First name of the user
-+*           example: John
-+*           required: false
-+*         lastName:
-+*           type: string
-+*           description: Last name of the user
-+*           example: Doe
-+*           required: false
-+*         password:
-+*           type: string
-+*           format: password
-+*           required: true
-+*         keyRole:
-+*           type: string
-+*           format: keyRole
-+*           description: Role key for the user
-+*           example: system-super-admin
-+*           required: true
-+*     SeedingResponse:
-+*       type: object
-+*       properties:
-+*         success:
-+*           type: boolean
-+*           description: Seeding data success
-+@param request
-+@constructor
-+**/
++ * @swagger
++ * api/private/user/update-role/{id}:
++ *   put:
++ *     summary: Update role for generic user
++ *     tags:
++ *       - User
++ *     security:
++ *       - bearerAuth: []
++ *     parameters:
++ *       - in: path
++ *         name: id
++ *         required: true
++ *         description: User ID
++ *     requestBody:
++ *       required: true
++ *       content:
++ *         application/json:
++ *           schema:
++ *             type: object
++ *             properties:
++ *               role:
++ *                 type: string
++ *                 enum: [Builder, Contractor]
++ *                 example: Builder
++ *                 required: true
++ *     responses:
++ *       200:
++ *         content:
++ *           application/json:
++ *             schema:
++ *               $ref: '#/components/schemas/UpdateRoleSuccessResponse'
++ *       400:
++ *         content:
++ *           application/json:
++ *             schema:
++ *               $ref: '#/components/schemas/UpdateRoleErrorResponse'
++ * components:
++ *   schemas:
++ *     UpdateRoleSuccessResponse:
++ *       type: object
++ *       properties:
++ *         status:
++ *           type: number
++ *           example: 200
++ *         success:
++ *           type: boolean
++ *           example: true
++ *     UpdateRoleErrorResponse:
++ *       type: object
++ *       properties:
++ *         status:
++ *           type: number
++ *           example: 400
++ *           description: Error status code
++ *         success:
++ *           type: boolean
++ *           example: false
++ *         errors:
++ *           type: array
++ *           items:
++ *             type: string
++ *             example: User id is required.
++ */
 +export {};
-diff --git a/src/app/api/public/seed-data/route.ts b/src/app/api/public/seed-data/route.ts
+diff --git a/src/app/api/private/user/update-role/[id]/route.ts b/src/app/api/private/user/update-role/[id]/route.ts
 new file mode 100644
-index 0000000..6e31a9e
+index 0000000..3488fde
 --- /dev/null
-+++ b/src/app/api/public/seed-data/route.ts
-@@ -0,0 +1,137 @@
++++ b/src/app/api/private/user/update-role/[id]/route.ts
+@@ -0,0 +1,71 @@
 +import { NextRequest, NextResponse } from 'next/server';
 +import MongoConnect from '@/backend/connection/mongo.connection';
-+import UserRepository from '@/backend/repositories/mongodb/user.repository';
 +import ResponseStruct from '@/backend/structs/response.struct';
++import UserRepository from '@/backend/repositories/mongodb/user.repository';
 +import UserDto from '@/utils/dtos/user.dto';
-+import PermissionRepository from '@/backend/repositories/mongodb/permission.repository';
-+import PermissionDto from '@/utils/dtos/permission.dto';
-+import RoleRepository from '@/backend/repositories/mongodb/role.repository';
-+import RoleDto from '@/utils/dtos/role.dto';
-+import CompanyRepository from '@/backend/repositories/mongodb/company.repository';
-+import CompanyDto from '@/utils/dtos/company.dto';
-+import { UserStatus } from '@/utils/enums';
++import NotFoundException from '@/backend/exceptions/notfound.exception';
++import { RoleType, Roles } from '@/utils/enums';
++import DateCustom from '@/utils/datetime/date.custom';
++import Logger from '@/utils/logger';
++import RoleService from '@/backend/services/role.service';
 +
-+export async function POST(request: NextRequest) {
-+  const data = await request.json();
++export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
++  const data: { role: RoleType } = await request.json();
 +  const responseStruct = new ResponseStruct(true);
++
++  if (!params.id) {
++    responseStruct.setStatus(400);
++    responseStruct.pushError('User id is required.');
++
++    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
++  }
++
++  if (data.role !== RoleType.BUILDER && data.role !== RoleType.CONTRACTOR) {
++    responseStruct.setStatus(400);
++    responseStruct.pushError('Allowed role are Contractor or Builder.');
++
++    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
++  }
++
 +  const conn = await MongoConnect();
-+  const isSeeding = process.env.NEXT_SEEDING;
-+
-+  const permissions = require('@/backend/services/permission/fixture/j2cdev.permissions.json');
-+  const roles = require('@/backend/services/permission/fixture/j2cdev.roles.json');
-+  const companies = require('@/backend/services/permission/fixture/j2cdev.companies.json');
-+
++  const userRepository = new UserRepository(conn);
++  const roleService = new RoleService(conn);
 +  try {
-+    if (!isSeeding) {
-+      responseStruct.setStatus(400);
-+      responseStruct.pushError('System admin already exists!');
++    const user: UserDto = await userRepository.findUserId(params.id);
++
++    if (!user) {
++      throw new NotFoundException('User not found.');
 +    }
 +
-+    const userRepo = new UserRepository(conn);
-+    const roleRepo = new RoleRepository(conn);
-+    const permissionRepo = new PermissionRepository(conn);
-+    const companyRepo = new CompanyRepository(conn);
-+
-+    const userDto = new UserDto();
-+    const { email, password, firstName, lastName, keyRole } = data;
-+
-+    for (const permission of permissions) {
-+      const permissionDto = new PermissionDto();
-+      permissionDto.setData(permission);
-+      // @ts-ignore
-+      permissionDto._id = (permissionDto._id as string)['$oid'];
-+      const existingPermission = await permissionRepo.findOne({ _id: permissionDto._id });
-+      if (existingPermission) {
-+        await permissionRepo.update(existingPermission._id, permissionDto);
-+      } else {
-+        await permissionRepo.insertData(permissionDto);
-+      }
++    if (!user.emailConfirmed) {
++      throw new Error('Please confirm your email to update the role');
 +    }
 +
-+    for (const role of roles) {
-+      const roleDto = new RoleDto();
-+      roleDto.setData(role);
-+      // @ts-ignore
-+      roleDto._id = (roleDto._id as string)['$oid'];
-+      const existingRole = await roleRepo.findOne({ _id: roleDto._id });
-+      if (existingRole) {
-+        await roleRepo.update(existingRole._id, roleDto);
-+      } else {
-+        await roleRepo.insertData(roleDto);
-+      }
++    const roleName = data.role === RoleType.BUILDER ? Roles.SYSTEM_GENERIC_BUILDER : Roles.SYSTEM_GENERIC_CONTRACTOR;
++    const detailRole = await roleService.getRoleByFields({ name: roleName });
++    if (!detailRole) {
++      throw new NotFoundException('Role not found.');
 +    }
 +
-+    for (const company of companies) {
-+      const companyDto = new CompanyDto();
-+      companyDto.setData(company);
-+      // @ts-ignore
-+      companyDto._id = (companyDto._id as string)['$oid']; // Convert _id from {"$oid": "661d050e7668b6c9c1ece526"} to "661d050e7668b6c9c1ece526"
-+      const existingCompany = await companyRepo.findOne({ _id: companyDto._id });
-+      if (existingCompany) {
-+        await companyRepo.update(existingCompany._id, companyDto);
-+      } else {
-+        await companyRepo.insertData(companyDto);
-+      }
-+    }
++    await userRepository.update(params.id, {
++      systemRole: detailRole.id,
++      dateModify: new DateCustom()
++    });
 +
-+    let passwordHash: string | null = null;
-+
-+    if (password) {
-+      const bcrypt = require('bcrypt');
-+      passwordHash = await bcrypt.hash(password, 10);
-+    }
-+
-+    // check keyRole exist
-+    const systemRole = await roleRepo.findOne({ key: keyRole });
-+    if (!systemRole) {
-+      responseStruct.setStatus(400);
-+      responseStruct.pushError('Role not found!');
-+      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-+    }
-+
-+    // check if email exists
-+    const existingUser = await userRepo.findOne({ email });
-+    // Define user data
-+    const userData = {
-+      email: email,
-+      firstName: firstName || 'Example',
-+      lastName: lastName || 'User',
-+      imageUrl: '',
-+      company: null,
-+      country: null,
-+      phoneNumber: null,
-+      birthDate: null,
-+      password: passwordHash,
-+      emailConfirmed: true,
-+      confirmationToken: null,
-+      passwordResetToken: null,
-+      isContractor: false,
-+      status: UserStatus.ACTIVE,
-+      selectedContractorId: null,
-+      selectedBuilderId: null,
-+      failedLoginAttempts: 0,
-+      accountLockedUntil: null,
-+      systemRole: systemRole._id.toString()
-+    };
-+
-+    if (existingUser) {
-+      // update existing user
-+      // @ts-ignore
-+      userData.id = existingUser._id.toString();
-+      await userDto.setData(userData);
-+      await userRepo.update(existingUser._id, userDto);
-+    } else {
-+      // create new user
-+      await userDto.setData(userData);
-+      await userRepo.create(userDto);
-+    }
-+
-+    responseStruct.setStatus(200);
-+    responseStruct.setData({ data: { message: 'Seeding data successful!' } });
++    return NextResponse.json({ success: true }, { status: 200 });
 +  } catch (error: any) {
 +    responseStruct.setStatus(500);
-+    responseStruct.pushError('Server error!');
-+  }
 +
-+  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
++    if (error instanceof NotFoundException) {
++      responseStruct.setStatus(404);
++    }
++
++    responseStruct.pushError(error.message);
++
++    Logger.error(error.message, {
++      status: responseStruct.getValue('status'),
++      stack: error.stack
++    });
++    return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
++  }
 +}
-diff --git a/src/backend/repositories/mongodb/base.repository.abstract.ts b/src/backend/repositories/mongodb/base.repository.abstract.ts
-index 17924ad..ef92c1d 100644
---- a/src/backend/repositories/mongodb/base.repository.abstract.ts
-+++ b/src/backend/repositories/mongodb/base.repository.abstract.ts
-@@ -54,6 +54,13 @@ export default abstract class BaseRepositoryAbstract {
-     return await newModel.save();
+diff --git a/src/app/api/public/auth/register/route.ts b/src/app/api/public/auth/register/route.ts
+index 89f14a3..779631f 100644
+--- a/src/app/api/public/auth/register/route.ts
++++ b/src/app/api/public/auth/register/route.ts
+@@ -7,7 +7,7 @@ import ResponseStruct from '@/backend/structs/response.struct';
+ import Logger from '@/utils/logger';
+ 
+ export async function POST(request: NextRequest) {
+-  const data: { email: string; password: string; firstName: string; lastName: string } = await request.json();
++  const data: { email: string; password: string; firstName: string; lastName: string; systemRoleId?: string } = await request.json();
+ 
+   const conn = await MongoConnect();
+   const authService = new AuthService(conn);
+@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
+       false,
+       UserStatus.INACTIVE,
+       data.password,
+-      null
++      null,
++      data.systemRoleId
+     );
+ 
+     await authService.sendEmailConfirmation(user.get('_id').valueOf(), user.get('email'), `${data.firstName} ${data.lastName}`);
+diff --git a/src/backend/services/auth.service.ts b/src/backend/services/auth.service.ts
+index 8e24289..15c5713 100644
+--- a/src/backend/services/auth.service.ts
++++ b/src/backend/services/auth.service.ts
+@@ -2,7 +2,7 @@ import UserRepository from '@/backend/repositories/mongodb/user.repository';
+ import mongoose, { Mongoose } from 'mongoose';
+ import UserDto from '@/utils/dtos/user.dto';
+ import DateCustom from '@/utils/datetime/date.custom';
+-import { UserStatus } from '@/utils/enums';
++import { Roles, UserStatus } from '@/utils/enums';
+ import NotificationService from '@/backend/services/notification.service';
+ import SmtpProvider from '@/backend/services/observer/providers/smtp.provider';
+ import { render } from '@react-email/render';
+@@ -12,14 +12,17 @@ import { NextRequest } from 'next/server';
+ import { getToken } from 'next-auth/jwt';
+ import UserRepositoryInterface from '@/backend/repositories/interfaces/user.repository.interface';
+ import PermissionLoaderFactory from '@/backend/services/permission/factory/permission.loader.factory';
++import RoleService from './role.service';
+ 
+ export default class AuthService {
+   private confirmationEndpoint: string = 'auth/confirm-email';
+   protected userRepository: UserRepositoryInterface;
++  protected roleService: RoleService;
+   protected conn: Mongoose;
+ 
+   constructor(conn: Mongoose) {
+     this.userRepository = new UserRepository(conn);
++    this.roleService = new RoleService(conn);
+     this.conn = conn;
    }
  
-+  // insert many data
-+  async insertData(data: DTO): Promise<mongoose.Document> {
-+    const newModel = new this._model(data.toObjectWithId());
-+
-+    return await newModel.save();
-+  }
-+
-   async createMany(data: DTO[]): Promise<mongoose.Document[]> {
-     return this._model.insertMany(data.map((item: DTO) => item.toObject() as Omit<DTO, '_id' | 'id' | any>));
-   }
+@@ -40,7 +43,8 @@ export default class AuthService {
+     emailConfirmed: boolean,
+     status: UserStatus,
+     password: string | null = null,
+-    imageUrl: string | null = null
++    imageUrl: string | null = null,
++    systemRoleId = ''
+   ): Promise<mongoose.Document> {
+     const userDto = new UserDto();
+ 
+@@ -51,7 +55,13 @@ export default class AuthService {
+       passwordHash = await bcrypt.hash(password, 10);
+     }
+     const date = new DateCustom().toISOString();
+-
++    let userRoleId = systemRoleId;
++    if (systemRoleId === '') {
++      const systemGenericRole = await this.roleService.getRoleByFields({ name: Roles.SYSTEM_GENERIC });
++      if (systemGenericRole) {
++        userRoleId = systemGenericRole.id;
++      }
++    }
+     userDto.setData({
+       email,
+       firstName,
+@@ -69,7 +79,8 @@ export default class AuthService {
+       selectedContractorId: null,
+       selectedBuilderId: null,
+       dateCreate: date,
+-      dateModify: date
++      dateModify: date,
++      systemRole: userRoleId
+     });
+ 
+     return await this.userRepository.create(userDto);
 diff --git a/src/backend/services/permission/fixture/j2cdev.permissions.json b/src/backend/services/permission/fixture/j2cdev.permissions.json
-index d84d74d..0f9d452 100644
+index 8ce1161..64b335f 100644
 --- a/src/backend/services/permission/fixture/j2cdev.permissions.json
 +++ b/src/backend/services/permission/fixture/j2cdev.permissions.json
-@@ -32,7 +32,7 @@
+@@ -10,7 +10,9 @@
+       }
+     ],
+     "roleIds": [
+-      { "roleId": "661d4d8414004d29a20e7673" }
++      { "roleId": "661d4d8414004d29a20e7673" },
++      { "roleId": "6625361cb50944b2043d5e23" },
++      { "roleId": "662536241f7230f4fbf2db0a" }
      ],
      "dateCreate": "2017-01-01T00:00:00.000Z",
      "dateModify": "2017-01-01T00:00:00.000Z",
--    "key": "view_profile"
-+    "key": "update_profile_role"
-   },
-   {
-     "_id": { "$oid": "661d077f5af576b1b6ed70fa" },
-diff --git a/src/utils/dtos/base.dto.ts b/src/utils/dtos/base.dto.ts
-index 1aac56a..90f6fd3 100644
---- a/src/utils/dtos/base.dto.ts
-+++ b/src/utils/dtos/base.dto.ts
-@@ -32,6 +32,10 @@ export default abstract class BaseDto {
-     return this.recursiveCovertToDto(this) as DTO & { id: string };
+@@ -22,8 +24,8 @@
+     "description": "Update Profile Role To Generic Contractor Or Generic Builder",
+     "urls": [
+       {
+-        "url": "/api/private/user/{id}/update-role",
+-        "method": "PATCH"
++        "url": "/api/private/user/update-role/{id}",
++        "method": "PUT"
+       }
+     ],
+     "roleIds": [
+diff --git a/src/backend/services/role.service.ts b/src/backend/services/role.service.ts
+index 85fbd3c..1c7e057 100644
+--- a/src/backend/services/role.service.ts
++++ b/src/backend/services/role.service.ts
+@@ -191,4 +191,16 @@ export default class RoleService {
+       await this.roleRepository.create(role);
+     }
    }
- 
-+  public toObjectWithId(): DTO & { id: string } {
-+    return this.recursiveCovertToDtoWithId(this) as DTO & { id: string };
-+  }
-+
-   public toJSON(): string {
-     return JSON.stringify(this.toObject());
-   }
-@@ -73,4 +77,27 @@ export default abstract class BaseDto {
- 
-     return dto;
-   }
-+
-+  private recursiveCovertToDtoWithId(data: any): any {
-+    // If data is not an object, return it
-+    if (!data || typeof data !== 'object') {
-+      return data;
++  /** Get a role by some fields (name, id) */
++  async getRoleByFields(fields: Partial<RoleType>): Promise<(RoleType & { id: string }) | null> {
++    const role = await this.roleRepository.findOne(fields);
++    if (!role) {
++      return null;
 +    }
 +
-+    // Convert Date to string
-+    if (data instanceof Date) {
-+      return new DateCustom(data);
-+    }
-+
-+    // Convert array of data
-+    if (Array.isArray(data)) {
-+      const _this = this;
-+      // Check if data is an array
-+      return data.map((item) => _this.recursiveCovertToDto(item));
-+    }
-+
-+    const dto = { ...data };
-+
-+    return dto;
++    const data = new RoleDto();
++    data.setData(role.toJSON());
++    const currentObject = data.toObject() as RoleType & { id: string };
++    return currentObject;
 +  }
  }
+diff --git a/src/utils/enums.ts b/src/utils/enums.ts
+index 36cfd50..d2d45a5 100644
+--- a/src/utils/enums.ts
++++ b/src/utils/enums.ts
+@@ -41,7 +41,10 @@ export enum Roles {
+   BUILDER_ACCOUNT_PAYABLE = 'Builder/Account Payable',
+   CONTRACTOR_ADMIN = 'Contractor/Admin',
+   CONTRACTOR_BASIC = 'Contractor/Basic',
+-  CONTRACTOR_WORKER = 'Contractor/Worker'
++  CONTRACTOR_WORKER = 'Contractor/Worker',
++  SYSTEM_GENERIC = 'System/Generic',
++  SYSTEM_GENERIC_CONTRACTOR = 'System/Generic Contractor',
++  SYSTEM_GENERIC_BUILDER = 'System/Generic Builder'
+ }
+ 
+ export enum Permission {

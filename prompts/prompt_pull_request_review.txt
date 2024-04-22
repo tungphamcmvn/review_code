@@ -65,18 +65,18 @@ Your analysis should result in an HTML document titled "Pull Request Analysis" w
 
 1. *Pull Request Title:* Examine 'diff.txt' to provide a detailed summary of the pull request's purpose. Craft a clear and comprehensive pull request title reflecting the modifications.
 2. *Architecture Alignment:* Compare the 'diff.txt' modifications with the described application architecture and db schema. Identify any discrepancies and suggest necessary adjustments for alignment.
-3. *Best Practices Assessment:* Evaluate the changes in 'diff.txt' against Next.js, React.js coding standards. Recommend corrections and improvements for adherence to best practices.
+3. *Best Practices Assessment:* Evaluate the changes in 'diff.txt' against Next.js, React.js coding standards. Recommend corrections and improvements for adherence to best practices
 4. *Performance and Security:* Analyze modifications for performance and security impacts within the Next.js, React.js, and MongoDB context. Offer enhancement suggestions for optimization.
 5. *Code Logic Evaluation:* Discuss the code logic based on the changes, highlighting issues and improvements.
 6. *Estimation Time:* The time in range that a senior developer would need to develop that pull request.
 
 Additionally, provide an estimation of the development time required by a senior developer for these pull requests.
 
-Your document structure must be HTML tags, ensuring:
-
+*Note*: Your document structure must be HTML tags format and don't contain markdown format, ensuring:
+- Header must be format with h1 tag
 - Issues are highlighted with a `style="background-color:red;color:white;"`. 
 - Positive feedback is marked with a `style="background-color:green;color:white;"`.
 - Include actionable feedback, structured information, and code snippets or examples where applicable.
 
-Ensure the analysis is detailed, actionable, and presented in a structured format to aid in understanding and applying the recommendations. And make sure the output format is HTML tag
+Ensure the analysis is detailed, actionable, and presented in a structured format to aid in understanding and applying the recommendations.
 
