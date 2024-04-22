@@ -1,44 +1,5 @@
 Please analyze the 'diff.txt' file to understand the recent modifications in a complex application built using Next.js, React.js, and MongoDB, as detailed in the 'codebase.txt' file. The application's architecture is described below, including directories and functionalities:
 
-The corrected directory structure based on the codebase:
-
-```
-./
-├── lib/
-│   └── swagger/
-├── types/
-├── src/
-│   ├── app/
-│   │   ├── adminPanel/
-│   │   └── publicPages/
-│   ├── app/api/
-│   ├── backend/
-│   │   ├── model/
-│   │   ├── repositories/
-│   │   ├── storage/
-│   │   ├── observer/
-│   │   ├── structs/
-│   │   └── validator/
-│   ├── components/
-│   ├── constant/
-│   ├── contexts/
-│   ├── hooks/
-│   ├── layout/
-│   ├── menu-items/ 
-│   ├── scss/
-│   ├── store/
-│   ├── theme/
-│   ├── types/
-│   └── utils/
-│       ├── datetime/
-│       ├── dtos/
-│       └── enums/
-├── src/views/
-├── public/
-├── pages/
-└── styles/
-```
-
 1. README.md:
    - Provides guidelines for setting up and running the application in development and production environments using Docker Compose.
    - Specifies the required environment variables to be set in the .env file before starting the application.
@@ -108,21 +69,21 @@ The corrected directory structure based on the codebase:
    // ./src/hooks/
    - Custom React hooks for common use cases.
    // ./src/layout/
-   Layout components like main layout, header, footer etc.
+   - Layout components like main layout, header, footer etc.
    // ./src/menu-items/
-   Menu configuration for navigation.
+   - Menu configuration for navigation.
    // ./src/store/ 
-   Application state management using Redux Toolkit.
+   - Application state management using Redux Toolkit.
    // ./src/theme/
-   Theme configuration and customization.
+   - Theme configuration and customization.
    // ./src/utils/
-   Common utility functions.
+   - Common utility functions.
    // ./pages/
-   Next.js page components rendered on routes.
+   - Next.js page components rendered on routes.
    // ./public/
-   Static assets served by Next.js.
+   - Static assets served by Next.js.
    // ./styles/ 
-   Global CSS styles.
+   - Global CSS styles.
 
 Your analysis should result in an HTML document titled "Pull Request Analysis" with six distinct sections that:
 
