@@ -40,55 +40,31 @@ Please analyze the 'diff.txt' file to understand the recent modifications in a c
    - Specifies the custom sign-in page URL.
 
 7. Additional Directories and Files:
-   // ./src/app/
-   - Contains code specific to the application like pages and APIs.
-   // ./src/app/adminPanel/
-   - Admin dashboard pages protected behind authentication. Likely contains pages for managing users, projects, invoices etc.
-   // ./src/app/publicPages/  
-   - Public pages accessible without authentication like homepage, login, register etc.
-   // ./src/app/api/ 
-   - API routes built with Next.js API routes. Provides backend API endpoints.
-   // ./src/backend/
-   - Contains reusable backend code and domain logic.
-   // ./src/backend/model/
-   - MongoDB models define the data structures.
-   // ./src/backend/repositories/ 
-   - Repository pattern to abstract data layer. Query and persist data using models.
-   // ./src/backend/storage/
-   - Upload and storage implementations like S3. Abstraction over storage providers.
-   // ./src/backend/observer/
-   - Observer pattern implementation for notifications like emails. 
-   // ./src/backend/structs/
-   - Common data structures used in the backend code.
-   // ./src/backend/validator/
-   - Input validation for API requests.
-   // ./src/components/
-   - Reusable React components and UI elements.
-   // ./src/contexts/
-   - React contexts like authentication and configuration.
-   // ./src/hooks/
-   - Custom React hooks for common use cases.
-   // ./src/layout/
-   - Layout components like main layout, header, footer etc.
-   // ./src/menu-items/
-   - Menu configuration for navigation.
-   // ./src/store/ 
-   - Application state management using Redux Toolkit.
-   // ./src/theme/
-   - Theme configuration and customization.
-   // ./src/utils/
-   - Common utility functions.
-   // ./pages/
-   - Next.js page components rendered on routes.
-   // ./public/
-   - Static assets served by Next.js.
-   // ./styles/ 
-   - Global CSS styles.
+   - src/app: Contains Next.js page route handlers and layouts for different sections of the application (admin panel, public pages, etc.).
+   - src/backend: Houses backend logic and services.
+   - src/backend/exceptions: Defines custom exception classes for error handling.
+   - src/backend/services: Contains business logic and service classes for various functionalities like user management, roles, invoices, projects, authentication, notifications, storage, and permissions.
+   - src/backend/validator: Includes validator classes for input validation using Yup.
+   - src/backend/models: Defines Mongoose models for interacting with MongoDB.
+   - src/backend/repositories: Implements data access logic using MongoDB and the Mongoose models.
+   - src/backend/middlewares: Contains middleware functions for authentication, authorization, and JWT handling.
+   - src/components: Houses reusable UI components for different views.
+   - src/constant: Defines application-wide constants and configurations.
+   - src/contexts: Manages application state and context, such as configuration and session information.
+   - src/hooks: Provides custom React hooks for common functionalities like using configuration, local storage, asynchronous operations, and file uploads.
+   - src/layout: Contains layout components for the main application layout and its variations.
+   - src/menu-items: Defines the application's navigation menu structure.
+   - src/styles: Includes global styles, theme variables, and component-specific styles.
+   - src/types: Defines TypeScript types for various data structures and components.
+   - src/utils: Provides utility functions and helpers for tasks like cookie handling, calculations, email formatting, role checks, notifications, API calls, date/time formatting, and currency formatting.
+   - src/views: Contains client-side rendering components for different views and pages.
+   - lib/swagger: Used for generating OpenAPI Specifications for API endpoints.
+   - types/next-auth.d.ts: Contains custom field definitions for next-auth.
 
 Your analysis should result in an HTML document titled "Pull Request Analysis" with six distinct sections that:
 
 1. *Pull Request Title:* Examine 'diff.txt' to provide a detailed summary of the pull request's purpose. Craft a clear and comprehensive pull request title reflecting the modifications.
-2. *Architecture Alignment:* Compare the 'diff.txt' modifications with the described application architecture and db schema('dbschema.txt'). Identify any discrepancies and suggest necessary adjustments for alignment.
+2. *Architecture Alignment:* Compare the 'diff.txt' modifications with the described application architecture and db schema. Identify any discrepancies and suggest necessary adjustments for alignment.
 3. *Best Practices Assessment:* Evaluate the changes in 'diff.txt' against Next.js, React.js coding standards. Recommend corrections and improvements for adherence to best practices.
 4. *Performance and Security:* Analyze modifications for performance and security impacts within the Next.js, React.js, and MongoDB context. Offer enhancement suggestions for optimization.
 5. *Code Logic Evaluation:* Discuss the code logic based on the changes, highlighting issues and improvements.
@@ -96,11 +72,11 @@ Your analysis should result in an HTML document titled "Pull Request Analysis" w
 
 Additionally, provide an estimation of the development time required by a senior developer for these pull requests.
 
-Structure your document with HTML tags, ensuring:
+Your document structure must be HTML tags, ensuring:
 
 - Issues are highlighted with a `style="background-color:red;color:white;"`. 
 - Positive feedback is marked with a `style="background-color:green;color:white;"`.
 - Include actionable feedback, structured information, and code snippets or examples where applicable.
 
-Ensure the analysis is detailed, actionable, and presented in a structured format to aid in understanding and applying the recommendations.
+Ensure the analysis is detailed, actionable, and presented in a structured format to aid in understanding and applying the recommendations. And make sure the output format is HTML tag
 

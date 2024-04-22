@@ -1,0 +1,334 @@
+title:	Feature/j2 c 173
+state:	MERGED
+author:	tungphamcmvn
+labels:	
+assignees:	
+reviewers:	
+projects:	
+milestone:	
+number:	35
+url:	https://github.com/invik-33/j2c-app/pull/35
+additions:	251
+deletions:	1
+--
+Add api and swagger for seeding data.
+
+
+diff --git a/.env.development b/.env.development
+index 6d8bb9a..0b96830 100644
+--- a/.env.development
++++ b/.env.development
+@@ -66,3 +66,5 @@ AWS_CLOUDFRONT_URL=https://j2ccdn.tnodes.com
+ SENTRY_DSN=
+ ## ENV
+ APP_ENV=development
++
++NEXT_SEEDING=true
+diff --git a/.env.production b/.env.production
+index b283df7..ed3705d 100644
+--- a/.env.production
++++ b/.env.production
+@@ -66,3 +66,5 @@ AWS_CLOUDFRONT_URL=https://j2ccf.tnodes.com
+ SENTRY_DSN=https://27b230e04417d304c7e3867ee14a736d@o4507056942350336.ingest.us.sentry.io/4507056944906240
+ ## ENV
+ APP_ENV=production
++
++NEXT_SEEDING=true
+diff --git a/lib/swagger/doc/seed/seed.ts b/lib/swagger/doc/seed/seed.ts
+new file mode 100644
+index 0000000..06ae889
+--- /dev/null
++++ b/lib/swagger/doc/seed/seed.ts
+@@ -0,0 +1,75 @@
++/**
++* @swagger
++* /api/public/seed-data:
++*   post:
++*     tags:
++*       - Seeding Data
++*     description: Seeding data
++*     summary: Seeding data
++*     security:
++*       - bearerAuth: []
++*     requestBody:
++*       required: false
++*       content:
++*         application/json:
++*           schema:
++*             $ref: '#/components/schemas/SeedingRequest'
++*     responses:
++*       200:
++*         description: Seeding data success
++*         content:
++*           application/json:
++*             schema:
++*               $ref: '#/components/schemas/SeedingResponse'
++*       400:
++*         description: Bad request
++*         content:
++*           application/json:
++*             schema:
++*               type: object
++*               properties:
++*                 errors:
++*                   type: array
++*                   items:
++*                     type: string
++* components:
++*   schemas:
++*     SeedingRequest:
++*       type: object
++*       properties:
++*         email:
++*           type: string
++*           format: email
++*           description: Email address of the user
++*           example:  john.doe@example.com
++*           required: true
++*         firstName:
++*           type: string
++*           description: First name of the user
++*           example: John
++*           required: false
++*         lastName:
++*           type: string
++*           description: Last name of the user
++*           example: Doe
++*           required: false
++*         password:
++*           type: string
++*           format: password
++*           required: true
++*         keyRole:
++*           type: string
++*           format: keyRole
++*           description: Role key for the user
++*           example: system-super-admin
++*           required: true
++*     SeedingResponse:
++*       type: object
++*       properties:
++*         success:
++*           type: boolean
++*           description: Seeding data success
++@param request
++@constructor
++**/
++export {};
+diff --git a/src/app/api/public/seed-data/route.ts b/src/app/api/public/seed-data/route.ts
+new file mode 100644
+index 0000000..6e31a9e
+--- /dev/null
++++ b/src/app/api/public/seed-data/route.ts
+@@ -0,0 +1,137 @@
++import { NextRequest, NextResponse } from 'next/server';
++import MongoConnect from '@/backend/connection/mongo.connection';
++import UserRepository from '@/backend/repositories/mongodb/user.repository';
++import ResponseStruct from '@/backend/structs/response.struct';
++import UserDto from '@/utils/dtos/user.dto';
++import PermissionRepository from '@/backend/repositories/mongodb/permission.repository';
++import PermissionDto from '@/utils/dtos/permission.dto';
++import RoleRepository from '@/backend/repositories/mongodb/role.repository';
++import RoleDto from '@/utils/dtos/role.dto';
++import CompanyRepository from '@/backend/repositories/mongodb/company.repository';
++import CompanyDto from '@/utils/dtos/company.dto';
++import { UserStatus } from '@/utils/enums';
++
++export async function POST(request: NextRequest) {
++  const data = await request.json();
++  const responseStruct = new ResponseStruct(true);
++  const conn = await MongoConnect();
++  const isSeeding = process.env.NEXT_SEEDING;
++
++  const permissions = require('@/backend/services/permission/fixture/j2cdev.permissions.json');
++  const roles = require('@/backend/services/permission/fixture/j2cdev.roles.json');
++  const companies = require('@/backend/services/permission/fixture/j2cdev.companies.json');
++
++  try {
++    if (!isSeeding) {
++      responseStruct.setStatus(400);
++      responseStruct.pushError('System admin already exists!');
++    }
++
++    const userRepo = new UserRepository(conn);
++    const roleRepo = new RoleRepository(conn);
++    const permissionRepo = new PermissionRepository(conn);
++    const companyRepo = new CompanyRepository(conn);
++
++    const userDto = new UserDto();
++    const { email, password, firstName, lastName, keyRole } = data;
++
++    for (const permission of permissions) {
++      const permissionDto = new PermissionDto();
++      permissionDto.setData(permission);
++      // @ts-ignore
++      permissionDto._id = (permissionDto._id as string)['$oid'];
++      const existingPermission = await permissionRepo.findOne({ _id: permissionDto._id });
++      if (existingPermission) {
++        await permissionRepo.update(existingPermission._id, permissionDto);
++      } else {
++        await permissionRepo.insertData(permissionDto);
++      }
++    }
++
++    for (const role of roles) {
++      const roleDto = new RoleDto();
++      roleDto.setData(role);
++      // @ts-ignore
++      roleDto._id = (roleDto._id as string)['$oid'];
++      const existingRole = await roleRepo.findOne({ _id: roleDto._id });
++      if (existingRole) {
++        await roleRepo.update(existingRole._id, roleDto);
++      } else {
++        await roleRepo.insertData(roleDto);
++      }
++    }
++
++    for (const company of companies) {
++      const companyDto = new CompanyDto();
++      companyDto.setData(company);
++      // @ts-ignore
++      companyDto._id = (companyDto._id as string)['$oid']; // Convert _id from {"$oid": "661d050e7668b6c9c1ece526"} to "661d050e7668b6c9c1ece526"
++      const existingCompany = await companyRepo.findOne({ _id: companyDto._id });
++      if (existingCompany) {
++        await companyRepo.update(existingCompany._id, companyDto);
++      } else {
++        await companyRepo.insertData(companyDto);
++      }
++    }
++
++    let passwordHash: string | null = null;
++
++    if (password) {
++      const bcrypt = require('bcrypt');
++      passwordHash = await bcrypt.hash(password, 10);
++    }
++
++    // check keyRole exist
++    const systemRole = await roleRepo.findOne({ key: keyRole });
++    if (!systemRole) {
++      responseStruct.setStatus(400);
++      responseStruct.pushError('Role not found!');
++      return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
++    }
++
++    // check if email exists
++    const existingUser = await userRepo.findOne({ email });
++    // Define user data
++    const userData = {
++      email: email,
++      firstName: firstName || 'Example',
++      lastName: lastName || 'User',
++      imageUrl: '',
++      company: null,
++      country: null,
++      phoneNumber: null,
++      birthDate: null,
++      password: passwordHash,
++      emailConfirmed: true,
++      confirmationToken: null,
++      passwordResetToken: null,
++      isContractor: false,
++      status: UserStatus.ACTIVE,
++      selectedContractorId: null,
++      selectedBuilderId: null,
++      failedLoginAttempts: 0,
++      accountLockedUntil: null,
++      systemRole: systemRole._id.toString()
++    };
++
++    if (existingUser) {
++      // update existing user
++      // @ts-ignore
++      userData.id = existingUser._id.toString();
++      await userDto.setData(userData);
++      await userRepo.update(existingUser._id, userDto);
++    } else {
++      // create new user
++      await userDto.setData(userData);
++      await userRepo.create(userDto);
++    }
++
++    responseStruct.setStatus(200);
++    responseStruct.setData({ data: { message: 'Seeding data successful!' } });
++  } catch (error: any) {
++    responseStruct.setStatus(500);
++    responseStruct.pushError('Server error!');
++  }
++
++  return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
++}
+diff --git a/src/backend/repositories/mongodb/base.repository.abstract.ts b/src/backend/repositories/mongodb/base.repository.abstract.ts
+index 17924ad..ef92c1d 100644
+--- a/src/backend/repositories/mongodb/base.repository.abstract.ts
++++ b/src/backend/repositories/mongodb/base.repository.abstract.ts
+@@ -54,6 +54,13 @@ export default abstract class BaseRepositoryAbstract {
+     return await newModel.save();
+   }
+ 
++  // insert many data
++  async insertData(data: DTO): Promise<mongoose.Document> {
++    const newModel = new this._model(data.toObjectWithId());
++
++    return await newModel.save();
++  }
++
+   async createMany(data: DTO[]): Promise<mongoose.Document[]> {
+     return this._model.insertMany(data.map((item: DTO) => item.toObject() as Omit<DTO, '_id' | 'id' | any>));
+   }
+diff --git a/src/backend/services/permission/fixture/j2cdev.permissions.json b/src/backend/services/permission/fixture/j2cdev.permissions.json
+index d84d74d..0f9d452 100644
+--- a/src/backend/services/permission/fixture/j2cdev.permissions.json
++++ b/src/backend/services/permission/fixture/j2cdev.permissions.json
+@@ -32,7 +32,7 @@
+     ],
+     "dateCreate": "2017-01-01T00:00:00.000Z",
+     "dateModify": "2017-01-01T00:00:00.000Z",
+-    "key": "view_profile"
++    "key": "update_profile_role"
+   },
+   {
+     "_id": { "$oid": "661d077f5af576b1b6ed70fa" },
+diff --git a/src/utils/dtos/base.dto.ts b/src/utils/dtos/base.dto.ts
+index 1aac56a..90f6fd3 100644
+--- a/src/utils/dtos/base.dto.ts
++++ b/src/utils/dtos/base.dto.ts
+@@ -32,6 +32,10 @@ export default abstract class BaseDto {
+     return this.recursiveCovertToDto(this) as DTO & { id: string };
+   }
+ 
++  public toObjectWithId(): DTO & { id: string } {
++    return this.recursiveCovertToDtoWithId(this) as DTO & { id: string };
++  }
++
+   public toJSON(): string {
+     return JSON.stringify(this.toObject());
+   }
+@@ -73,4 +77,27 @@ export default abstract class BaseDto {
+ 
+     return dto;
+   }
++
++  private recursiveCovertToDtoWithId(data: any): any {
++    // If data is not an object, return it
++    if (!data || typeof data !== 'object') {
++      return data;
++    }
++
++    // Convert Date to string
++    if (data instanceof Date) {
++      return new DateCustom(data);
++    }
++
++    // Convert array of data
++    if (Array.isArray(data)) {
++      const _this = this;
++      // Check if data is an array
++      return data.map((item) => _this.recursiveCovertToDto(item));
++    }
++
++    const dto = { ...data };
++
++    return dto;
++  }
+ }
