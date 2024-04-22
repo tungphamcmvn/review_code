@@ -885,6 +885,18 @@
 	      await this.roleRepository.create(role);
 	    }
 	  }
+	  /** Get a role by some fields (name, id) */
+	  async getRoleByFields(fields: Partial<RoleType>): Promise<(RoleType & { id: string }) | null> {
+	    const role = await this.roleRepository.findOne(fields);
+	    if (!role) {
+	      return null;
+	    }
+	
+	    const data = new RoleDto();
+	    data.setData(role.toJSON());
+	    const currentObject = data.toObject() as RoleType & { id: string };
+	    return currentObject;
+	  }
 	}
 
 ```
@@ -2031,7 +2043,7 @@
 	import mongoose, { Mongoose } from 'mongoose';
 	import UserDto from '@/utils/dtos/user.dto';
 	import DateCustom from '@/utils/datetime/date.custom';
-	import { UserStatus } from '@/utils/enums';
+	import { Roles, UserStatus } from '@/utils/enums';
 	import NotificationService from '@/backend/services/notification.service';
 	import SmtpProvider from '@/backend/services/observer/providers/smtp.provider';
 	import { render } from '@react-email/render';
@@ -2041,14 +2053,17 @@
 	import { getToken } from 'next-auth/jwt';
 	import UserRepositoryInterface from '@/backend/repositories/interfaces/user.repository.interface';
 	import PermissionLoaderFactory from '@/backend/services/permission/factory/permission.loader.factory';
+	import RoleService from './role.service';
 	
 	export default class AuthService {
 	  private confirmationEndpoint: string = 'auth/confirm-email';
 	  protected userRepository: UserRepositoryInterface;
+	  protected roleService: RoleService;
 	  protected conn: Mongoose;
 	
 	  constructor(conn: Mongoose) {
 	    this.userRepository = new UserRepository(conn);
+	    this.roleService = new RoleService(conn);
 	    this.conn = conn;
 	  }
 	
@@ -2069,7 +2084,8 @@
 	    emailConfirmed: boolean,
 	    status: UserStatus,
 	    password: string | null = null,
-	    imageUrl: string | null = null
+	    imageUrl: string | null = null,
+	    systemRoleId = ''
 	  ): Promise<mongoose.Document> {
 	    const userDto = new UserDto();
 	
@@ -2080,7 +2096,13 @@
 	      passwordHash = await bcrypt.hash(password, 10);
 	    }
 	    const date = new DateCustom().toISOString();
-	
+	    let userRoleId = systemRoleId;
+	    if (systemRoleId === '') {
+	      const systemGenericRole = await this.roleService.getRoleByFields({ name: Roles.SYSTEM_GENERIC });
+	      if (systemGenericRole) {
+	        userRoleId = systemGenericRole.id;
+	      }
+	    }
 	    userDto.setData({
 	      email,
 	      firstName,
@@ -2098,7 +2120,8 @@
 	      selectedContractorId: null,
 	      selectedBuilderId: null,
 	      dateCreate: date,
-	      dateModify: date
+	      dateModify: date,
+	      systemRole: userRoleId
 	    });
 	
 	    return await this.userRepository.create(userDto);
@@ -19835,6 +19858,82 @@
 
 ```
 
+// src/app/api/private/user/update-role/[id]/route.ts
+```ts
+	import { NextRequest, NextResponse } from 'next/server';
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import ResponseStruct from '@/backend/structs/response.struct';
+	import UserRepository from '@/backend/repositories/mongodb/user.repository';
+	import UserDto from '@/utils/dtos/user.dto';
+	import NotFoundException from '@/backend/exceptions/notfound.exception';
+	import { RoleType, Roles } from '@/utils/enums';
+	import DateCustom from '@/utils/datetime/date.custom';
+	import Logger from '@/utils/logger';
+	import RoleService from '@/backend/services/role.service';
+	
+	export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
+	  const data: { role: RoleType } = await request.json();
+	  const responseStruct = new ResponseStruct(true);
+	
+	  if (!params.id) {
+	    responseStruct.setStatus(400);
+	    responseStruct.pushError('User id is required.');
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
+	  }
+	
+	  if (data.role !== RoleType.BUILDER && data.role !== RoleType.CONTRACTOR) {
+	    responseStruct.setStatus(400);
+	    responseStruct.pushError('Allowed role are Contractor or Builder.');
+	
+	    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
+	  }
+	
+	  const conn = await MongoConnect();
+	  const userRepository = new UserRepository(conn);
+	  const roleService = new RoleService(conn);
+	  try {
+	    const user: UserDto = await userRepository.findUserId(params.id);
+	
+	    if (!user) {
+	      throw new NotFoundException('User not found.');
+	    }
+	
+	    if (!user.emailConfirmed) {
+	      throw new Error('Please confirm your email to update the role');
+	    }
+	
+	    const roleName = data.role === RoleType.BUILDER ? Roles.SYSTEM_GENERIC_BUILDER : Roles.SYSTEM_GENERIC_CONTRACTOR;
+	    const detailRole = await roleService.getRoleByFields({ name: roleName });
+	    if (!detailRole) {
+	      throw new NotFoundException('Role not found.');
+	    }
+	
+	    await userRepository.update(params.id, {
+	      systemRole: detailRole.id,
+	      dateModify: new DateCustom()
+	    });
+	
+	    return NextResponse.json({ success: true }, { status: 200 });
+	  } catch (error: any) {
+	    responseStruct.setStatus(500);
+	
+	    if (error instanceof NotFoundException) {
+	      responseStruct.setStatus(404);
+	    }
+	
+	    responseStruct.pushError(error.message);
+	
+	    Logger.error(error.message, {
+	      status: responseStruct.getValue('status'),
+	      stack: error.stack
+	    });
+	    return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
+	  }
+	}
+
+```
+
 // src/app/api/private/user/archive/[id]/route.ts
 ```ts
 	import { NextRequest, NextResponse } from 'next/server';
@@ -20717,7 +20816,7 @@
 	import Logger from '@/utils/logger';
 	
 	export async function POST(request: NextRequest) {
-	  const data: { email: string; password: string; firstName: string; lastName: string } = await request.json();
+	  const data: { email: string; password: string; firstName: string; lastName: string; systemRoleId?: string } = await request.json();
 	
 	  const conn = await MongoConnect();
 	  const authService = new AuthService(conn);
@@ -20749,7 +20848,8 @@
 	      false,
 	      UserStatus.INACTIVE,
 	      data.password,
-	      null
+	      null,
+	      data.systemRoleId
 	    );
 	
 	    await authService.sendEmailConfirmation(user.get('_id').valueOf(), user.get('email'), `${data.firstName} ${data.lastName}`);
@@ -21304,7 +21404,10 @@
 	  BUILDER_ACCOUNT_PAYABLE = 'Builder/Account Payable',
 	  CONTRACTOR_ADMIN = 'Contractor/Admin',
 	  CONTRACTOR_BASIC = 'Contractor/Basic',
-	  CONTRACTOR_WORKER = 'Contractor/Worker'
+	  CONTRACTOR_WORKER = 'Contractor/Worker',
+	  SYSTEM_GENERIC = 'System/Generic',
+	  SYSTEM_GENERIC_CONTRACTOR = 'System/Generic Contractor',
+	  SYSTEM_GENERIC_BUILDER = 'System/Generic Builder'
 	}
 	
 	export enum Permission {
@@ -39458,6 +39561,76 @@
 	 *           type: array
 	 *           items:
 	 *             type: string
+	 */
+	export {};
+
+```
+
+// lib/swagger/doc/user/updateRole.ts
+```ts
+	/**
+	 * @swagger
+	 * api/private/user/update-role/{id}:
+	 *   put:
+	 *     summary: Update role for generic user
+	 *     tags:
+	 *       - User
+	 *     security:
+	 *       - bearerAuth: []
+	 *     parameters:
+	 *       - in: path
+	 *         name: id
+	 *         required: true
+	 *         description: User ID
+	 *     requestBody:
+	 *       required: true
+	 *       content:
+	 *         application/json:
+	 *           schema:
+	 *             type: object
+	 *             properties:
+	 *               role:
+	 *                 type: string
+	 *                 enum: [Builder, Contractor]
+	 *                 example: Builder
+	 *                 required: true
+	 *     responses:
+	 *       200:
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               $ref: '#/components/schemas/UpdateRoleSuccessResponse'
+	 *       400:
+	 *         content:
+	 *           application/json:
+	 *             schema:
+	 *               $ref: '#/components/schemas/UpdateRoleErrorResponse'
+	 * components:
+	 *   schemas:
+	 *     UpdateRoleSuccessResponse:
+	 *       type: object
+	 *       properties:
+	 *         status:
+	 *           type: number
+	 *           example: 200
+	 *         success:
+	 *           type: boolean
+	 *           example: true
+	 *     UpdateRoleErrorResponse:
+	 *       type: object
+	 *       properties:
+	 *         status:
+	 *           type: number
+	 *           example: 400
+	 *           description: Error status code
+	 *         success:
+	 *           type: boolean
+	 *           example: false
+	 *         errors:
+	 *           type: array
+	 *           items:
+	 *             type: string
+	 *             example: User id is required.
 	 */
 	export {};
 
