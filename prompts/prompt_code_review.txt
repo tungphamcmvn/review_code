@@ -1,0 +1,79 @@
+Please analyze the 'code.txt' file to understand the recent modifications in a complex application built using Next.js, React.js, and MongoDB, as detailed in the 'codebase.txt' file. The application's architecture is described below, including directories and functionalities:
+
+1. README.md:
+   - Provides guidelines for setting up and running the application in development and production environments using Docker Compose.
+   - Specifies the required environment variables to be set in the .env file before starting the application.
+   - Includes instructions for starting and stopping the application in both development and production modes.
+
+2. next.config.js:
+   - Next.js configuration file that includes various settings for the application.
+   - Configures TypeScript with the option to ignore build errors.
+   - Sets up ESLint to run on specific directories and ignore errors during production builds.
+   - Configures Sass options with include paths for styles.
+   - Enables modular imports for specific libraries like @mui/material, @mui/lab, and @mui/icons-material.
+   - Sets up image optimization with remote patterns for a specific CDN domain.
+   - Defines environment variables to be used throughout the application.
+
+3. src/config.ts:
+   - Defines application-wide configuration settings.
+   - Specifies the layout type (vertical or horizontal) and drawer type (default or mini-drawer).
+   - Sets the font family using the Roboto font from Google Fonts.
+   - Configures the border radius, outlined filled style, navigation type (light or dark), preset color theme, locale, and other layout options.
+
+4. src/middleware.ts:
+   - Defines middleware functions for authentication and authorization checks.
+   - Utilizes the 'stackMiddlewares' function to apply multiple middleware functions in a specific order.
+   - Includes middleware functions such as 'withUnAuth', 'withAuth', and 'withJwt' for handling authentication and authorization.
+   - Specifies the configuration for dynamic imports and allows specific third-party modules.
+
+5. src/routes.ts:
+   - Defines route configurations for various pages and components in the application.
+   - Specifies the label, URL, and key for each route.
+   - Includes routes for authentication pages (login, register, forgot password), user-related pages (profile, user management), error pages, and other application-specific pages.
+
+6. src/auth.ts:
+   - Configures NextAuth.js authentication options.
+   - Sets up authentication providers, including credentials and Google OAuth.
+   - Defines session management options, such as strategy and maxAge.
+   - Configures JWT options for token generation and expiration.
+   - Implements callbacks for handling authentication flow, including 'jwt' and 'session' callbacks.
+   - Specifies the custom sign-in page URL.
+
+7. Additional Directories and Files:
+   - src/app: Contains Next.js page route handlers and layouts for different sections of the application (admin panel, public pages, etc.).
+   - src/backend: Houses backend logic and services.
+   - src/backend/exceptions: Defines custom exception classes for error handling.
+   - src/backend/services: Contains business logic and service classes for various functionalities like user management, roles, invoices, projects, authentication, notifications, storage, and permissions.
+   - src/backend/validator: Includes validator classes for input validation using Yup.
+   - src/backend/models: Defines Mongoose models for interacting with MongoDB.
+   - src/backend/repositories: Implements data access logic using MongoDB and the Mongoose models.
+   - src/backend/middlewares: Contains middleware functions for authentication, authorization, and JWT handling.
+   - src/components: Houses reusable UI components for different views.
+   - src/constant: Defines application-wide constants and configurations.
+   - src/contexts: Manages application state and context, such as configuration and session information.
+   - src/hooks: Provides custom React hooks for common functionalities like using configuration, local storage, asynchronous operations, and file uploads.
+   - src/layout: Contains layout components for the main application layout and its variations.
+   - src/menu-items: Defines the application's navigation menu structure.
+   - src/styles: Includes global styles, theme variables, and component-specific styles.
+   - src/types: Defines TypeScript types for various data structures and components.
+   - src/utils: Provides utility functions and helpers for tasks like cookie handling, calculations, email formatting, role checks, notifications, API calls, date/time formatting, and currency formatting.
+   - src/views: Contains client-side rendering components for different views and pages.
+   - lib/swagger: Used for generating OpenAPI Specifications for API endpoints.
+   - types/next-auth.d.ts: Contains custom field definitions for next-auth.
+
+Your analysis should result in an HTML document titled "Code review" with four distinct sections that:
+
+1. *Architecture Alignment:* Compare the 'code.txt' modifications with the described application architecture and db schema. Identify any discrepancies and suggest necessary adjustments for alignment.
+2. *Best Practices Assessment:* Evaluate the changes in 'code.txt' against Next.js, React.js coding standards. Recommend corrections and improvements for adherence to best practices
+3. *Performance and Security:* Analyze 'code.txt' for performance and security impacts within the Next.js, React.js, and MongoDB context. Offer enhancement suggestions for optimization.
+4. *Code Logic Evaluation:* Discuss the code logic based on 'code.txt', highlighting issues and improvements.
+
+
+*Note*: Your document structure must be HTML tags format and don't contain markdown format, ensuring:
+- Header must be format with h1 tag
+- Issues are highlighted with a `style="background-color:red;color:white;"`. 
+- Positive feedback is marked with a `style="background-color:green;color:white;"`.
+- Include actionable feedback, structured information, and code snippets or examples where applicable.
+
+Ensure the analysis is detailed, actionable, and presented in a structured format to aid in understanding and applying the recommendations.
+

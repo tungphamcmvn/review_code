@@ -1,316 +1,348 @@
-title:	J2C-177: API Choose user sytem role (Builder/Contractor)
-state:	OPEN
-author:	huyphamnguyen
-labels:	
-assignees:	
-reviewers:	tungphamcmvn (Requested)
-projects:	
-milestone:	
-number:	37
-url:	https://github.com/invik-33/j2c-app/pull/37
-additions:	175
-deletions:	10
---
-J2C-177: API Choose user system role (Builder/Contractor)
+// src/backend/services/company/company.service.ts
+```ts
+	import DateUTC from '@/utils/datetime/date.custom';
+	import mongoose, { Mongoose, SortOrder } from 'mongoose';
+	import CompanyDto, { Company } from '@/utils/dtos/company.dto';
+	import CompanyRepositoryInterface from '@/backend/repositories/interfaces/company.repository.interface';
+	import CompanyRepository from '@/backend/repositories/mongodb/company.repository';
+	import { generateKeyFromName, parsePayloadCompanyToCreateData } from '@/utils/helper';
+	import NotFoundException from '@/backend/exceptions/notfound.exception';
+	import { MemberInviteSource, MemberInviteStatus, Roles } from '@/utils/enums';
+	import { IMemberCompany } from '@/types/resource/company';
+	import RoleService from '@/backend/services/role.service';
+	import PaginationStruct from '@/backend/structs/pagination.struct';
+	import UserRepository from '@/backend/repositories/mongodb/user.repository';
+	import MongoConnect from '@/backend/connection/mongo.connection';
+	import StorageFactory from '@/backend/services/storage/storage.factory';
+	import { FolderName } from '@/utils/enums';
+	import UserDto from '@/utils/dtos/user.dto';
+	import RoleRepository from '@/backend/repositories/mongodb/role.repository';
+	import DuplicateException from '@/backend/exceptions/duplicate.exception';
+	
+	export default class CompanyService {
+	  protected companyRepository: CompanyRepositoryInterface;
+	  protected roleService: RoleService;
+	  protected storageFactory: StorageFactory;
+	
+	  constructor(conn: Mongoose) {
+	    this.companyRepository = new CompanyRepository(conn);
+	    this.roleService = new RoleService(conn);
+	    this.storageFactory = new StorageFactory();
+	  }
+	
+	  /** Find a company by id */
+	  async getCompany(id: string) {
+	    return await this.companyRepository.findOne({ _id: id });
+	  }
+	
+	  /** Create a builder */
+	  async createCompany(formData: FormData, currentUser: UserDto): Promise<mongoose.Document> {
+	    const data = parsePayloadCompanyToCreateData(formData);
+	    const companyDto = new CompanyDto();
+	    const defaultData = companyDto.toObject();
+	    let imageUrl = companyDto.imageUrl;
+	    let newImageUrl = null;
+	    if (data.image) {
+	      imageUrl = await this.storageFactory.getStorage().uploadFile(data.image, FolderName.COMPANY);
+	      newImageUrl = imageUrl;
+	    }
+	
+	    // create position auto increment
+	    const lastCompany: mongoose.Document<Company>[] = await this.companyRepository.findWithSort({}, { position: 'desc' }, 1);
+	    let lastIndex = 1;
+	    if (!!lastCompany && lastCompany.length > 0) {
+	      const lastItem: Company = lastCompany[0].toObject();
+	      lastIndex = Number(lastItem.position) + 1;
+	    }
+	
+	    companyDto.setData({
+	      ...defaultData,
+	      name: data.name,
+	      key: generateKeyFromName(data.name),
+	      service: data.service,
+	      type: data.type,
+	      address: data.address || '',
+	      createdBy: currentUser.toObject().id,
+	      imageUrl: imageUrl,
+	      position: lastIndex
+	    });
+	
+	    try {
+	      return await this.companyRepository.create(companyDto);
+	    } catch (error: any) {
+	      if (!!newImageUrl) {
+	        await this.storageFactory.getStorage().removeFile(newImageUrl);
+	      }
+	
+	      if (error.code === 11000) {
+	        throw new DuplicateException('Company name already exists');
+	      }
+	
+	      throw error;
+	    }
+	  }
+	
+	  /** Get company by type and name */
+	  async findCompaniesByTypeAndName(
+	    name: string,
+	    companyType: string
+	  ): Promise<{
+	    data: Company[];
+	  }> {
+	    const companyDto = new CompanyDto();
+	
+	    const filterSearch = { type: companyType, name };
+	    const companies = await this.companyRepository.find(filterSearch);
+	    const data: Company[] = [];
+	    companies.forEach((budget: mongoose.Document<Company>) => {
+	      companyDto.setData(budget.toJSON());
+	      const currentObject = companyDto.toObject() as Company;
+	      data.push(currentObject);
+	    });
+	    return {
+	      data
+	    };
+	  }
+	
+	  /** Add a user to company */
+	  async addUserToCompany(companyId: string, data: Partial<IMemberCompany>): Promise<mongoose.Document | null> {
+	    try {
+	      const company = await this.getCompany(companyId || '');
+	      if (!company) {
+	        throw new NotFoundException('Company not found');
+	      }
+	      const companyDto = new CompanyDto();
+	      const currentCompanyObj: Company = company.toObject();
+	      const currentMember = currentCompanyObj.members;
+	      const userId = data?.userId || '';
+	      const existUserOnMember = currentMember.some((c) => c.userId === userId);
+	      if (existUserOnMember) {
+	        throw new Error('User already exists in company');
+	      }
+	      let currentRole = data?.roleId || '';
+	      if (!currentRole) {
+	        const roleGeneric = await this.roleService.getRoleByFields({ name: Roles.SYSTEM_GENERIC });
+	        if (roleGeneric) {
+	          currentRole = roleGeneric.id;
+	        }
+	      }
+	
+	      currentMember.push({
+	        roleId: currentRole,
+	        userId,
+	        inviteCreatedAt: new DateUTC(),
+	        inviteSource: data?.inviteSource || MemberInviteSource.SELF_SIGNUP,
+	        inviteStatus: data?.inviteStatus || MemberInviteStatus.PENDING_SIGNUP,
+	        inviteKey: data?.inviteKey || null,
+	        inviteExpiration: data?.inviteExpiration || null,
+	        inviteUpdatedAt: null
+	      });
+	      companyDto.setData({
+	        ...currentCompanyObj,
+	        members: currentMember,
+	        dateModify: new DateUTC()
+	      });
+	      return this.companyRepository.update(companyId, companyDto);
+	    } catch (error) {
+	      throw error;
+	    }
+	  }
+	  /** Update data of a member on company */
+	  async updateFieldsUserCompany(companyId: string, data: Partial<IMemberCompany>): Promise<mongoose.Document | null> {
+	    try {
+	      const company = await this.getCompany(companyId || '');
+	      if (!company) {
+	        throw new NotFoundException('Company not found');
+	      }
+	      const companyDto = new CompanyDto();
+	      const currentCompanyObj: Company = company.toObject();
+	      const currentListMember = currentCompanyObj.members;
+	      const userId = data?.userId || '';
+	      const currentIndexMember = currentListMember.findIndex((c) => c.userId === userId);
+	      if (currentIndexMember < 0) {
+	        throw new NotFoundException('User not found');
+	      }
+	      const currentMember = currentListMember[currentIndexMember];
+	      const newListMember = [
+	        ...currentListMember.slice(0, currentIndexMember),
+	        {
+	          ...currentMember,
+	          ...data,
+	          inviteSource: data?.inviteSource || currentMember?.inviteSource || MemberInviteSource.SELF_SIGNUP,
+	          inviteStatus: data?.inviteStatus || currentMember?.inviteStatus || MemberInviteStatus.PENDING_SIGNUP,
+	          inviteKey: data?.inviteKey || currentMember?.inviteKey || null,
+	          inviteExpiration: data?.inviteExpiration || currentMember?.inviteExpiration || null,
+	          inviteCreatedAt: currentMember.inviteCreatedAt,
+	          userId,
+	          inviteUpdatedAt: new DateUTC()
+	        },
+	        ...currentListMember.slice(currentIndexMember + 1)
+	      ];
+	      companyDto.setData({
+	        ...currentCompanyObj,
+	        members: newListMember,
+	        dateModify: new DateUTC()
+	      });
+	      return this.companyRepository.update(companyId, companyDto);
+	    } catch (error) {
+	      throw error;
+	    }
+	  }
+	
+	  /**
+	   *  Get list companies by pagination
+	   *  limit: total items each page (page size)
+	   *  offset: current page (default = 0)
+	   *  order: Sort the company list by field
+	   *  search: Search compamy based on search value and company type
+	   * */
+	  async listCompany(
+	    companyType: string,
+	    limit: number,
+	    offset: number,
+	    order: { [key: string]: SortOrder },
+	    search: string
+	  ): Promise<{
+	    pagination: PaginationStruct;
+	    collection: Company[];
+	  }> {
+	    const conn = await MongoConnect();
+	    const companyDto = new CompanyDto();
+	    const userRepository = new UserRepository(conn);
+	
+	    const validOrderFields = Object.keys(companyDto);
+	
+	    for (const key in order) {
+	      if (!validOrderFields.includes(key)) {
+	        delete order[key];
+	      }
+	    }
+	
+	    if (Object.keys(order).length === 0) {
+	      order = { name: 'asc' };
+	    }
+	
+	    let filterSearch = {};
+	    if (search !== '') {
+	      filterSearch = { name: { $regex: search } };
+	    } else if (companyType !== null) {
+	      filterSearch = { type: companyType };
+	    }
+	    const total = await this.companyRepository.count(filterSearch);
+	    const companies = await this.companyRepository.findWithSort(filterSearch, order, limit, offset);
+	
+	    const collection: any[] = [];
+	
+	    for (const company of companies) {
+	      companyDto.setData({
+	        ...company.toJSON(),
+	        members: [],
+	        projectIds: []
+	      });
+	      const currentObject = companyDto.toObject() as Company;
+	
+	      // Get user info by currentObject.createdBy
+	      const user = await userRepository.findUserId(currentObject.createdBy);
+	      // convert user to object
+	      const userObj = user.toObject();
+	
+	      collection.push({
+	        ...currentObject,
+	        createdBy: userObj,
+	      });
+	    }
+	
+	    const pagination = new PaginationStruct(offset, limit, total);
+	    return {
+	      pagination,
+	      collection
+	    };
+	  }
+	
+	    /** Check key exist in the company */
+	    async checkKeyCompany(key: string): Promise<boolean> {
+	      const company = await this.companyRepository.findOne({ key });
+	      return !!company; // Convert company to boolean
+	    }
+	
+	    /**
+	   *  Get list members of companies by pagination
+	   *  limit: total items each page (page size)
+	   *  offset: current page (default = 0)
+	   *  order: Sort the company list by field
+	   * */
+	  async listCompanyMembers(
+	    companyId: string,
+	    limit: number,
+	    offset: number,
+	    order: { [key: string]: SortOrder }
+	  ): Promise<{
+	    pagination: PaginationStruct;
+	    collection: Company[];
+	  }> {
+	    const conn = await MongoConnect();
+	    const userRepository = new UserRepository(conn);
+	    const roleRepository = new RoleRepository(conn);
+	
+	    // find company by id
+	    const company = await this.companyRepository.findOne({ _id: companyId });
+	    if (!company) {
+	      throw new NotFoundException('Company not found');
+	    }
+	    // get members of company
+	    const members = company.toObject().members;
+	    const total = members.length;
+	
+	
+	    const collection: any[] = [];
+	
+	    for (const member of members) {
+	      const user = await userRepository.findUserId(member.userId);
+	      const companyRole = await roleRepository.findOne({_id: member.roleId});
+	
+	      collection.push({
+	        id: user._id,
+	        firstName: user.firstName,
+	        lastName: user.lastName,
+	        email: user.email,
+	        status: member.inviteStatus,
+	        roleName: companyRole? companyRole.toObject().name : ''
+	      });
+	    }
+	
+	    let sortBy = 'firstName'; // field to sort by
+	    let sortOrder = 'asc'; // sorting order ('asc' or 'desc')
+	
+	    // check order exists
+	    if (order) {
+	      const orderKeys = Object.keys(order);
+	      if (orderKeys.length > 0) {
+	        sortBy = orderKeys[0];
+	        sortOrder = order[sortBy].toString(); // Convert sortOrder to string
+	      }
+	    }
+	
+	    // Sorting the users array
+	    collection.sort((a, b) => {
+	      const sortFactor = sortOrder === 'asc' ? 1 : -1;
+	      if (a[sortBy] < b[sortBy]) return -1 * sortFactor;
+	      if (a[sortBy] > b[sortBy]) return 1 * sortFactor;
+	      return 0;
+	    });
+	
+	    // Calculating the start and end index for the current page
+	    const startIndex = (offset - 1) * limit;
+	    const endIndex = Math.min(startIndex + limit, collection.length);
+	
+	    // Slicing the users array based on the calculated start and end index
+	    const result = collection.slice(startIndex, endIndex);
+	
+	    const pagination = new PaginationStruct(offset, limit, total);
+	    return {
+	      pagination,
+	      collection: result
+	    };
+	  }
+	}
 
-
-diff --git a/lib/swagger/doc/user/updateRole.ts b/lib/swagger/doc/user/updateRole.ts
-new file mode 100644
-index 0000000..ab174f0
---- /dev/null
-+++ b/lib/swagger/doc/user/updateRole.ts
-@@ -0,0 +1,65 @@
-+/**
-+ * @swagger
-+ * api/private/user/update-role/{id}:
-+ *   put:
-+ *     summary: Update role for generic user
-+ *     tags:
-+ *       - User
-+ *     security:
-+ *       - bearerAuth: []
-+ *     parameters:
-+ *       - in: path
-+ *         name: id
-+ *         required: true
-+ *         description: User ID
-+ *     requestBody:
-+ *       required: true
-+ *       content:
-+ *         application/json:
-+ *           schema:
-+ *             type: object
-+ *             properties:
-+ *               role:
-+ *                 type: string
-+ *                 enum: [Builder, Contractor]
-+ *                 example: Builder
-+ *                 required: true
-+ *     responses:
-+ *       200:
-+ *         content:
-+ *           application/json:
-+ *             schema:
-+ *               $ref: '#/components/schemas/UpdateRoleSuccessResponse'
-+ *       400:
-+ *         content:
-+ *           application/json:
-+ *             schema:
-+ *               $ref: '#/components/schemas/UpdateRoleErrorResponse'
-+ * components:
-+ *   schemas:
-+ *     UpdateRoleSuccessResponse:
-+ *       type: object
-+ *       properties:
-+ *         status:
-+ *           type: number
-+ *           example: 200
-+ *         success:
-+ *           type: boolean
-+ *           example: true
-+ *     UpdateRoleErrorResponse:
-+ *       type: object
-+ *       properties:
-+ *         status:
-+ *           type: number
-+ *           example: 400
-+ *           description: Error status code
-+ *         success:
-+ *           type: boolean
-+ *           example: false
-+ *         errors:
-+ *           type: array
-+ *           items:
-+ *             type: string
-+ *             example: User id is required.
-+ */
-+export {};
-diff --git a/src/app/api/private/user/update-role/[id]/route.ts b/src/app/api/private/user/update-role/[id]/route.ts
-new file mode 100644
-index 0000000..3488fde
---- /dev/null
-+++ b/src/app/api/private/user/update-role/[id]/route.ts
-@@ -0,0 +1,71 @@
-+import { NextRequest, NextResponse } from 'next/server';
-+import MongoConnect from '@/backend/connection/mongo.connection';
-+import ResponseStruct from '@/backend/structs/response.struct';
-+import UserRepository from '@/backend/repositories/mongodb/user.repository';
-+import UserDto from '@/utils/dtos/user.dto';
-+import NotFoundException from '@/backend/exceptions/notfound.exception';
-+import { RoleType, Roles } from '@/utils/enums';
-+import DateCustom from '@/utils/datetime/date.custom';
-+import Logger from '@/utils/logger';
-+import RoleService from '@/backend/services/role.service';
-+
-+export async function PUT(request: NextRequest, { params }: { params: { id: string } }) {
-+  const data: { role: RoleType } = await request.json();
-+  const responseStruct = new ResponseStruct(true);
-+
-+  if (!params.id) {
-+    responseStruct.setStatus(400);
-+    responseStruct.pushError('User id is required.');
-+
-+    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-+  }
-+
-+  if (data.role !== RoleType.BUILDER && data.role !== RoleType.CONTRACTOR) {
-+    responseStruct.setStatus(400);
-+    responseStruct.pushError('Allowed role are Contractor or Builder.');
-+
-+    return NextResponse.json(responseStruct.getResponse(), { status: 400 });
-+  }
-+
-+  const conn = await MongoConnect();
-+  const userRepository = new UserRepository(conn);
-+  const roleService = new RoleService(conn);
-+  try {
-+    const user: UserDto = await userRepository.findUserId(params.id);
-+
-+    if (!user) {
-+      throw new NotFoundException('User not found.');
-+    }
-+
-+    if (!user.emailConfirmed) {
-+      throw new Error('Please confirm your email to update the role');
-+    }
-+
-+    const roleName = data.role === RoleType.BUILDER ? Roles.SYSTEM_GENERIC_BUILDER : Roles.SYSTEM_GENERIC_CONTRACTOR;
-+    const detailRole = await roleService.getRoleByFields({ name: roleName });
-+    if (!detailRole) {
-+      throw new NotFoundException('Role not found.');
-+    }
-+
-+    await userRepository.update(params.id, {
-+      systemRole: detailRole.id,
-+      dateModify: new DateCustom()
-+    });
-+
-+    return NextResponse.json({ success: true }, { status: 200 });
-+  } catch (error: any) {
-+    responseStruct.setStatus(500);
-+
-+    if (error instanceof NotFoundException) {
-+      responseStruct.setStatus(404);
-+    }
-+
-+    responseStruct.pushError(error.message);
-+
-+    Logger.error(error.message, {
-+      status: responseStruct.getValue('status'),
-+      stack: error.stack
-+    });
-+    return NextResponse.json(responseStruct.getResponse(), { status: responseStruct.getValue('status') });
-+  }
-+}
-diff --git a/src/app/api/public/auth/register/route.ts b/src/app/api/public/auth/register/route.ts
-index 89f14a3..779631f 100644
---- a/src/app/api/public/auth/register/route.ts
-+++ b/src/app/api/public/auth/register/route.ts
-@@ -7,7 +7,7 @@ import ResponseStruct from '@/backend/structs/response.struct';
- import Logger from '@/utils/logger';
- 
- export async function POST(request: NextRequest) {
--  const data: { email: string; password: string; firstName: string; lastName: string } = await request.json();
-+  const data: { email: string; password: string; firstName: string; lastName: string; systemRoleId?: string } = await request.json();
- 
-   const conn = await MongoConnect();
-   const authService = new AuthService(conn);
-@@ -39,7 +39,8 @@ export async function POST(request: NextRequest) {
-       false,
-       UserStatus.INACTIVE,
-       data.password,
--      null
-+      null,
-+      data.systemRoleId
-     );
- 
-     await authService.sendEmailConfirmation(user.get('_id').valueOf(), user.get('email'), `${data.firstName} ${data.lastName}`);
-diff --git a/src/backend/services/auth.service.ts b/src/backend/services/auth.service.ts
-index 8e24289..15c5713 100644
---- a/src/backend/services/auth.service.ts
-+++ b/src/backend/services/auth.service.ts
-@@ -2,7 +2,7 @@ import UserRepository from '@/backend/repositories/mongodb/user.repository';
- import mongoose, { Mongoose } from 'mongoose';
- import UserDto from '@/utils/dtos/user.dto';
- import DateCustom from '@/utils/datetime/date.custom';
--import { UserStatus } from '@/utils/enums';
-+import { Roles, UserStatus } from '@/utils/enums';
- import NotificationService from '@/backend/services/notification.service';
- import SmtpProvider from '@/backend/services/observer/providers/smtp.provider';
- import { render } from '@react-email/render';
-@@ -12,14 +12,17 @@ import { NextRequest } from 'next/server';
- import { getToken } from 'next-auth/jwt';
- import UserRepositoryInterface from '@/backend/repositories/interfaces/user.repository.interface';
- import PermissionLoaderFactory from '@/backend/services/permission/factory/permission.loader.factory';
-+import RoleService from './role.service';
- 
- export default class AuthService {
-   private confirmationEndpoint: string = 'auth/confirm-email';
-   protected userRepository: UserRepositoryInterface;
-+  protected roleService: RoleService;
-   protected conn: Mongoose;
- 
-   constructor(conn: Mongoose) {
-     this.userRepository = new UserRepository(conn);
-+    this.roleService = new RoleService(conn);
-     this.conn = conn;
-   }
- 
-@@ -40,7 +43,8 @@ export default class AuthService {
-     emailConfirmed: boolean,
-     status: UserStatus,
-     password: string | null = null,
--    imageUrl: string | null = null
-+    imageUrl: string | null = null,
-+    systemRoleId = ''
-   ): Promise<mongoose.Document> {
-     const userDto = new UserDto();
- 
-@@ -51,7 +55,13 @@ export default class AuthService {
-       passwordHash = await bcrypt.hash(password, 10);
-     }
-     const date = new DateCustom().toISOString();
--
-+    let userRoleId = systemRoleId;
-+    if (systemRoleId === '') {
-+      const systemGenericRole = await this.roleService.getRoleByFields({ name: Roles.SYSTEM_GENERIC });
-+      if (systemGenericRole) {
-+        userRoleId = systemGenericRole.id;
-+      }
-+    }
-     userDto.setData({
-       email,
-       firstName,
-@@ -69,7 +79,8 @@ export default class AuthService {
-       selectedContractorId: null,
-       selectedBuilderId: null,
-       dateCreate: date,
--      dateModify: date
-+      dateModify: date,
-+      systemRole: userRoleId
-     });
- 
-     return await this.userRepository.create(userDto);
-diff --git a/src/backend/services/permission/fixture/j2cdev.permissions.json b/src/backend/services/permission/fixture/j2cdev.permissions.json
-index 8ce1161..64b335f 100644
---- a/src/backend/services/permission/fixture/j2cdev.permissions.json
-+++ b/src/backend/services/permission/fixture/j2cdev.permissions.json
-@@ -10,7 +10,9 @@
-       }
-     ],
-     "roleIds": [
--      { "roleId": "661d4d8414004d29a20e7673" }
-+      { "roleId": "661d4d8414004d29a20e7673" },
-+      { "roleId": "6625361cb50944b2043d5e23" },
-+      { "roleId": "662536241f7230f4fbf2db0a" }
-     ],
-     "dateCreate": "2017-01-01T00:00:00.000Z",
-     "dateModify": "2017-01-01T00:00:00.000Z",
-@@ -22,8 +24,8 @@
-     "description": "Update Profile Role To Generic Contractor Or Generic Builder",
-     "urls": [
-       {
--        "url": "/api/private/user/{id}/update-role",
--        "method": "PATCH"
-+        "url": "/api/private/user/update-role/{id}",
-+        "method": "PUT"
-       }
-     ],
-     "roleIds": [
-diff --git a/src/backend/services/role.service.ts b/src/backend/services/role.service.ts
-index 85fbd3c..1c7e057 100644
---- a/src/backend/services/role.service.ts
-+++ b/src/backend/services/role.service.ts
-@@ -191,4 +191,16 @@ export default class RoleService {
-       await this.roleRepository.create(role);
-     }
-   }
-+  /** Get a role by some fields (name, id) */
-+  async getRoleByFields(fields: Partial<RoleType>): Promise<(RoleType & { id: string }) | null> {
-+    const role = await this.roleRepository.findOne(fields);
-+    if (!role) {
-+      return null;
-+    }
-+
-+    const data = new RoleDto();
-+    data.setData(role.toJSON());
-+    const currentObject = data.toObject() as RoleType & { id: string };
-+    return currentObject;
-+  }
- }
-diff --git a/src/utils/enums.ts b/src/utils/enums.ts
-index 36cfd50..d2d45a5 100644
---- a/src/utils/enums.ts
-+++ b/src/utils/enums.ts
-@@ -41,7 +41,10 @@ export enum Roles {
-   BUILDER_ACCOUNT_PAYABLE = 'Builder/Account Payable',
-   CONTRACTOR_ADMIN = 'Contractor/Admin',
-   CONTRACTOR_BASIC = 'Contractor/Basic',
--  CONTRACTOR_WORKER = 'Contractor/Worker'
-+  CONTRACTOR_WORKER = 'Contractor/Worker',
-+  SYSTEM_GENERIC = 'System/Generic',
-+  SYSTEM_GENERIC_CONTRACTOR = 'System/Generic Contractor',
-+  SYSTEM_GENERIC_BUILDER = 'System/Generic Builder'
- }
- 
- export enum Permission {
+```
