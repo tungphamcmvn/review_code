@@ -81,6 +81,10 @@
 	      {
 	        protocol: 'https',
 	        hostname: 'j2ccdn.tnodes.com'
+	      },
+	      {
+	        protocol: 'https',
+	        hostname: 'j2ccf.tnodes.com'
 	      }
 	    ]
 	  },
@@ -112,14 +116,14 @@
 	    return [
 	      {
 	        source: '/:company_key/:project_key/admin/:slug*',
-	        destination: '/:slug*?company_key=:company_key&project_key=:project_key',
+	        destination: '/:slug*?company_key=:company_key&project_key=:project_key'
 	      },
 	      {
 	        source: '/:company_key/admin/:slug*',
-	        destination: '/:slug*?company_key=:company_key',
-	      },
-	    ]
-	  },
+	        destination: '/:slug*?company_key=:company_key'
+	      }
+	    ];
+	  }
 	};
 
 ```
@@ -4007,7 +4011,6 @@
 	import StorageFactory from '@/backend/services/storage/storage.factory';
 	import { FolderName } from '@/utils/enums';
 	import UserDto from '@/utils/dtos/user.dto';
-	import RoleRepository from '@/backend/repositories/mongodb/role.repository';
 	import DuplicateException from '@/backend/exceptions/duplicate.exception';
 	
 	export default class CompanyService {
@@ -4271,33 +4274,37 @@
 	    pagination: PaginationStruct;
 	    collection: Company[];
 	  }> {
-	    const conn = await MongoConnect();
-	    const userRepository = new UserRepository(conn);
-	    const roleRepository = new RoleRepository(conn);
-	
 	    // find company by id
 	    const company = await this.companyRepository.findOne({ _id: companyId });
 	    if (!company) {
 	      throw new NotFoundException('Company not found');
 	    }
-	    // get members of company
-	    const members = company.toObject().members;
-	    const total = members.length;
 	
+	    interface CompanyWithMembers extends Company {
+	      members: any[];
+	    }
+	    // get members of company
+	    const comapnyMembers = await company.populate({
+	      path: 'members',
+	      populate: [
+	        { path: 'userId' },
+	        { path: 'roleId' }
+	      ]
+	    }) as CompanyWithMembers;
+	    const members = comapnyMembers.members;
+	
+	    const total = members.length;
 	
 	    const collection: any[] = [];
 	
 	    for (const member of members) {
-	      const user = await userRepository.findUserId(member.userId);
-	      const companyRole = await roleRepository.findOne({_id: member.roleId});
-	
 	      collection.push({
-	        id: user._id,
-	        firstName: user.firstName,
-	        lastName: user.lastName,
-	        email: user.email,
+	        id: member._id,
+	        firstName: member.userId.firstName,
+	        lastName: member.userId.lastName,
+	        email: member.userId.email,
 	        status: member.inviteStatus,
-	        roleName: companyRole? companyRole.toObject().name : ''
+	        roleName: member.roleId.name,
 	      });
 	    }
 	
@@ -7243,6 +7250,7 @@
 	import routes from '@/routes';
 	
 	import { UserCircleGear, Buildings, Briefcase, Gauge } from '@phosphor-icons/react';
+	import { PermissionKey } from '@/utils/enums';
 	
 	// ==============================|| EXTRA PAGES MENU ITEMS ||============================== //
 	
@@ -7262,21 +7270,24 @@
 	      title: <FormattedMessage id="projects" />,
 	      icon: Briefcase,
 	      type: 'item',
-	      url: routes.projects.getUrl()
+	      url: routes.projects.getUrl(),
+	      permissionKey: PermissionKey.VIEW_PROJECT
 	    },
 	    {
 	      id: routes.builderCompany.key,
 	      title: <FormattedMessage id="builderComp" />,
 	      icon: Buildings,
 	      type: 'item',
-	      url: routes.builderCompany.getUrl()
+	      url: routes.builderCompany.getUrl(),
+	      permissionKey: PermissionKey.VIEW_LIST_COMPANIES_SIGN_UP
 	    },
 	    {
 	      id: routes.contractorCompany.key,
 	      title: <FormattedMessage id="contractorComp" />,
 	      icon: Buildings,
 	      type: 'item',
-	      url: routes.contractorCompany.getUrl()
+	      url: routes.contractorCompany.getUrl(),
+	      permissionKey: PermissionKey.VIEW_LIST_COMPANIES_SIGN_UP
 	    },
 	    {
 	      id: 'user',
@@ -7290,7 +7301,8 @@
 	      title: <FormattedMessage id="contractorProjects" />,
 	      icon: Briefcase,
 	      type: 'item',
-	      url: routes.contractorProjects.getUrl()
+	      url: routes.contractorProjects.getUrl(),
+	      permissionKey: PermissionKey.VIEW_CONTRACTORS_LIST_OF_PROJECTS
 	    }
 	  ]
 	};
@@ -7493,6 +7505,7 @@
 	  service: string;
 	  type?: string;
 	  image?: File;
+	  status?: string;
 	}
 	
 	export interface IRequestCreateBuilderCompany {
@@ -8160,6 +8173,7 @@
 // src/types/auth.ts
 ```ts
 	// types
+	import { Scope } from '@/utils/enums';
 	import { UserProfile } from 'types/user-profile';
 	
 	// ==============================|| TYPES - AUTH ||============================== //
@@ -8185,12 +8199,29 @@
 	  user?: UserProfile | null | undefined;
 	}
 	
+	export interface IRolePermission {
+	  scope: Scope;
+	  urlsCanAccess: IUrlCanAccess[];
+	}
+	
+	export interface IUrlCanAccess {
+	  url: string;
+	  method: string;
+	  roleId: string;
+	  roleKey: string;
+	  roleName: string;
+	  permissionId: string;
+	  permissionName: string;
+	  permissionKey: string;
+	  checkExactlyMatchedUrl: boolean;
+	}
 	export interface ISessionCompanyStatus {
 	  id: string;
-	  userRoleId: string  
+	  userRoleId: string;
 	  companyName: string;
 	  inviteStatus: string;
 	}
+
 ```
 
 // src/types/link.ts
@@ -8321,6 +8352,7 @@
 	  children?: NavItemType[];
 	  elements?: NavItemType[];
 	  search?: string;
+	  permissionKey?: string;
 	};
 	
 	export type AuthSliderProps = {
@@ -9694,6 +9726,9 @@
 	
 	import styles from './styles.module.scss';
 	import Footer from './Footer';
+	import { permissionActions } from '@/store/slices/permissions';
+	import { useAccountSelector } from '@/store/slices/account';
+	import useListingAcl from '@/hooks/useListingAcl';
 	
 	interface MainStyleProps {
 	  theme: Theme;
@@ -9765,6 +9800,16 @@
 	  const { drawerOpen } = useSelector((state) => state.menu);
 	  const { drawerType, container, layout } = useConfig();
 	
+	  const { acl } = useListingAcl();
+	  const { user } = useAccountSelector();
+	
+	  const fetchListPermissions = async (userId: string, companyKey?: string) => {
+	    const permissions = await acl(userId, companyKey);
+	    if (permissions?.data.data) {
+	      dispatch(permissionActions.addPermissions(permissions?.data?.data || []));
+	    }
+	  };
+	
 	  useEffect(() => {
 	    if (drawerType === LAYOUT_CONST.DEFAULT_DRAWER) {
 	      dispatch(openDrawer(true));
@@ -9799,6 +9844,13 @@
 	    // eslint-disable-next-line react-hooks/exhaustive-deps
 	    [layout, matchDownMd]
 	  );
+	
+	  useEffect(() => {
+	    if (user?.id) {
+	      fetchListPermissions(user.id, user?.selectedCompany?.key);
+	    }
+	    // eslint-disable-next-line react-hooks/exhaustive-deps
+	  }, [user?.id, user?.selectedCompany]);
 	
 	  return (
 	    <Box sx={{ display: 'flex' }}>
@@ -9892,12 +9944,14 @@
 	
 	// types
 	import { NavItemType } from 'types';
+	import usePermission from '@/hooks/usePermission';
 	
 	// ==============================|| SIDEBAR MENU LIST ||============================== //
 	
 	const MenuList = () => {
 	  const theme = useTheme();
 	  const matchDownMd = useMediaQuery(theme.breakpoints.down('md'));
+	  const { isAllowPermission } = usePermission();
 	  const { layout } = useConfig();
 	  const { drawerOpen } = useSelector((state) => state.menu);
 	
@@ -9922,8 +9976,12 @@
 	  }
 	
 	  const navItems = menuItem.items.slice(0, lastItemIndex + 1).map((item) => {
+	    const isShow = item.permissionKey ? isAllowPermission(item.permissionKey) : true;
 	    switch (item.type) {
 	      case 'group':
+	        if (!isShow) {
+	          return null;
+	        }
 	        if (item.url && item.id !== lastItemId) {
 	          return (
 	            <List
@@ -17732,6 +17790,8 @@
 	  height: 32
 	};
 	
+	export const EMPTY_IMAGE = '/assets/images/placeholder.svg';
+	
 	export const AVATAR_DEFAULT_URL = '/assets/images/users/user-round.svg';
 	
 	// AUTH STATUS
@@ -19347,6 +19407,7 @@
 	import snackbarReducer from './slices/snackbar';
 	import menuReducer from './slices/menu';
 	import accountReducer from './slices/account';
+	import permissionReducer from './slices/permissions';
 	
 	// ==============================|| COMBINE REDUCER ||============================== //
 	
@@ -19360,7 +19421,8 @@
 	    },
 	    menuReducer
 	  ),
-	  account: accountReducer
+	  account: accountReducer,
+	  permission: permissionReducer
 	});
 	
 	export default reducer;
@@ -19606,6 +19668,46 @@
 	    }
 	  };
 	}
+
+```
+
+// src/store/slices/permissions.ts
+```ts
+	// third-party
+	import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+	
+	// store
+	import { useSelector, RootState } from '../index';
+	import { IRolePermission } from '@/types/auth';
+	
+	// initial state
+	const initialState: { permission: IRolePermission[] } = {
+	  permission: []
+	};
+	
+	// ==============================|| SLICE - MENU ||============================== //
+	
+	const permission = createSlice({
+	  name: 'permission',
+	  initialState,
+	  reducers: {
+	    addPermissions(state, action: PayloadAction<IRolePermission[]>) {
+	      state.permission = action.payload;
+	    },
+	
+	    clearPermission(state) {
+	      state.permission = [];
+	    }
+	  }
+	});
+	
+	export default permission.reducer;
+	export const permissionActions = permission.actions;
+	export const permissionsSelector = (state: RootState) => state.permission || [];
+	export const usePermissionSelector = () => {
+	  const data = useSelector(permissionsSelector);
+	  return data;
+	};
 
 ```
 
@@ -24153,15 +24255,16 @@
 	const useListingAcl = () => {
 	  const { isLoading, request, ...rest } = useAsync();
 	
-	  const acl = async (userId: string, companyKey: string) => {
-	    if (!userId || !companyKey) {
+	  const acl = async (userId: string, companyKey?: string, projectKey?: string) => {
+	    if (!userId) {
 	      return;
 	    }
 	
 	    return await request(
 	      aclListing({
 	        userId,
-	        companyKey
+	        companyKey,
+	        projectKey
 	      })
 	    );
 	  };
@@ -24408,6 +24511,56 @@
 
 ```
 
+// src/hooks/usePermission.ts
+```ts
+	import { usePermissionSelector } from '@/store/slices/permissions';
+	import { Scope } from '@/utils/enums';
+	import { useCallback } from 'react';
+	
+	/**
+	 *
+	 * @param permissionName : endpoint on util/api.ts
+	 * @param scope
+	 * @returns
+	 */
+	
+	const scopePriority = [Scope.PROJECT, Scope.COMPANY, Scope.SYSTEM];
+	
+	const usePermission = () => {
+	  const { permission } = usePermissionSelector();
+	
+	  const isCheckPermissionScope = (key: string, scopeName: string) => {
+	    const scopePermission = permission.find((s) => s.scope === scopeName);
+	    if (!scopePermission || scopePermission.urlsCanAccess.length === 0) {
+	      return false;
+	    }
+	    return scopePermission.urlsCanAccess.some((item) => item.permissionKey === key);
+	  };
+	  const isAllowPermission = useCallback(
+	    (permissionKey: string) => {
+	      if (permission.length === 0) {
+	        return false;
+	      }
+	      let checkPermission = false;
+	      scopePriority.forEach((s) => {
+	        if (!checkPermission) {
+	          checkPermission = isCheckPermissionScope(permissionKey, s);
+	        }
+	      });
+	      return checkPermission;
+	    }, // eslint-disable-next-line react-hooks/exhaustive-deps
+	    [permission]
+	  );
+	
+	  return {
+	    isAllowPermission
+	  };
+	};
+	
+	export default usePermission;
+
+```
+
 // src/hooks/useCommonValidates.ts
 ```ts
 	import { useIntl } from 'react-intl';
@@ -24563,27 +24716,36 @@
 	  SYSTEM_GENERIC_BUILDER = 'System/Generic Builder'
 	}
 	
-	export enum Permission {
-	  VIEW_BUILDER = 'View Builder Profile',
-	  EDIT_BUILDER = 'Edit Builder Profile',
-	  EDIT_BUILDER_ROLES = 'Edit Builder Roles',
-	  VIEW_BUILDER_LIST_OF_PROJECTS = 'View Builder List of Projects',
-	  CREATE_PROJECT = 'Create Project Profile',
-	  VIEW_PROJECT = 'View Project Profile',
-	  EDIT_PROJECT = 'Edit Project Profile',
-	  DELETE_PROJECT = 'Delete Project Profile',
-	  EDIT_PROJECT_ROLES = 'Edit Project Roles',
-	  VIEW_PROJECT_INVOICES = 'View Project Invoices',
-	  EDIT_PROJECT_INVOICES = 'Edit Project Invoices',
-	  VIEW_PROJECT_BUDGETS = 'View Project Budgets',
-	  EDIT_CONTRACTOR = 'Edit Contractor Profile',
-	  VIEW_CONTRACTOR_LIST_OF_PROJECTS = 'View Contractor’s List of Projects',
-	  EDIT_CONTRACTOR_ROLES = 'Edit Contractor Roles',
-	  EDIT_CONTRACTOR_INVOICES = 'Edit Contractor’s Invoices on Project page',
-	  VIEW_CONTRACTOR = 'View Contractor Profile',
-	  VIEW_ASSIGNED_PROJECT = 'View assigned Project',
-	  VIEW_LIST_COMPANIES = 'View list Companies',
-	  CREATE_CONTRACTOR_COMPANY = 'Create Contractor Company'
+	export enum PermissionKey {
+	  CREATE_BUILDER_COMPANY = 'create_builder_company',
+	  CREATE_CONTRACTOR_COMPANY = 'create_contractor_company',
+	  CREATE_PROJECT_PROFILE = 'create_project_profile',
+	  DELETE_PROJECT_PROFILE = 'delete_project_profile',
+	  EDIT_BUILDER_PROFILE = 'edit_builder_profile',
+	  EDIT_BUILDER_ROLES = 'edit_builder_roles',
+	  EDIT_CONTRACTOR_PROFILE = 'edit_contractor_profile',
+	  EDIT_CONTRACTOR_ROLES = 'edit_contractor_roles',
+	  EDIT_CONTRACTORS_INVOICES_ON_PROJECT_PAGE = 'edit_contractors_invoices_on_project_page',
+	  EDIT_PROJECT_INVOICES = 'edit_project_invoices',
+	  EDIT_PROJECT_PROFILE = 'edit_project_profile',
+	  EDIT_PROJECT_ROLES = 'edit_project_roles',
+	  JOIN_TO_COMPANY = 'join_to_company',
+	  UPDATE_INVITE_STATUS_USER = 'update_invite_status_user',
+	  UPDATE_PROFILE = 'update_profile',
+	  UPDATE_PROFILE_ROLE = 'update_profile_role',
+	  UPDATE_USER_PROFILE_COMPANY = 'update_user_profile_company',
+	  VIEW_ASSIGNED_PROJECT = 'view_assigned_project',
+	  VIEW_BUILDER_LIST_OF_PROJECTS = 'view_builder_list_of_projects',
+	  VIEW_BUILDER_PROFILE = 'view_builder_profile',
+	  VIEW_CONTRACTOR_PROFILE = 'view_contractor_profile',
+	  VIEW_CONTRACTORS_LIST_OF_PROJECTS = 'view_contractors_list_of_projects',
+	  VIEW_LIST_COMPANIES = 'view_list_companies',
+	  VIEW_LIST_COMPANIES_SIGN_UP = 'view_list_companies_sign_up',
+	  VIEW_PROFILE = 'view_profile',
+	  VIEW_PROJECT = 'view_project',
+	  VIEW_PROJECT_BUDGETS = 'view_project_budgets',
+	  VIEW_PROJECT_INVOICES = 'view_project_invoices',
+	  VIEW_PROJECT_PROFILE = 'view_project_profile'
 	}
 	
 	export enum RoleType {
@@ -24769,7 +24931,7 @@
 ```ts
 	const APIS = {
 	  /** ROLES */
-	  GET_ROLE_PERMISSION: 'private/user/:id/get-role-permission',
+	  GET_ROLE_PERMISSION: 'private/user/{id}/get-role-permission',
 	
 	  /** AUTH */
 	  REGISTER: 'public/auth/register',
@@ -24781,14 +24943,14 @@
 	  /** BUDGET */
 	  GET_BUDGETS: 'private/budget/list',
 	  CREATE_BUDGET: 'private/budget/create',
-	  DELETE_BUDGET: 'private/budget/delete',
+	  DELETE_BUDGET: 'private/budget/delete/{id}',
 	
 	  /** BUILDER */
 	  GET_BUILDERS: 'private/builder/list',
 	  CREATE_BUILDER: 'private/builder/create',
-	  UPDATE_BUILDER: 'private/builder/update',
-	  DELETE_BUILDER: 'private/builder/delete',
-	  GET_BUILDER: 'private/builder/:id',
+	  UPDATE_BUILDER: 'private/builder/update/{id}',
+	  DELETE_BUILDER: 'private/builder/delete/{id}',
+	  GET_BUILDER: 'private/builder/{id}',
 	
 	  /** COMPANY */
 	  GET_COMPANIES: 'private/company/list',
@@ -24799,24 +24961,25 @@
 	  UPDATE_COMPANY: 'private/company/{id}/update',
 	  CHECK_KEY_COMPANY: 'private/company/create/check-key-company',
 	  GET_LIST_MEMBERS: 'private/company/members',
-	  GET_LIST_COMPANY_MEMBERS: 'private/company/:id/members',
+	  GET_LIST_COMPANY_MEMBERS: 'private/company/{id}/members',
+	  GET_COMPANY: 'private/company/{id}',
 	
 	  /** CONTRACTOR */
 	  GET_CONTRACTORS: 'private/contractor/list',
 	  CREATE_CONTRACTOR: 'private/contractor/create',
-	  UPDATE_CONTRACTOR: 'private/contractor/update',
-	  DELETE_CONTRACTOR: 'private/contractor/delete',
+	  UPDATE_CONTRACTOR: 'private/contractor/update/{id}',
+	  DELETE_CONTRACTOR: 'private/contractor/delete/{id}',
 	
 	  /** PROJECT */
 	  GET_PROJECTS: 'private/project/list',
 	  CREATE_PROJECT: 'private/project/create',
-	  GET_PROJECT_DETAIL: 'private/project/:id',
-	  UPDATE_PROJECT: 'private/project/update',
-	  DELETE_PROJECT: 'private/project/delete',
+	  GET_PROJECT_DETAIL: 'private/project/{id}',
+	  UPDATE_PROJECT: 'private/project/update/{id}',
+	  DELETE_PROJECT: 'private/project/delete/{id}',
 	
 	  /** PROFILE */
-	  UPDATE_PROFILE: 'private/profile/update/:id',
-	  CHANGE_PASSWORD: 'private/profile/change-password/:id',
+	  UPDATE_PROFILE: 'private/profile/update/{id}',
+	  CHANGE_PASSWORD: 'private/profile/change-password/{id}',
 	  GET_PROFILE: 'private/profile',
 	
 	  /** UPLOAD */
@@ -24824,15 +24987,15 @@
 	
 	  /** USER */
 	  GET_USERS: 'private/user/list',
-	  GET_USER_DETAIL: 'private/user/:id',
-	  GET_USER_COMPANY: 'private/user/:id/company',
+	  GET_USER_DETAIL: 'private/user/{id}',
+	  GET_USER_COMPANY: 'private/user/{id}/company',
 	  CREATE_USER: 'private/user/create',
 	  BULK_CONTROL_USER: 'private/user/bulk-control',
 	  UPDATE_USER: 'private/user/update',
-	  UPDATE_USER_ROLE: 'private/user/update-role',
-	  JOIN_TO_COMPANY: 'private/user/join-to-company',
-	  UPDATE_USER_STATUS_COMPANY: 'private/user/update-company-status',
-	  UPDATE_USER_PROFILE_COMPANY: 'private/user/update-company-profile',
+	  UPDATE_USER_ROLE: 'private/user/update-role/{id}',
+	  JOIN_TO_COMPANY: 'private/user/join-to-company/{id}',
+	  UPDATE_USER_STATUS_COMPANY: 'private/user/update-company-status/{id}',
+	  UPDATE_USER_PROFILE_COMPANY: 'private/user/update-company-profile/{id}',
 	  CREATE_CONTRACTOR_COMPANY: 'private/user/create-contractor-company',
 	  DELETE_USER: 'private/user/delete',
 	
@@ -24841,15 +25004,14 @@
 	  IMPORT_PROJECT_BUDGET: 'private/projects/import-project-budget',
 	  UPSERT_INVOICE: 'private/invoices/upsert',
 	  UPDATE_PROJECT_CONTRACTORS: 'private/projects/update-project-contractors',
-	  GET_PROJECT_ROLES: 'private/project/:id/roles',
-	  GET_PROJECT_CONTRACTORS: 'private/project/:id/contractors',
+	  GET_PROJECT_ROLES: 'private/project/{id}/roles',
+	  GET_PROJECT_CONTRACTORS: 'private/project/{id}/contractors',
 	  GET_CONTRACTOR_PROJECTS: 'private/contractor-project/list',
 	  CREATE_CONTRACTOR_PROJECT: 'private/contractor-project/create',
-	  GET_CONTRACTOR_PROJECT: 'private/contractor-project/:id',
-	  GET_CONTRACTOR_PROJECT_INVOICES: 'private/contractor-project/:id/invoices',
-	  GET_PROJECT_INVOICES: 'private/project/:id/invoices',
-	  GET_SERVICES: '/service/list',
-	  GET_COMPANY: 'private/company/:id'
+	  GET_CONTRACTOR_PROJECT: 'private/contractor-project/{id}',
+	  GET_CONTRACTOR_PROJECT_INVOICES: 'private/contractor-project/{id}/invoices',
+	  GET_PROJECT_INVOICES: 'private/project/{id}/invoices',
+	  GET_SERVICES: '/service/list'
 	};
 	
 	export default APIS;
@@ -25362,12 +25524,12 @@
 	/**
 	 * @summary: (method: POST) Get acl of user in company and projects
 	 */
-	export const aclListing = async (params: { userId: string; companyKey: string }) => {
+	export const aclListing = async (params: { userId: string; companyKey?: string, projectKey?: string }) => {
 	  return axios.post(
-	    endPoints.GET_ROLE_PERMISSION.replace(':id', params.userId),
+	    endPoints.GET_ROLE_PERMISSION.replace('{id}', params.userId),
 	    {
-	      userId: params.userId,
-	      companyKey: params.companyKey
+	      companyKey: params.companyKey,
+	      projectKey: params.projectKey
 	    },
 	    {
 	      headers: {
@@ -25422,6 +25584,7 @@
 	  if (payload.address) formData.append('address', payload.address);
 	  if (payload.image) formData.append('image', payload.image);
 	  if (payload.type) formData.append('type', payload.type);
+	  if (payload.status) formData.append('status', payload.status);
 	
 	  return await axios.patch(endPoints.UPDATE_COMPANY.replace('{id}', id), formData);
 	};
@@ -25430,7 +25593,7 @@
 	 * @summary: (method: GET) get a company
 	 */
 	export const getCompany = async (id: string): Promise<ICompany> => {
-	  return axios.get(endPoints.GET_COMPANY.replace(':id', id)).then((res) => {
+	  return axios.get(endPoints.GET_COMPANY.replace('{id}', id)).then((res) => {
 	    return res?.data;
 	  });
 	};
@@ -25439,7 +25602,7 @@
 	 * @summary: (method: GET) get a members by company id
 	 */
 	export const getMembersByCompany = async (companyId: string, params?: IRequestFilterUsersCompany): Promise<User[]> => {
-	  const endPoint = endPoints.GET_LIST_COMPANY_MEMBERS.replace(':id', companyId);
+	  const endPoint = endPoints.GET_LIST_COMPANY_MEMBERS.replace('{id}', companyId);
 	  const query = !isEmpty(params) ? generateQueryFromFilter(endPoint, params) : endPoint;
 	  return axios.get(query).then((res) => {
 	    return res?.data?.data;
@@ -25522,11 +25685,11 @@
 	  !!payload?.completionStatus && formData.append('completionStatus', payload.completionStatus);
 	  !!payload?.category && formData.append('category', payload.category);
 	  !!payload?.image && formData.append('image', payload.image);
-	  return await axiosServices.put<IResponseUpdateBuilder>(`${endPoints.UPDATE_BUILDER}/${id}`, formData);
+	  return await axiosServices.put<IResponseUpdateBuilder>(endPoints.UPDATE_BUILDER.replace('{id}', id), formData);
 	};
 	/** API delete a budget by id */
 	export const deleteBuilder = async (id: string) => {
-	  return await axiosServices.delete<IResponseDeleteBuilder>(`${endPoints.DELETE_BUILDER}/${id}`);
+	  return await axiosServices.delete<IResponseDeleteBuilder>(endPoints.DELETE_BUILDER.replace('{id}', id));
 	};
 
 ```
@@ -25596,11 +25759,11 @@
 	};
 	/** API update a contractor by id */
 	export const updateContractor = async (id: string, payload: FormData) => {
-	  return await axiosServices.put<IResponseUpdateContractor>(`${endPoints.UPDATE_CONTRACTOR}/${id}`, payload);
+	  return await axiosServices.put<IResponseUpdateContractor>(endPoints.UPDATE_CONTRACTOR.replace('{id}', id), payload);
 	};
 	/** API delete a contractor by id */
 	export const deleteContractor = async (id: string) => {
-	  return await axiosServices.delete<IResponseDeleteContractor>(`${endPoints.DELETE_CONTRACTOR}/${id}`);
+	  return await axiosServices.delete<IResponseDeleteContractor>(endPoints.DELETE_CONTRACTOR.replace('{id}', id));
 	};
 
 ```
@@ -25654,14 +25817,14 @@
 	 * @summary: (method: GET) Get a project detail by id
 	 */
 	export const getProject = async (id: string): Promise<Project> => {
-	  return axios.get(endPoints.GET_CONTRACTOR_PROJECT.replace(':id', id));
+	  return axios.get(endPoints.GET_CONTRACTOR_PROJECT.replace('{id}', id));
 	};
 	
 	/**
 	 * @summary: (method: GET) Get a invoices of project
 	 */
 	export const getProjectInvoices = async (id: string): Promise<IInvoice[]> => {
-	  return axios.get(endPoints.GET_PROJECT_INVOICES.replace(':id', id));
+	  return axios.get(endPoints.GET_PROJECT_INVOICES.replace('{id}', id));
 	};
 
 ```
@@ -25685,7 +25848,7 @@
 	};
 	/** API delete a budget by id */
 	export const deleteBudget = async (id: string) => {
-	  return await axios.delete<IResponseDeleteBudget>(`${endPoints.DELETE_BUDGET}/${id}`);
+	  return await axios.delete<IResponseDeleteBudget>(endPoints.DELETE_BUDGET.replace('{id}', id));
 	};
 
 ```
@@ -25725,39 +25888,39 @@
 	};
 	/** API get detail a user by id */
 	export const getUserDetail = async (id: string) => {
-	  return await axiosServices.get<IResponseListUsers<IUser>>(endPoints.GET_USER_DETAIL.replace(':id', id));
+	  return await axiosServices.get<IResponseListUsers<IUser>>(endPoints.GET_USER_DETAIL.replace('{id}', id));
 	};
 	
 	/** API update role a user */
 	export const updateUserRole = async (id: string, role: string) => {
-	  return await axiosServices.put<IResponseDeleteUser>(`${endPoints.UPDATE_USER_ROLE}/${id}`, { role });
+	  return await axiosServices.put<IResponseDeleteUser>(endPoints.UPDATE_USER_ROLE.replace('{id}', id), { role });
 	};
 	
 	/** API user join to company */
 	export const userJoinToCompany = async (id: string, companyId: string) => {
-	  return await axiosServices.post(`${endPoints.JOIN_TO_COMPANY}/${id}`, { companyId });
+	  return await axiosServices.post(endPoints.JOIN_TO_COMPANY.replace('{id}', id), { companyId });
 	};
 	
 	/** API update invite status of user on company */
 	export const updateUserStatusCompany = async (id: string, companyId: string, inviteStatus: string) => {
-	  return await axiosServices.put(`${endPoints.UPDATE_USER_STATUS_COMPANY}/${id}`, { companyId, inviteStatus });
+	  return await axiosServices.put(endPoints.UPDATE_USER_STATUS_COMPANY.replace('{id}', id), { companyId, inviteStatus });
 	};
 	
 	/** API update profile of user on company */
 	export const updateUserProfileCompany = async (id: string, companyId: string, data: Partial<IMemberCompany>) => {
-	  return await axiosServices.put(`${endPoints.UPDATE_USER_PROFILE_COMPANY}/${id}`, { ...data, companyId });
+	  return await axiosServices.put(endPoints.UPDATE_USER_PROFILE_COMPANY.replace('{id}', id), { ...data, companyId });
 	};
 	
 	/**
 	 * @summary: (method: POST) Create a company
 	 */
 	export const createContractorCompany = async (id: string, payload: IRequestCreateCompany) => {
-	  return await axiosServices.post(`${endPoints.CREATE_CONTRACTOR_COMPANY}/${id}`, payload);
+	  return await axiosServices.post(endPoints.CREATE_CONTRACTOR_COMPANY.replace('{id}', id), payload);
 	};
 	
 	/** API get list companies of a user by id */
 	export const getUserCompanies = async (id: string) => {
-	  return await axiosServices.get<IResponseListUsers<IUser>>(endPoints.GET_USER_COMPANY.replace(':id', id));
+	  return await axiosServices.get<IResponseListUsers<IUser>>(endPoints.GET_USER_COMPANY.replace('{id}', id));
 	};
 
 ```
@@ -25797,7 +25960,7 @@
 	 */
 	export const updateProfile = async (user: IRequestUpdateProfile): Promise<IResponseRegister> => {
 	  if (!user?.id) return Promise.reject();
-	  const url = endPoints.UPDATE_PROFILE.replace(':id', user.id);
+	  const url = endPoints.UPDATE_PROFILE.replace('{id}', user.id);
 	  const res: IResponseRegister = await axios.put(url, {
 	    email: user.email,
 	    firstName: user.firstName,
@@ -25816,7 +25979,7 @@
 	 */
 	export const updateAvatar = async (params: IRequestChangeAvatar): Promise<IResponseRegister> => {
 	  if (!params.id) return Promise.reject();
-	  const url = endPoints.UPDATE_PROFILE.replace(':id', params.id);
+	  const url = endPoints.UPDATE_PROFILE.replace('{id}', params.id);
 	  const res: IResponseRegister = await axios.put(url, {
 	    image: params.imageUrl,
 	    firstName: params.firstName,
@@ -25841,7 +26004,7 @@
 	export const changePassword = async (params: IRequestChangePassword): Promise<IResponseSuccessStatus> => {
 	  if (!params?.password || !params?.id) return Promise.reject();
 	
-	  const url = endPoints.CHANGE_PASSWORD.replace(':id', params.id);
+	  const url = endPoints.CHANGE_PASSWORD.replace('{id}', params.id);
 	  const res: IResponseSuccessStatus = await axios.put(url, {
 	    newPassword: params.password,
 	    oldPassword: params.oldPassword,
@@ -25944,7 +26107,7 @@
 	 * @summary: (method: POST) get a project detail by id
 	 */
 	export const getProject = async (id: string): Promise<IProject> => {
-	  return axios.get(endPoints.GET_PROJECT_DETAIL.replace(':id', id));
+	  return axios.get(endPoints.GET_PROJECT_DETAIL.replace('{id}', id));
 	};
 	
 	/**
@@ -25957,36 +26120,58 @@
 	  !!payload?.currentClaimNumber && formData.append('currentClaimNumber', payload.currentClaimNumber + '');
 	  !!payload?.startDate && formData.append('startDate', payload.startDate);
 	  !!payload?.image && formData.append('image', payload.image);
-	  return axios.put<IResponseUpdateProject>(`${endPoints.UPDATE_PROJECT}/${id}`, formData);
+	  return axios.put<IResponseUpdateProject>(endPoints.UPDATE_PROJECT.replace('{id}', id), formData);
 	};
 	
 	/**
 	 * @summary: (method: DELETE) remove a project detail by id
 	 */
 	export const deleteProject = async (id: string): Promise<IResponseDeleteProject> => {
-	  return axios.delete(`${endPoints.DELETE_PROJECT}/${id}`);
+	  return axios.delete(endPoints.DELETE_PROJECT.replace('{id}', id));
 	};
 	
 	/**
 	 * @summary: (method: GET) roles of project
 	 */
 	export const getProjectRoles = async (id: string): Promise<IProject> => {
-	  return axios.get(endPoints.GET_PROJECT_ROLES.replace(':id', id));
+	  return axios.get(endPoints.GET_PROJECT_ROLES.replace('{id}', id));
 	};
 	
 	/**
 	 * @summary: (method: GET) Get contractors of project
 	 */
 	export const getProjectContractors = async (id: string): Promise<IProject> => {
-	  return axios.get(endPoints.GET_PROJECT_CONTRACTORS.replace(':id', id));
+	  return axios.get(endPoints.GET_PROJECT_CONTRACTORS.replace('{id}', id));
 	};
 	
 	/**
 	 * @summary: (method: GET) Get invoices of project
 	 */
 	export const getProjectInvoices = async (id: string): Promise<IInvoice[]> => {
-	  return axios.get(endPoints.GET_PROJECT_INVOICES.replace(':id', id));
+	  return axios.get(endPoints.GET_PROJECT_INVOICES.replace('{id}', id));
 	};
+
+```
+
+// src/utils/permission/permission.wrapper.tsx
+```tsx
+	import usePermission from '@/hooks/usePermission';
+	import { ReactElement } from 'react';
+	
+	interface Props {
+	  children: ReactElement;
+	  permissionKey: string;
+	}
+	const PermissionWrapper = ({ permissionKey, children }: Props) => {
+	  const permission = usePermission();
+	  const isAllow = permission.isAllowPermission(permissionKey);
+	  if (!isAllow) {
+	    return null;
+	  }
+	  return children;
+	};
+	
+	export default PermissionWrapper;
 
 ```
 
@@ -36659,8 +36844,9 @@
 	
 	import EditBtn from './EditBtn';
 	import AddBtn from './AddBtn';
-	import { CompanyType } from '@/utils/enums';
+	import { CompanyType, PermissionKey } from '@/utils/enums';
 	import { getFullName } from '@/utils/user';
+	import PermissionWrapper from '@/utils/permission/permission.wrapper';
 	
 	interface PropsCompany {
 	  companyType: string;
@@ -36672,6 +36858,11 @@
 	  const [filters, setFilters] = useState<IRequestFilter>({});
 	  const [metadata, setMetaData] = useState<ResponseMeta | null>(null);
 	
+	  const permissionKeyCreate =
+	    companyType === CompanyType.BUILDER ? PermissionKey.CREATE_BUILDER_COMPANY : PermissionKey.CREATE_CONTRACTOR_COMPANY;
+	  const permissionKeyEdit =
+	    companyType === CompanyType.BUILDER ? PermissionKey.EDIT_BUILDER_PROFILE : PermissionKey.EDIT_CONTRACTOR_PROFILE;
+	  const permissionKeyDelete = permissionKeyEdit;
 	  const routeCompanyDetail = (type: string, id: string) => {
 	    const typeRoute = type === CompanyType.BUILDER ? 'builderCompanyDetail' : 'contractorCompanyDetail';
 	    return routes[typeRoute].getUrl(id);
@@ -36723,15 +36914,19 @@
 	      sortable: false,
 	      renderCell: ({ row, id }) => (
 	        <Box display="flex" gap={1}>
-	          <EditBtn key="edit" company={row} onSuccess={handleActionSuccess} />
-	          <Button
-	            LinkComponent={NextLink}
-	            href={routeCompanyDetail(companyType, id + '')}
-	            key="view"
-	            className="tableActionIcon tableActionIconView"
-	          >
-	            <Eye />
-	          </Button>
+	          <PermissionWrapper permissionKey={permissionKeyEdit}>
+	            <EditBtn key="edit" company={row} onSuccess={handleActionSuccess} />
+	          </PermissionWrapper>
+	          <PermissionWrapper permissionKey={permissionKeyDelete}>
+	            <Button
+	              LinkComponent={NextLink}
+	              href={routeCompanyDetail(companyType, id + '')}
+	              key="view"
+	              className="tableActionIcon tableActionIconView"
+	            >
+	              <Eye />
+	            </Button>
+	          </PermissionWrapper>
 	        </Box>
 	      )
 	    }
@@ -36790,7 +36985,11 @@
 	    }
 	  };
 	
-	  const renderAddButton = () => <AddBtn onSuccess={handleActionSuccess} companyType={companyType} />;
+	  const renderAddButton = () => (
+	    <PermissionWrapper permissionKey={permissionKeyCreate}>
+	      <AddBtn onSuccess={handleActionSuccess} companyType={companyType} />
+	    </PermissionWrapper>
+	  );
 	
 	  useEffect(() => {
 	    fetchCompanies();
@@ -36877,11 +37076,13 @@
 // src/components/company/EditBtn/index.tsx
 ```tsx
 	'use client';
+	import React from 'react';
 	import { useState } from 'react';
 	import { Pencil } from '@phosphor-icons/react';
 	
 	// project import
 	import { Button } from '@/components/ui-component/buttons';
+	import { IButtonProps } from '@/components/ui-component/buttons/Button';
 	import { ICompany } from '@/types/resource/company';
 	
 	import FormDialog from '../FormDialog';
@@ -36889,10 +37090,12 @@
 	export interface IAddBtnProps {
 	  onSuccess?: (company: ICompany) => void;
 	  company: ICompany;
+	  btnProps?: IButtonProps;
+	  children?: React.ReactNode;
 	}
 	
 	export default function EditBtn(props: IAddBtnProps) {
-	  const { onSuccess, company } = props;
+	  const { onSuccess, company, btnProps = {}, children } = props;
 	  const [open, setOpen] = useState(false);
 	
 	  const handleOpen = () => {
@@ -36912,8 +37115,8 @@
 	
 	  return (
 	    <>
-	      <Button className="tableActionIcon tableActionIconEdit" onClick={handleOpen}>
-	        <Pencil />
+	      <Button className="tableActionIcon tableActionIconEdit" onClick={handleOpen} {...btnProps}>
+	        {children ? children : <Pencil />}
 	      </Button>
 	      {open && <FormDialog open={true} company={company} onClose={handleClose} onSuccess={handleSuccess} companyType={company.type} />}
 	    </>
@@ -37006,7 +37209,8 @@
 	          updateCompany(`${company.id}`, {
 	            ...params,
 	            image: currentValues.image,
-	            type: companyType
+	            type: companyType,
+	            status: currentValues.status
 	          })
 	        );
 	
@@ -37172,6 +37376,17 @@
 	.overviewValue {
 	  color: #202020;
 	}
+	
+	.img {
+	  width: 100%;
+	  padding-top: 100%;
+	  position: relative;
+	  border: 1px solid $primary200;
+	  border-radius: 6px;
+	  img {
+	    object-fit: contain;
+	  }
+	}
 
 ```
 
@@ -37241,6 +37456,10 @@
 	    }
 	  };
 	
+	  const handleEditSuccess = () => {
+	    fetchData();
+	  };
+	
 	  if (isLoading) {
 	    return <Loader />;
 	  }
@@ -37250,7 +37469,7 @@
 	      key: DEFAULT_TAB,
 	      label: formatMessage({ id: 'companyOverview' }),
 	      icon: <SquaresFour size={20} />,
-	      component: <CompanyOverview company={company} />
+	      component: <CompanyOverview company={company} onEditSuccess={handleEditSuccess} />
 	    },
 	    {
 	      key: 'users',
@@ -37468,31 +37687,48 @@
 	import Image from 'next/image';
 	import { useIntl } from 'react-intl';
 	import { Box, Grid, Typography } from '@mui/material';
+	import { Pencil } from '@phosphor-icons/react';
 	
 	// projects import
 	import { ICompany } from '@/types/resource/company';
 	import { Status } from 'ui-component/company';
-	import { EMPTY_VALUE } from 'constant';
+	import { EMPTY_VALUE, EMPTY_IMAGE } from 'constant';
+	import EditBtn from '../../EditBtn';
 	
 	import styles from '../style.module.scss';
 	
 	interface ICompanyOverviewProps {
 	  company: ICompany;
+	  onEditSuccess?: (company: ICompany) => void;
 	}
 	
-	const CompanyOverview = ({ company }: ICompanyOverviewProps) => {
+	const CompanyOverview = ({ company, onEditSuccess }: ICompanyOverviewProps) => {
 	  const { formatMessage } = useIntl();
-	
 	  return (
 	    <Box p={3}>
-	      <Box mt={3}>
+	      <Box>
+	        <Box pb={3} display="flex" justifyContent="flex-end">
+	          <EditBtn
+	            company={company}
+	            onSuccess={onEditSuccess}
+	            btnProps={{
+	              variant: 'contained',
+	              startIcon: <Pencil size={14} />,
+	              color: 'error',
+	              className: '',
+	              size: 'small'
+	            }}
+	          >
+	            {formatMessage({ id: 'edit' })}
+	          </EditBtn>
+	        </Box>
 	        <Grid container spacing={4}>
-	          {company.imageUrl && (
-	            <Grid item xs="auto">
-	              <Image src={company.imageUrl} alt={company.name} width={264} height={264} />
-	            </Grid>
-	          )}
-	          <Grid item xs={7}>
+	          <Grid item xs={3}>
+	            <div className={styles.img}>
+	              <Image src={company.imageUrl || EMPTY_IMAGE} alt={company.name} fill />
+	            </div>
+	          </Grid>
+	          <Grid item xs={9}>
 	            <Grid container spacing={2}>
 	              <Grid item xs={4}>
 	                <Typography className={styles.overviewLabel}>{formatMessage({ id: 'companyName' })}</Typography>
