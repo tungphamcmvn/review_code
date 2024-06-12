@@ -75,7 +75,7 @@ done
 
 1. Save the script to a file (e.g., `backup.sh`).
 2. Make the script executable: `chmod +x backup.sh`
-3. Run the script: `./backup.sh`
+3. Run the script with `cron`
 
 **Important Notes:**
 
