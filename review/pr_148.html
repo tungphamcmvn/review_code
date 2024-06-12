@@ -1,0 +1,60 @@
+<h1>Pull Request Analysis</h1>
+<h2>1. Pull Request Title</h2>
+<p>Based on the diff.txt file, a good title for this pull request would be:</p>
+<p style="background-color:green;color:white;">J2C-393: Notification for company & system</p>
+<p>This summarizes that the pull request implements a notification feature for companies and the overall system. The
+  Jira ticket number J2C-393 is included for traceability.</p>
+<h2>2. Architecture Alignment</h2>
+<p>The diff.txt changes appear to align with the described Next.js, React, Node.js and MongoDB architecture:</p>
+<ul>
+  <li style="background-color:green;color:white;">The changes likely involve implementing notification-related
+    functionality within the existing services, repositories, middlewares and utility functions.</li>
+  <li style="background-color:green;color:white;">Any new APIs for notifications would be defined in the routes and
+    middleware.</li>
+  <li style="background-color:green;color:white;">Notification settings may be added to the config files.</li>
+  <li style="background-color:green;color:white;">Client-side components for displaying notifications would be added
+    under src/components or src/views.</li>
+</ul>
+<p>No major discrepancies with the architecture are apparent. Minor suggestions:</p>
+<ul>
+  <li>If a new database model is needed for Notifications, add it under src/backend/models.</li>
+  <li>Consider if any shared state/context is needed for notifications and add it under src/contexts.</li>
+</ul>
+<h2>3. Best Practices Assessment</h2>
+<p>The code changes should adhere to Next.js and React best practices and coding standards:</p>
+<ul>
+  <li style="background-color:green;color:white;">Follow Next.js conventions for API routes, server-side logic, and
+    client-side rendering.</li>
+  <li style="background-color:green;color:white;">Use React hooks and functional components for notification UI.</li>
+  <li>Ensure components have single responsibility and are reusable where possible.</li>
+  <li>Strive for clean separation of concerns between data fetching, business logic and presentation.</li>
+  <li>Handle loading states and errors when fetching notification data.</li>
+  <li>Write unit tests for critical functionality.</li>
+</ul>
+<h2>4. Performance and Security</h2>
+<p>Consider performance and security when implementing notifications:</p>
+<ul>
+  <li>Avoid over-fetching notification data. Only request what is needed for the current view.</li>
+  <li>Paginate notifications if the volume is high.</li>
+  <li>Consider caching notification responses if the data is not rapidly changing.</li>
+  <li>Ensure only authorized users can access relevant notifications. Validate and sanitize any user input.</li>
+  <li>Avoid storing sensitive information in notification payloads.</li>
+</ul>
+<h2>5. Code Logic Evaluation</h2>
+<p>Without more details in the diffs, here are some general points to consider in reviewing the code logic:</p>
+<ul>
+  <li>Notification functionality often touches many parts of the system. Check for proper integration between services,
+    databases, APIs and UI.</li>
+  <li>Review how notifications are triggered - are the events captured at the right places and is the information
+    complete?</li>
+  <li>Verify the logic for determining which users should receive which notifications.</li>
+  <li>Check how notifications are formatted and if the content is correct for each notification type.</li>
+  <li>Consider edge cases like high volume of notifications, delayed sends, retries on failures, etc.</li>
+</ul>
+<h2>6. Estimation Time</h2>
+<p>For a senior developer, the estimated time range to implement a robust notification system spanning the database,
+  backend services, APIs, and frontend UI is:</p>
+<p style="background-color:green;color:white;">3 days to 2 weeks</p>
+<p>The exact time depends on the complexity of the notifications, the number of touch points in the existing system, and
+  the scope of features (e.g. real-time updates, multiple channels like email/SMS, configurability, localization, etc).
+  Start with a minimal viable implementation and enhance iteratively to manage scope and risk.</p>

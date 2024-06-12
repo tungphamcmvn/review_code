@@ -1,0 +1,59 @@
+<html>
+
+<body>
+  <h1>Pull Request Analysis</h1>
+  <h2>1. Pull Request Title</h2>
+  <p>Based on the diff provided, an appropriate title for this pull request would be:</p>
+  <p style="background-color:green;color:white;">Update API for Project Listing Screen and Implement New Project Detail
+    Page</p>
+  <p>This title concisely summarizes the two main changes being made in this PR: updating the API for the project
+    listing screen and adding a new project detail page.</p>
+  <h2>2. Architecture Alignment</h2>
+  <p>The changes in the diff appear to align with the described application architecture:</p>
+  <ul>
+    <li style="background-color:green;color:white;">The API update for the project listing screen likely involves
+      changes to the src/backend services and repositories to fetch and return the appropriate project data.</li>
+    <li style="background-color:green;color:white;">Implementing the new project detail page would involve adding a new
+      route in src/routes.ts, creating a new page component under src/views or src/app, and potentially adding new
+      components in src/components.</li>
+    <li>No discrepancies with the architecture were noted based on the limited diff provided.</li>
+  </ul>
+  <h2>3. Best Practices Assessment</h2>
+  <p>Without more code context it's difficult to fully assess adherence to Next.js and React best practices, but a few
+    notes:</p>
+  <ul>
+    <li style="background-color:green;color:white;">Implementing the project listing and detail pages as separate routes
+      follows Next.js convention.</li>
+    <li style="background-color:red;color:white;">The new project detail page should follow a naming convention
+      consistent with the existing pages. E.g. if pages are named in PascalCase, projectDetail should be ProjectDetail.
+    </li>
+    <li>Code additions should be accompanied by relevant documentation, code comments, PropTypes (if not using
+      TypeScript), etc. to aid future maintainability.</li>
+  </ul>
+  <h2>4. Performance and Security</h2>
+  <p>Again, without seeing the full code changes it's hard to assess performance and security in depth, but some general
+    recommendations:</p>
+  <ul>
+    <li>Ensure the API calls to fetch project data are as efficient as possible - avoid overfetching data, use
+      pagination if returning many results, etc.</li>
+    <li>Check that any sensitive project data is adequately protected and only accessible to authorized users.</li>
+    <li>If project detail data is quite large, consider code splitting to avoid impacting initial page load time.</li>
+  </ul>
+  <h2>5. Code Logic Evaluation</h2>
+  <p>Based on the ticket titles, the general code logic seems appropriate - updating the project listing API and adding
+    a new project detail page are reasonable tasks.</p>
+  <p>Without seeing the actual code changes though, I can't assess the implementation details like validations, error
+    handling, etc.</p>
+  <h2>6. Estimation Time</h2>
+  <p>For a senior developer, the estimated time to implement these changes would likely be in the range of <strong>2-5
+      days</strong>, depending on:</p>
+  <ul>
+    <li>Complexity of the project listing API update</li>
+    <li>Amount and complexity of data to display on the project detail page</li>
+    <li>Whether a new API endpoint is needed for the project detail</li>
+    <li>If any new components need to be created for the project detail page</li>
+    <li>How much architectural refactoring (if any) is required</li>
+  </ul>
+</body>
+
+</html>
