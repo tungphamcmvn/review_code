@@ -1,4 +1,6 @@
-## Backing Up Changed Folders to AWS S3 Using `s3cmd` (Tracking Changes in Folder Size)
+# Backup S3 - Documentation
+
+## ⚡ Backing Up Changed Folders to AWS S3 Using `s3cmd` (Tracking Changes in Folder Size)
 
 This solution focuses on using `s3cmd` to back up folders to AWS S3, only if their size has changed by 1KB or more since the last backup. 
 
@@ -84,7 +86,7 @@ done
 * You can customize the script further by adding error handling, logging, scheduling, or more sophisticated change detection mechanisms.
 
 
-## Setting up Daily Backups with `cron`
+## 👨‍💻 Setting up Daily Backups with `cron`
 
 We can schedule the backup script to run daily using `cron`, a time-based job scheduler available on Unix-like systems.
 
