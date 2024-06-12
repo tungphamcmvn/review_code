@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <title>Backing Up Changed Folders to AWS S3 with Size-Based Tracking</title>
+</head>
+
+<body>
+  <h1>Backing Up Changed Folders to AWS S3 with Size-Based Tracking</h1>
+  <h2>Introduction</h2>
+  <p>This document outlines the logic and steps involved in setting up an automated daily backup system to upload
+    changed folders from a server to an AWS S3 bucket using the <code>s3cmd</code> command-line tool. The system focuses
+    on optimizing storage costs by only backing up folders that have experienced a size change of 1KB or more since the
+    last successful backup.</p>
+  <h2>Core Components</h2>
+  <h3>1. Script Logic (backup.sh)</h3>
+  <p>The backup process is driven by a Bash script (<code>backup.sh</code>) that performs the following actions:</p>
+  <h4>1.1. Configuration</h4>
+  <ul>
+    <li><b><code>BACKUP_DIR</code>:</b> Defines the absolute path to the directory containing the folders to be backed
+      up.</li>
+    <li><b><code>S3_BUCKET</code>:</b> Specifies the name of the target S3 bucket.</li>
+    <li><b><code>SIZE_HISTORY_FILE</code>:</b> Sets the path to a file used for storing historical folder sizes to track
+      changes.</li>
+  </ul>
+  <h4>1.2. Folder Iteration</h4>
+  <ul>
+    <li>The script iterates through each folder within the specified <code>BACKUP_DIR</code>.</li>
+  </ul>
+  <h4>1.3. Size Calculation and Comparison</h4>
+  <ul>
+    <li><b>Current Size:</b> Calculates the current size of the folder in kilobytes using the <code>du -sk</code>
+      command.</li>
+    <li><b>Previous Size:</b> Retrieves the previously recorded size of the folder from the
+      <code>SIZE_HISTORY_FILE</code>. If no previous record exists (first-time backup), the previous size is considered
+      0.</li>
+    <li><b>Size Difference:</b> Computes the difference between the current size and the previous size.</li>
+  </ul>
+  <h4>1.4. Backup Decision and Execution</h4>
+  <ul>
+    <li><b>Backup Condition:</b> If the size difference is greater than or equal to 1KB, or if it's the first time
+      backing up the folder, the script proceeds with the backup.</li>
+    <li><b>Backup Execution:</b> The <code>s3cmd put --recursive</code> command uploads the folder and its contents to
+      the specified S3 bucket.</li>
+    <li><b>History Update:</b> After a successful backup, the <code>SIZE_HISTORY_FILE</code> is updated with the current
+      folder size.</li>
+  </ul>
+  <h3>2. Scheduling with Cron</h3>
+  <p>The script is scheduled to run daily using <code>cron</code>, a time-based job scheduler:</p>
+  <h4>2.1. Crontab Entry</h4>
+  <ul>
+    <li>The following line is added to the crontab (<code>crontab -e</code>):</li>
+    <pre><code>0 0 * * * /path/to/your/backup.sh</code></pre>
+    <ul>
+      <li><b><code>0 0 * * *</code>:</b> Defines the schedule to run the script every day at midnight (00:00).</li>
+      <li><b><code>/path/to/your/backup.sh</code>:</b> Specifies the absolute path to the backup script.</li>
+    </ul>
+  </ul>
+  <h2>Workflow Summary</h2>
+  <ol>
+    <li>The script starts at the scheduled time (daily at midnight).</li>
+    <li>It goes through each folder in the designated backup directory.</li>
+    <li>For each folder, it calculates the current size and retrieves the last recorded size.</li>
+    <li>If the size difference is 1KB or more, or if it's the first-time backup, the folder is uploaded to the S3
+      bucket.</li>
+    <li>The size history file is updated to reflect the latest backup.</li>
+  </ol>
+  <h2>Advantages</h2>
+  <ul>
+    <li><b>Cost-Effective:</b> Minimizes S3 storage costs by only backing up folders that have changed significantly.
+    </li>
+    <li><b>Automation:</b> <code>cron</code> automates the backup process, eliminating manual intervention.</li>
+    <li><b>Simplicity:</b> Utilizes readily available tools (<code>s3cmd</code>, <code>bash</code>, <code>cron</code>)
+      for easy implementation.</li>
+  </ul>
+  <h2>Further Considerations</h2>
+  <ul>
+    <li><b>Error Handling:</b> Implement error handling mechanisms within the script to log errors, send notifications,
+      or take corrective actions.</li>
+    <li><b>Logging:</b> Maintain detailed logs of the backup process for monitoring and troubleshooting.</li>
+    <li><b>Security:</b> Securely store AWS credentials and ensure appropriate access controls to the backup script and
+      S3 bucket.</li>
+  </ul>
+</body>
+
+</html>
